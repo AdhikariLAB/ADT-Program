@@ -57,8 +57,9 @@ mv aux $WrkDir/adt$METHOD.py
 cd $WrkDir
 
 #making the main python file executable and then, execution of that file
-chmod +x adt$METHOD.py
-./adt$METHOD.py
+# chmod +x adt$METHOD.py
+# ./adt$METHOD.py
+python adt$METHOD.py $NSTATE
 
 #exit from 'RUN'
 cd ../
