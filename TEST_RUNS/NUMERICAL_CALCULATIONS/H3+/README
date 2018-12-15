@@ -1,0 +1,36 @@
+
+---------------------------------------------------------------------------------------------------------------------------
+                                                         Brief Description
+---------------------------------------------------------------------------------------------------------------------------
+
+This folder contains one additional file, 'ADT_COMMAND' and two directories, 'INPUT' and 'RESULT'. For H$_{3}^{+}$, we 
+choose hyperspherical coordinate system, where $\rho$ is fixed at 10 Bohr. We employ other two coordinates, $\theta$ and $\phi 
+to compute ab initio adiabatic potential energy surfaces (PESs) for three lowest electronic states and nonadiabatic coupling 
+terms (NACTs) within them. The adiabatic potential energies are calculated in multireference configuration interaction (MRCI) 
+level implementing Dunning’s correlation consistent quintuple zeta (cc-pV5Z) basis set and 2 electrons in 10 orbitals (2e, 10o) 
+configuration active space (CAS). NACTs are computed using numerical finite difference method (DDR) implemented in MOLPRO 
+quantum chemistry software. The first coordinate, $\theta$ ranges from 0 to $\pi/2$ and the second coordinate, $\phi$ spans 
+from 0 to $2\pi$ such that total number of grid points wil be 89 X 180. Integration is performed along 'Path 1' and ifort 
+compiler is used for compilation of fortran program. The 'INPUT' folder contains all input files:   
+
+--------------------------------------------------------------------------------------------------------------------------
+  Input File Name               First Column                Second Column                    Third Column
+--------------------------------------------------------------------------------------------------------------------------
+ADIABATICPES_1.DAT                $\theta$                      $\phi$               scaled ground state energy in eV      
+ADIABATICPES_2.DAT                $\theta$                      $\phi$            scaled first excited state energy in eV      
+ADIABATICPES_3.DAT                $\theta$                      $\phi$            scaled second excited state energy in eV      
+    TAUR_1.DAT                    $\theta$                      $\phi$               $\rho$ component of $\tau_{12}$      
+    TAUR_2.DAT                    $\theta$                      $\phi$               $\rho$ component of $\tau_{13}$      
+    TAUR_3.DAT                    $\theta$                      $\phi$               $\rho$ component of $\tau_{23}$      
+    TAUP_1.DAT                    $\theta$                      $\phi$               $\phi$ component of $\tau_{12}$      
+    TAUP_2.DAT                    $\theta$                      $\phi$               $\phi$ component of $\tau_{13}$      
+    TAUP_3.DAT                    $\theta$                      $\phi$               $\phi$ component of $\tau_{23}$      
+--------------------------------------------------------------------------------------------------------------------------
+
+Therefore, the necessary command is:
+
+./Interface.sh 2 3 0 89 180 1 1
+
+The output files are stored in 'RESULT' folder.
+
+---------------------------------------------------------------------------------------------------------------------------

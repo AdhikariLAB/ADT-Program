@@ -1,0 +1,12 @@
+ c(1) = cos(theta(1,2))
+
+ s(1) = sin(theta(1,2))
+
+ ic(1) = sec(theta(1,2))
+
+ is(1) = cosec(theta(1,2))
+
+
+ GRAD_1_2 = 
+ (-ic(1))*(-1)*(-1)*(TAU(1,2))*(c(1))
+

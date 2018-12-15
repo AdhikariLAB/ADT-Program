@@ -1,0 +1,72 @@
+
+################################################################################################################################ 
+#Authors are Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari (corresponding author)
+################################################################################################################################ 
+
+############################################################ 
+#This file provides a brief description of the result files 
+############################################################# 
+
+################# 
+#ADT Angle Files 
+################# 
+
+----------------------------------------------------------------------------------------------------------
+        File Name               First Column              Second Column           Third Column            
+----------------------------------------------------------------------------------------------------------
+
+     ADT_ANGLE_1.DAT         first coordinate            second coordinate          theta(1,2)   
+
+     ADT_ANGLE_2.DAT         first coordinate            second coordinate          theta(1,3)   
+
+     ADT_ANGLE_3.DAT         first coordinate            second coordinate          theta(2,3)   
+
+----------------------------------------------------------------------------------------------------------
+
+################## 
+#ADT Matrix Files 
+################## 
+
+----------------------------------------------------------------------------------------------------------
+        File Name               First Column              Second Column           Other Columns           
+----------------------------------------------------------------------------------------------------------
+
+       AMAT_ROW_1.DAT         first coordinate           second coordinate       A(1,1) to A(1,3)   
+
+       AMAT_ROW_2.DAT         first coordinate           second coordinate       A(2,1) to A(2,3)   
+
+       AMAT_ROW_3.DAT         first coordinate           second coordinate       A(3,1) to A(3,3)   
+
+----------------------------------------------------------------------------------------------------------
+
+####################### 
+#Diabatic Matrix Files 
+####################### 
+
+----------------------------------------------------------------------------------------------------------
+        File Name               First Column              Second Column           Other Columns           
+----------------------------------------------------------------------------------------------------------
+
+       DIAPES_1.DAT           first coordinate           second coordinate      W(1,1) to W(1,3)    
+
+       DIAPES_2.DAT           first coordinate           second coordinate      W(2,1) to W(2,3)    
+
+       DIAPES_3.DAT           first coordinate           second coordinate      W(3,1) to W(3,3)    
+
+----------------------------------------------------------------------------------------------------------
+
+######################### 
+#ADT Angle Residue Files 
+######################### 
+
+----------------------------------------------------------------------------------------------------------
+        File Name               First Column              Second Column                                   
+----------------------------------------------------------------------------------------------------------
+
+     ADT_ANGLE_RES_1.DAT      first coordinate            residue(1,2)                            
+
+     ADT_ANGLE_RES_2.DAT      first coordinate            residue(1,3)                            
+
+     ADT_ANGLE_RES_3.DAT      first coordinate            residue(2,3)                            
+
+----------------------------------------------------------------------------------------------------------

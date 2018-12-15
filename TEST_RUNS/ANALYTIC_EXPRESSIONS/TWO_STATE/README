@@ -1,0 +1,13 @@
+
+---------------------------------------------------------------------------------------------------------------------------
+                                                         Brief Description
+---------------------------------------------------------------------------------------------------------------------------
+
+This folder contains one additional file, 'ADT_COMMAND' and one directory, 'RESULT'. We have performed formulation of ADT 
+equations for a two electronic state sub-Hilbert space. Therefore, the necessary command is:
+
+./Interface.sh 1 2 5 0 0 0 0
+
+The output file is stored in 'RESULT' folder.
+
+---------------------------------------------------------------------------------------------------------------------------

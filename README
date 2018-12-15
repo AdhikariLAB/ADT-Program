@@ -1,0 +1,269 @@
+                 **************************************************************************************************************
+                 #                                             ADT PROGRAM                                                    #
+                 **************************************************************************************************************
+
+****************************************************************************************************************** 
+Authors 
+******************************************************************************************************************
+
+Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari (corresponding author)
+
+
+******************************************** 
+Licensing Provisions 
+********************************************
+GNU General Public License 3 (GPLv3)
+
+
+******************************************** 
+System Requirements 
+********************************************
+
+(I) linux operating system 
+(II) ifort/gfortran compiler
+(III) python interpreter
+
+
+******************************************** 
+Brief Description of Source Code 
+********************************************
+
+ADT program has two subsections. They are
+
+(I)  ADT1 : This package gives analytic expressions of adiabatic potential energy matrix, nonadiabatic 
+            coupling matrix (NACM), adiabatic to diabatic transformation (ADT) matrix, ADT equations, 
+            coefficients of gradient of ADT angles, coefficients of nonadiabatic coupling terms (NACTs) 
+            and diabatic potential energy matrix for any number of electronic states constituting the sub-Hilbert space.
+
+(II) ADT2 : This package calculates the ADT angles, ADT matrices, diabatic potential energy matrices and 
+            ADT angle residues at any number of grid points and for N-dimensional sub-Hilbert space 
+            (N is arbitrary) in the interested domain of nuclear configuration space (CS).
+
+---------------
+Brief Outline 
+---------------
+
+(1) THIS "ADT" SOFTWARE PACKAGE CAN BE USED FOR ANY DIMENSIONAL SUB-HILBERT SPACE.
+
+(2) THE ANALYTICAL SECTION PROVIDES SEVEN QUANTITIES :
+   
+     (i) ADIABATIC POTENTIAL ENERGY MATRIX
+     (ii) NACM
+     (iii) ADT MATRIX
+     (iv) ADT EQUATIONS
+     (v) COEFFICIENT MATRIX OF GRADIENT OF ADT ANGLE
+     (vi) COEFFICIENT MATRIX OF NACT   
+     (vii) DIABATIC POTENTIAL ENERGY MATRIX
+
+(3) THE NUMERICAL SECTION PROVIDES MAGNITUDE OF FOUR QUANTITIES AT EVERY GRID POINT:
+
+      (i) ADT ANGLES
+      (ii) ADT MATRIX
+      (iii) DIABATIC POTENTIAL ENERGY MATRIX
+      (iv) RESIDUE OF ADT ANGLES
+
+(4) THE LATER SECTION REQUIRES FOLLOWING INPUTS:
+       
+      (i) ADIABATIC POTENTIAL ENERGY VALUES AT EVERGY GRID POINT
+      (ii) NONADIABATIC COUPLING TERMS AT EVERY GRID POINT
+
+(5) THE COORDINATES OF GRID POINTS CAN BE CHOSEN FROM ANY COORDINATE SYSTEM LIKE 
+    CARTESIAN COORDINATE, PLANE POLAR COORINATE, HYPERSPHERICAL COORDINATE ETC.
+
+(6) THE NUMERICAL PACKAGE CAN BE APPLIED FOR ANY NUMBER OF GRID POINTS.
+
+(7) ADT MATRIX IS FORMED BY MULTIPLYING THE ELEMENTARY ROTATION MATRICES IN A 
+    PARTICULAR ORDER. THEY ARE ARRANGED IN INCREASING ORDER OF THEIR SECOND INDECES
+    AND THEN IN ASCENDING ORDER OF THEIR FIRST INDECES KEEPING THE SECOND INDEX FIXED. 
+    [FOR FOUR ELECTRONIC STATES, THE ORDER IS A(1,2)*A(1,3)*A(2,3)*A(1,4)*A(2,4)*A(3,4)] 
+
+(7) THE ADT EQUATIONS ARE NUMERICALLY SOLVED BY 8TH ORDER RUNGE-KUTTA METHOD.
+
+(8) THE NUMERICAL SECTION IS VALID ONLY FOR TWO-DIMENSIONAL NUCLEAR CS.
+
+(9) NUMERICAL INTEGRATION OF THE ADT EQUATIONS CAN BE SOLVED ALONG INFINITE NUMBER OF
+    PATHS IN A TWO-DIMENSIONAL COORDINATE SYSTEM. HERE THE DIFFERENTIAL EQUATIONS CAN 
+    BE SOLVED ALONG EIGHT (8) POSSIBLE PATHS. THOSE PATHS ARE DESCRIBED LATER.
+
+(10) THE MAGNITUDE OF ADT ANGLE RESIDUE WILL BE MEANINGFUL ONLY IF THE SECOND COORDINATE
+     (SUPPLIED BY THE USER) IS BOUND THAT IS IT MUST FORM A CLOSED CONTOUR. 
+
+
+
+********************************************* 
+Description of Files and Folders 
+*********************************************
+
+ADT program contains three folders and four files. The folders also contain some subfolders. One additional folder namely,
+"RESULT" is generated after execution of the program.
+
+*****************
+FOLDERS
+*****************
+
+(I) ADT1 : It contains a script file "RunManager.sh" and a subfolder "SRC". 
+
+     (i) SRC : This folder contains nine python files. Among them, one is "ModuleBase.py" which 
+               contains all necessary python definitions. Rest of them are implemented for eight
+               different types of operations. 
+                             
+                                                                 Table 1
+   
+                ------------------------------------------------------------------------------------------------------------
+                     filename               index (METHOD)                              output      
+                ------------------------------------------------------------------------------------------------------------
+                       
+                     adt1.py                    1                        adiabatic potential energy matrix
+
+                     adt2.py                    2                                      NACM
+  
+                     adt3.py                    3                                   ADT matrix
+
+                     adt4.py                    4                    partially substituted form of ADT equations
+
+                     adt5.py                    5                         complete form of ADT equations
+
+                     adt6.py                    6                    expression of coefficients of gradient of ADT angles
+                                                                        (detailed description in main article)
+
+                     adt7.py                    7                        functional form of coefficients of NACTs 
+                                                                         (detailed description in main article)
+
+                     adt8.py                    8                          diabatic potential energy matrix 
+
+                ------------------------------------------------------------------------------------------------------------
+
+     (ii) RunManager.sh : This script file is employed to do the following jobs successively,
+
+                (a) Taking the following inputs from the file "Interface.sh".
+                
+                    (1) number of coupled electronic states
+                    (2) specific index (METHOD) for a definite operation (see Table 1)
+                          
+                (b) Deleting the "RUN" directory in the current folder and "RESULT" directory in the parent folder if already exist.
+
+                (c) Creating new "RUN" folder in the current directory and "RESULT" folder in the parent directories.
+
+                (d) Copying "ModuleBase.py" and the necessary "adt$METHOD.py" file from "SRC" folder to "RUN" folder.
+
+                (e) Performing necessary changes in the "adt$METHOD.py" file in the "RUN" folder.
+
+                (f) Executing the "adt$METHOD.py" file in the "RUN" folder.
+
+                (g) Transferring the output files from "RUN" to "RESULT" (folder in parent directory).
+
+(II) ADT2 : It contains a script file "RunManager.sh" and a subfolder "SRC".
+
+     (i) SRC : This folder contains one fortran file (adt.f) and nine script files. 
+
+                "adt.f" is the main fortran file for diabatization of adiabatic potential energy surfaces. 
+
+                "open.sh" is implemented to produce a new file, "openfile.h" which will contain all "OPEN" 
+                statements and necessary fortran code to read the input data. This .h file is called in 
+                "adt.f" file by 'include' command. This script file will also generate an information file,
+                "INFORMATION.DAT", which presents a brief description about the output files.
+
+                The rest of the script files are employed for integrating the differential equations by 
+                Runge-Kutta method (8th order) along eight different paths in the nuclear CS.
+                Likewise the previous case, the script file will generate an output file, "integration.h" which
+                contains the necessary fortran code which is included in "adt.f". 
+
+                                                                 Table 2
+
+                -------------------------------------------------------------------------------------------------------------------------
+                          scriptfile name            Index                               description of integration path 
+                                                  (INTEGRATION)               (let, first coordinate is R and second coordinate is P)
+                -------------------------------------------------------------------------------------------------------------------------
+
+                          integration1.sh              1                  1. Intially, along each positive step of P grid at lowest R.
+                                                                          2. Then along each positive increment of R for each P grid.
+
+                          integration2.sh              2                  1. Intially, along each negative step of P grid at lowest R.
+                                                                          2. Then along each positive increment of R for each P grid.
+
+                          integration3.sh              3                  1. Intially, along each positive step of P grid at highest R.
+                                                                          2. Then along each negative increment of R for each P grid.
+
+                          integration4.sh              4                  1. Intially, along each negative step of P grid at highest R.
+                                                                          2. Then along each negative increment of R for each P grid.
+
+                          integration5.sh              5                  1. Intially, along each positive step of R grid at lowest P.
+                                                                          2. Then along each positive increment of P for each R grid.
+
+                          integration6.sh              6                  1. Intially, along each negative step of R grid at lowest P.
+                                                                          2. Then along each positive increment of P for each R grid.
+
+                          integration7.sh              7                  1. Intially, along each positive step of R grid at highest P.
+                                                                          2. Then along each negative increment of P for each R grid.
+
+                          integration8.sh              8                  1. Intially, along each negative step of R grid at highest P.
+                                                                          2. Then along each negative increment of P for each R grid.
+
+                ------------------------------------------------------------------------------------------------------------------------
+
+     (ii) RunManager.sh : This script file is employed to do the following jobs successively,
+
+               (a) Taking the following inputs from the file "Interface.sh".  
+ 
+                   (1) number of coupled electronic states
+                   (2) number of grid points of first coordinate
+                   (3) number of grid points of second coordinate
+                   (4) specific index (INTEGRATION) for definite integration path (see Table 2)
+                   (5) specific index for fortran compiler (`1' for ifort / `2' for gfortran)
+
+               (b) Deleting the files like "MakeCompile.sh","*.out" as well as the directories like "RUN" and "RESULT" 
+                   if already exist. 
+
+               (c) Calculating the number of coupling terms possible for a specific dimension of an electronic sub-Hilbert space.
+
+               (d) Creating new "RUN" folder in the current directory and "RESULT" folder in the parent directory.
+  
+               (e) Copying "adt.f", "open.sh" and "integration$INTEGRATION.sh" from "SRC" to "RUN".
+
+               (f) Copying the necessary input files from "INPUT" (folder of parent directory) to "RUN" (folder of current directory).
+ 
+               (g) Performing necessary changes in the "adt.f", "open.sh" and "integration$INTEGRATION.sh" files in the "RUN" folder.
+
+               (h) Executing "open.sh" and "integration$INTEGRATION.sh" files in the "RUN" directory.
+
+               (i) Creating an executable file, "MakeCompile.sh" which will produce " Execute"$NSTATE"st.out".
+                   ($NSTATE = number of electronic states) This is executed in the "RUN" folder to perform 
+                   the adiabatic to diabatic transformation.
+
+               (j) Transferring the output files from "RUN" folder to "RESULT" directory (folder in parent directory).
+                     
+(III) INPUT : This folder is created to import/prepare the input files (containing adiabatic potential energy and NACT data) 
+              in this folder. User has to remove the input files of previous run (if exist) and place the new ones.
+
+(IV) TEST_RUNS : This folder contains necessary user-command and input files for some trial runs. Result files are also
+                 stored in this directory.
+
+*****************
+FILES
+*****************
+
+(I) Interface.sh : This script file is employed to do the following jobs successively,
+
+               (a) Taking the following inputs from the user.
+
+                   (1) nature of job (analytical or numerical)
+                   (2) number of coupled electronic states
+                   (3) specific index for a definite operation for analytic expression
+                   (4) number of grid points of first coordinate 
+                   (5) number of grid points of second coordinate
+                   (6) specific index for definite integration path
+                   (7) specific index for fortran compiler
+
+               (b) Executing the necessary "RunManager.sh" file to produce the output files.
+
+(II) README : This file contains all necessary information about the program package.
+
+(III) USER_MANUAL : This file contains instructions for users to run the code.
+
+(IV) LICENSE : This file contains the license information of this software package.
+                    
+----------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+

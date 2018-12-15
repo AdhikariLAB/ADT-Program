@@ -1,0 +1,132 @@
+
+################################################################################################################################ 
+#Authors are Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari (corresponding author)
+################################################################################################################################ 
+
+############################################################ 
+#This file provides a brief description of the result files 
+############################################################# 
+
+################# 
+#ADT Angle Files 
+################# 
+
+----------------------------------------------------------------------------------------------------------
+        File Name               First Column              Second Column           Third Column            
+----------------------------------------------------------------------------------------------------------
+
+     ADT_ANGLE_1.DAT         first coordinate            second coordinate          theta(1,2)   
+
+     ADT_ANGLE_2.DAT         first coordinate            second coordinate          theta(1,3)   
+
+     ADT_ANGLE_3.DAT         first coordinate            second coordinate          theta(2,3)   
+
+     ADT_ANGLE_4.DAT         first coordinate            second coordinate          theta(1,4)   
+
+     ADT_ANGLE_5.DAT         first coordinate            second coordinate          theta(2,4)   
+
+     ADT_ANGLE_6.DAT         first coordinate            second coordinate          theta(3,4)   
+
+     ADT_ANGLE_7.DAT         first coordinate            second coordinate          theta(1,5)   
+
+     ADT_ANGLE_8.DAT         first coordinate            second coordinate          theta(2,5)   
+
+     ADT_ANGLE_9.DAT         first coordinate            second coordinate          theta(3,5)   
+
+     ADT_ANGLE_10.DAT         first coordinate            second coordinate          theta(4,5)   
+
+     ADT_ANGLE_11.DAT         first coordinate            second coordinate          theta(1,6)   
+
+     ADT_ANGLE_12.DAT         first coordinate            second coordinate          theta(2,6)   
+
+     ADT_ANGLE_13.DAT         first coordinate            second coordinate          theta(3,6)   
+
+     ADT_ANGLE_14.DAT         first coordinate            second coordinate          theta(4,6)   
+
+     ADT_ANGLE_15.DAT         first coordinate            second coordinate          theta(5,6)   
+
+----------------------------------------------------------------------------------------------------------
+
+################## 
+#ADT Matrix Files 
+################## 
+
+----------------------------------------------------------------------------------------------------------
+        File Name               First Column              Second Column           Other Columns           
+----------------------------------------------------------------------------------------------------------
+
+       AMAT_ROW_1.DAT         first coordinate           second coordinate       A(1,1) to A(1,6)   
+
+       AMAT_ROW_2.DAT         first coordinate           second coordinate       A(2,1) to A(2,6)   
+
+       AMAT_ROW_3.DAT         first coordinate           second coordinate       A(3,1) to A(3,6)   
+
+       AMAT_ROW_4.DAT         first coordinate           second coordinate       A(4,1) to A(4,6)   
+
+       AMAT_ROW_5.DAT         first coordinate           second coordinate       A(5,1) to A(5,6)   
+
+       AMAT_ROW_6.DAT         first coordinate           second coordinate       A(6,1) to A(6,6)   
+
+----------------------------------------------------------------------------------------------------------
+
+####################### 
+#Diabatic Matrix Files 
+####################### 
+
+----------------------------------------------------------------------------------------------------------
+        File Name               First Column              Second Column           Other Columns           
+----------------------------------------------------------------------------------------------------------
+
+       DIAPES_1.DAT           first coordinate           second coordinate      W(1,1) to W(1,6)    
+
+       DIAPES_2.DAT           first coordinate           second coordinate      W(2,1) to W(2,6)    
+
+       DIAPES_3.DAT           first coordinate           second coordinate      W(3,1) to W(3,6)    
+
+       DIAPES_4.DAT           first coordinate           second coordinate      W(4,1) to W(4,6)    
+
+       DIAPES_5.DAT           first coordinate           second coordinate      W(5,1) to W(5,6)    
+
+       DIAPES_6.DAT           first coordinate           second coordinate      W(6,1) to W(6,6)    
+
+----------------------------------------------------------------------------------------------------------
+
+######################### 
+#ADT Angle Residue Files 
+######################### 
+
+----------------------------------------------------------------------------------------------------------
+        File Name               First Column              Second Column                                   
+----------------------------------------------------------------------------------------------------------
+
+     ADT_ANGLE_RES_1.DAT      first coordinate            residue(1,2)                            
+
+     ADT_ANGLE_RES_2.DAT      first coordinate            residue(1,3)                            
+
+     ADT_ANGLE_RES_3.DAT      first coordinate            residue(2,3)                            
+
+     ADT_ANGLE_RES_4.DAT      first coordinate            residue(1,4)                            
+
+     ADT_ANGLE_RES_5.DAT      first coordinate            residue(2,4)                            
+
+     ADT_ANGLE_RES_6.DAT      first coordinate            residue(3,4)                            
+
+     ADT_ANGLE_RES_7.DAT      first coordinate            residue(1,5)                            
+
+     ADT_ANGLE_RES_8.DAT      first coordinate            residue(2,5)                            
+
+     ADT_ANGLE_RES_9.DAT      first coordinate            residue(3,5)                            
+
+     ADT_ANGLE_RES_10.DAT      first coordinate            residue(4,5)                            
+
+     ADT_ANGLE_RES_11.DAT      first coordinate            residue(1,6)                            
+
+     ADT_ANGLE_RES_12.DAT      first coordinate            residue(2,6)                            
+
+     ADT_ANGLE_RES_13.DAT      first coordinate            residue(3,6)                            
+
+     ADT_ANGLE_RES_14.DAT      first coordinate            residue(4,6)                            
+
+     ADT_ANGLE_RES_15.DAT      first coordinate            residue(5,6)                            
+
+----------------------------------------------------------------------------------------------------------
