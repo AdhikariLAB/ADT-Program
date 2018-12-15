@@ -4,9 +4,9 @@
 #This python program is written by Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari (corresponding author)
 ######################################################################################################################################################
 
-import ModuleBase
+import ModuleBase, sys
 
-N = 'NO OF STATE'
+N = int(sys.argv[1])
 ND=N*(N-1)/2
 
 #formation of adiabatic to diabatic transformation (ADT) matrix
@@ -25,41 +25,44 @@ R_Matrix =ModuleBase.multiply(ModuleBase.negative(NACM),A_Matrix)
 RHSelems = ModuleBase.elemtauselect(R_Matrix)
 
 #writing the completely substituted form of ADT equations
-fl = open('ADT_EQUATIONS_COMPLETE.DAT','w')
-
+txt = ""
 count = 0
 for index1 in range(2,N+1):
   for index2 in range(1,index1):
     count += 1
-    fl.write(' c(%r) = cos(theta(%r,%r))\n' % (count,index2,index1))
-    fl.write('\n')
-    fl.write(' s(%r) = sin(theta(%r,%r))\n' % (count,index2,index1))
-    fl.write('\n')
-    fl.write(' ic(%r) = sec(theta(%r,%r))\n' % (count,index2,index1))
-    fl.write('\n')
-    fl.write(' is(%r) = cosec(theta(%r,%r))\n' % (count,index2,index1))
-    fl.write('\n')
+    txt +="""
+c({c}) = cos(theta({i1},{i2}))
 
-fl.close()
+s({c}) = sin(theta({i1},{i2}))
+
+ic({c})= sec(theta({i1},{i2}))
+
+is({c})= cosec(theta({i1},{i2}))
+""".format(c=count, i1=index1, i2=index2)
+
+with open("ADT_EQUATIONS_COMPLETE.DAT", "w") as f:
+    f.write(txt)
+
 
 Equations = ModuleBase.equation_complete(LHSelems,RHSelems,N)
 
 #creating information file
-fl1 = open('INFORMATION.DAT','w')
-fl1.write('\n')
-fl1.write('################################################################################################################################')
-fl1.write('\n')
-fl1.write('#Authors are Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari (corresponding author)')
-fl1.write('\n')
-fl1.write('################################################################################################################################')
-fl1.write('\n')
-fl1.write('\n')
-fl1.write('#######################################################################################################')
-fl1.write('\n')
-fl1.write('#The result file contains completely substituted Adiabatic to Diabatic Transformation (ADT) Equations.')
-fl1.write('\n')
-fl1.write('#######################################################################################################')
-fl1.write('\n')
-fl1.write('\n')
+info ="""
 
-fl1.close()
+################################################################################################################################
+
+#Authors are Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari (corresponding author)
+
+################################################################################################################################
+
+
+#######################################################################################################
+
+#The result file contains completely substituted Adiabatic to Diabatic Transformation (ADT) Equations.
+
+#######################################################################################################
+
+
+"""
+with open('INFORMATION.DAT','w') as f:
+    f.write(info)
