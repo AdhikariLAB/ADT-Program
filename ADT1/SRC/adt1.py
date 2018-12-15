@@ -6,7 +6,7 @@
 
 import ModuleBase, sys
 
-N = 
+N = int(sys.argv[1])
 ND=N*(N-1)/2
 
 #formation of adiabatic potential energy matrix
