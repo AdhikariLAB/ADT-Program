@@ -535,28 +535,17 @@ def matman(N):
 
   
 ################################################################################################################
-def matrix(first,second,N,counter):
+def matrix(i,j,N, counter):
 
     '''This definition generates elementary rotation matrices, which are multiplied to construct the overall
        ADT matrix.'''
      
 
-    mat = []
-    for i in range(1,N+1):
-      row = []
-      for j in range(1,N+1):
-        if (i==j==first) or (i==j==second):
-          a = '(c(%s))' % counter  
-        elif i == first and j == second:
-          a = '(s(%s))' % counter 
-        elif i == second and j == first:
-          a = '(-s(%s))' % counter
-        elif i == j:
-          a = '1'
-        else:
-          a = '0'
-        row.append(a)
-      mat.append(row)
+    mat = unitmat(N)
+    i,j = i-1,j-1
+    mat[i][i] = mat[j][j] = '(c(%s))' % counter 
+    mat[i][j],  = '(s(%s))' % counter
+    mat[j][i] = '(-s(%s))' % counter
     return mat
  
  
