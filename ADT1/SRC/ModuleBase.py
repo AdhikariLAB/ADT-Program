@@ -590,20 +590,12 @@ def nacm(N):
 
    #   ll += [(row)]
 
-    ll = []
-    for i in range(N):
-      row = []
-      for j in range(N):
-        if i == j:
-          a ='0'
-        elif i > j:
-          a = '(-1)*(TAU(%s,%s))' % (j+1,i+1)
-        else:
-          a = '(TAU(%s,%s))' % (i+1,j+1)
-        row.append(a)
-      ll.append(row)
-
-    return ll
+    mat = [[0]*N for _ in xrange(N) ]
+    for i in xrange(N):
+        for j in xrange(i+1,N):
+            mat[i][j] = '(TAU(%s,%s))' % (i+1,j+1)
+            mat[j][i] = '(-1)*(TAU(%s,%s))' % (i+1,j+1)
+    return mat
 
   
 ################################################################################################################
