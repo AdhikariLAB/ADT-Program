@@ -1,6 +1,9 @@
-#!/bin/python
 
-import os
+import sys
+import subprocess
+
+from sys import argv
+script, path=argv
 
 fl = open('input.dat','r')
 
@@ -17,7 +20,9 @@ fl.close()
 
 print paramdict
 
+print script
+
 if [paramdict['jobtype'] == 'analytic']:
    job = 1
-   os.cd('ADT$job')
+   subprocess.call(["touch","%sadt.f" % path])
    print job 
