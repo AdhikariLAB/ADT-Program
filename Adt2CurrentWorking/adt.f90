@@ -12,26 +12,8 @@ data wt/1,0,-3,2,4*0,-3,0,9,-6,2,0,-6,4,8*0,3,0,-9,6,-2,0,6,-4,10*0,9,-6,2*0,-6,
         &5*0,1,-2,1,0,-2,4,-2,0,1,-2,1,9*0,-1,2,-1,0,1,-2,1,10*0,1,-1,2*0,-1,1,6*0,-1,1,2*0,2,-2,2*0,-1,1/
 
 
-
-
-
-! abstract interface
-!     subroutine dummy(gridr_val, ini_angle, output,ntau)
-
-!     integer(kind=8),  intent(in):: ntau
-!     real(kind=8), intent(in)    :: gridr_val, ini_angle(ntau)
-!     real(kind=8), intent(out)   :: output(ntau)
-!     end subroutine dummy
-! end interface
-! procedure(dummy), pointer :: func => null()
-
-
 contains
 
-
-subroutine hello()
-    print *,"Hello There !!!"
-end subroutine hello
 
 subroutine init()
     s=dsqrt(21.0d0)
@@ -140,41 +122,6 @@ subroutine rungeKutta8(fun,x,y,dx,n)
 end subroutine rungeKutta8
 
 
-
-
-subroutine rk(full_angle, ngridr, ngridp, ntau, nstate)     
-    integer(8),  intent(in):: ngridr, ngridp, ntau, nstate
-    real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
-    real(8)                :: angle(ntau), tmp(ntau),h1, h2
-    integer(8)             :: i,j
-
-    call init()
-    h1 = gridr(2) - gridr(1)
-    h2 = gridp(2) - gridp(1)
-    tmp=0.0d0
-
-
-
-    gridp_val = gridp(1)-0.5d0*h2
-
-
-    fullloop: do i=1,2
-        gridr_val = gridr(1)
-        angle = tmp
-        call rungeKutta8(funcp, gridp_val,angle,h2,ntau)
-        tmp = angle
-
-        gridr_val = gridr(1)-0.5d0*h1
-        gridp_val = gridp(i)
-
-        innerloop : do j=1,ngridr
-            call rungeKutta8(funcr, gridr_val, angle, h1, ntau)
-            full_angle(j,i,:)=angle
-            print *,gridr(j),gridp(i), angle,h1
-            gridr_val = gridr(j)
-        enddo innerloop
-    enddo fullloop
-end subroutine rk
 
 
 
@@ -534,12 +481,14 @@ subroutine interpol(tau,x1,y1,tout,ngridr, ngridp, ntau)
 
     dx=egridr(2)-egridr(1)
     dy=egridp(2)-egridp(1)
-    call locate(egridr,ngridr+2,x1,ii1)
+    ! call locate(egridr,ngridr+2,x1,ii1)
+    ii1 = int((x1-egridr(1))/dx)+1
 
     ii2=ii1+1
     x1l=egridr(ii1)
     x1u=egridr(ii2)
-    call locate(egridp,ngridp+2,y1,jj1)
+    ! call locate(egridp,ngridp+2,y1,jj1)
+    jj1 = int((y1-egridp(1))/dy)+1
     jj2=jj1+1
     x2l=egridp(jj1)
     x2u=egridp(jj2)
@@ -657,25 +606,25 @@ end subroutine interpol
 
 
 
-subroutine locate(xx,n,x,jj)
+! subroutine locate(xx,n,x,jj)
 
-    integer(8), intent(in) :: n
-    real(8),    intent(in) :: xx(n),x
-    integer(8), intent(out):: jj
-    integer(8)             :: jl,ju,jm
+!     integer(8), intent(in) :: n
+!     real(8),    intent(in) :: xx(n),x
+!     integer(8), intent(out):: jj
+!     integer(8)             :: jl,ju,jm
 
-    jl=0
-    ju=n+1
-    do while((ju-jl).gt.1)
-        jm=(ju+jl)/2
-        if((xx(n).gt.xx(1)).eqv.(x.ge.xx(jm)))then
-            jl=jm
-          else
-            ju=jm
-        endif
-    enddo
-    jj=jl
-end subroutine locate
+!     jl=0
+!     ju=n+1
+!     do while((ju-jl).gt.1)
+!         jm=(ju+jl)/2
+!         if((xx(n).gt.xx(1)).eqv.(x.ge.xx(jm)))then
+!             jl=jm
+!           else
+!             ju=jm
+!         endif
+!     enddo
+!     jj=jl
+! end subroutine locate
 
 
 
