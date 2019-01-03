@@ -86,4 +86,4 @@ for i in range(adt.nstate):
     dbd.create_dataset("Row %s"%(i+1),data =np.column_stack([rdat[:,[0,1]],db[:,i,:]]), compression="gzip")
 
 
-logger.info("Program completed successfully in %.5f seconds\n"%(time()-start))
+logger.info("Program completed successfully in %.5f seconds\n"%(time()-start)+"-"*121)
