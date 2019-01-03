@@ -1,6 +1,8 @@
-module adtFuncs
+
+! Compile this module using f2py as
+! f2py -c adt.f90 -m adt_module only: get_angle amat
+module adt
 implicit none
-! integer, parameter:: dp=kind(0.d0) 
 ! 'e' means expanded
 real(8) ,allocatable, dimension(:,:,:) :: taur, taup, etaur, etaup
 real(8) ,allocatable, dimension(:)     :: gridr, gridp, egridr, egridp
@@ -11,8 +13,9 @@ data wt/1,0,-3,2,4*0,-3,0,9,-6,2,0,-6,4,8*0,3,0,-9,6,-2,0,6,-4,10*0,9,-6,2*0,-6,
         &0,1,-2,1,5*0,-3,6,-3,0,2,-4,2,9*0,3,-6,3,0,-2,4,-2,10*0,-3,3,2*0,2,-2,2*0,-1,1,6*0,3,-3,2*0,-2,2,&
         &5*0,1,-2,1,0,-2,4,-2,0,1,-2,1,9*0,-1,2,-1,0,1,-2,1,10*0,1,-1,2*0,-1,1,6*0,-1,1,2*0,2,-2,2*0,-1,1/
 
-
+private :: wt, gridr_val, gridp_val, s,cx, cy
 contains
+
 
 
 subroutine init()
@@ -122,12 +125,6 @@ subroutine rungeKutta8(fun,x,y,dx,n)
 end subroutine rungeKutta8
 
 
-
-
-
-
-
-
 subroutine get_angle(full_angle, ngridr, ngridp, ntau, path)    
     integer(8),  intent(in):: ngridr, ngridp, ntau, path
     real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
@@ -164,11 +161,7 @@ subroutine get_angle(full_angle, ngridr, ngridp, ntau, path)
             stop "Invalid integration path."
 
     end select
-
-
 end subroutine get_angle
-
-
 
 
 subroutine path1(full_angle, ngridr, ngridp, ntau)     
@@ -229,10 +222,7 @@ subroutine path2(full_angle, ngridr, ngridp, ntau)
             gridr_val = gridr(j)
         enddo innerloop
     enddo fullloop
-
 end subroutine path2
-
-
 
 
 subroutine path3(full_angle, ngridr, ngridp, ntau)     
@@ -336,7 +326,6 @@ end subroutine path5
 
 
 
-
 subroutine path6(full_angle, ngridr, ngridp, ntau)     
     integer(8),  intent(in):: ngridr, ngridp, ntau
     real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
@@ -366,7 +355,6 @@ subroutine path6(full_angle, ngridr, ngridp, ntau)
             gridp_val = gridp(j)
         enddo innerloop
     enddo fullloop
-
 end subroutine path6
 
 
@@ -435,9 +423,6 @@ subroutine path8(full_angle, ngridr, ngridp, ntau)
     enddo fullloop
 
 end subroutine path8
-
-
-
 
 
 
@@ -643,7 +628,6 @@ subroutine bcuint(y,y1,y2,y12,x1l,x1u,x2l,x2u,x1,x2,ansy)
     do i=4,1,-1
         ansy =t*ansy+((c(i,4)*u+c(i,3))*u+c(i,2))*u+c(i,1)
     enddo
-
 end subroutine bcuint
 
 
@@ -652,8 +636,7 @@ subroutine bcucof (y,y1,y2,y12,d1,d2,c)
 
     real(8), intent(in) :: d1,d2,y(4),y1(4),y12(4),y2(4)
     real(8), intent(out):: c(4,4)
-    integer(8)          :: i,j,l
-    real(8)             :: cl(16),x(16)
+    real(8)             :: x(16)
     x=(/y, y1*d1, y2*d2, y12*d1*d2/)
     c = transpose(reshape(matmul(wt,x),(/4,4/)))
 end subroutine bcucof
@@ -668,7 +651,7 @@ subroutine res(ang,nact,f, ntau, nstate)
     real(8), intent(out) :: f(ntau)
     integer(8) :: i,j,counter
     real(8) :: val(ntau),g(ntau,ntau),gi(ntau,ntau),amat(nstate,nstate),tmat(nstate,nstate),prod(nstate,nstate)
-    real(8) :: a(ntau,nstate,nstate),afor(0:ntau,nstate,nstate),aback(ntau+1,nstate,nstate)
+    real(8) :: afor(0:ntau,nstate,nstate),aback(ntau+1,nstate,nstate)
 
 
     call amatspl(ang,amat,afor,aback, ntau, nstate)
@@ -697,7 +680,7 @@ subroutine amatspl(y,aa,afor,aback, ntau, nstate)
     integer(8),  intent(in)::  ntau, nstate
     real(8), intent(in) :: y(ntau)
     real(8), intent(out) :: aa(nstate,nstate),afor(0:ntau,nstate,nstate),aback(ntau+1,nstate,nstate)
-    integer(8) :: i,j,k,k1
+    integer(8) :: i,j,k
     real(8) :: a(ntau,nstate,nstate),aa1(nstate,nstate)
 
     a = 0.0d0
@@ -713,28 +696,27 @@ subroutine amatspl(y,aa,afor,aback, ntau, nstate)
         aback(ntau+1,i,i) = 1.0d0
     enddo
 
-    k1 = 0
+    k = 0
     do j = 2,nstate
         do i = 1,j-1
-            k1 = k1+1
-            a(k1,i,i) = dcos(y(k1))
-            a(k1,j,j) = dcos(y(k1))
-            a(k1,i,j) = dsin(y(k1))
-            a(k1,j,i) = -dsin(y(k1))
+            k = k+1
+            a(k,i,i) = dcos(y(k))
+            a(k,j,j) = dcos(y(k))
+            a(k,i,j) = dsin(y(k))
+            a(k,j,i) = -dsin(y(k))
         enddo
     enddo
 
 
-    do k1 = 1,ntau
-        aa1 = matmul(aa1,a(k1,:,:))
-        afor(k1,:,:) = aa1
+    do k = 1,ntau
+        aa1 = matmul(aa1,a(k,:,:))
+        afor(k,:,:) = aa1
     enddo
 
-    do k1 = ntau,1,-1 
-        aa = matmul(a(k1,:,:),aa)
-        aback(k1,:,:) = aa
+    do k = ntau,1,-1 
+        aa = matmul(a(k,:,:),aa)
+        aback(k,:,:) = aa
     enddo
-
 end subroutine amatspl
 
 
@@ -744,7 +726,7 @@ subroutine inverse(g,gi, ntau)
     integer(8),  intent(in)::  ntau
     real(8), intent(in) :: g(ntau,ntau)
     real(8), intent(out) :: gi(ntau,ntau)
-    integer(8) :: i,j,ii,jj,irank,irow
+    integer(8) :: i,j,irank,irow
     real(8) :: zero,tmp,fc,a(ntau,ntau),en(ntau,ntau)
 
     zero = 1.0d-20
@@ -805,7 +787,6 @@ subroutine inverse(g,gi, ntau)
 
         irank = irank-1
     enddo
-
 end subroutine inverse
 
 
@@ -832,7 +813,6 @@ subroutine negtau(tau,taumat, ntau, nstate)
             taumat(i,j) = -taumat(j,i)
         enddo
     enddo
-
 end subroutine negtau
 
 
@@ -842,89 +822,72 @@ subroutine gradcomat(y,afor,aback,g, ntau, nstate)
     integer(8),  intent(in):: ntau, nstate
     real(8), intent(in) :: afor(0:ntau,nstate,nstate),aback(ntau+1,nstate,nstate),y(ntau)
     real(8), intent(out) :: g(ntau,ntau)
-    integer(8) :: i,j,k,k1,counter
+    integer(8) :: i,j,k,counter
     real(8) :: adiff(ntau+1,nstate,nstate),aa1(nstate,nstate),aa2(nstate,nstate),b1(nstate,nstate),b2(nstate,nstate),&
                     &b3(nstate,nstate)
 
     adiff = 0.0d0
 
-    k1 = 0
+    k = 0
     do j = 2,nstate
         do i = 1,j-1
-            k1 = k1+1
-            adiff(k1,i,i) = -dsin(y(k1))
-            adiff(k1,j,j) = -dsin(y(k1))
-            adiff(k1,i,j) = dcos(y(k1))
-            adiff(k1,j,i) = -dcos(y(k1))
+            k = k+1
+            adiff(k,i,i) = -dsin(y(k))
+            adiff(k,j,j) = -dsin(y(k))
+            adiff(k,i,j) = dcos(y(k))
+            adiff(k,j,i) = -dcos(y(k))
         enddo
     enddo
 
-    do k1 = ntau,1,-1
-        b1 = afor(k1-1,:,:)
-        b2 = adiff(k1,:,:)
-        b3 = aback(k1+1,:,:)
+    do k = ntau,1,-1
+        b1 = afor(k-1,:,:)
+        b2 = adiff(k,:,:)
+        b3 = aback(k+1,:,:)
         aa1 = matmul(b1,b2)
         aa2 = matmul(aa1,b3)
         counter = 0
         do i = 2,nstate
             do j = 1,i-1
                 counter = counter+1
-                g(counter,k1) = aa2(i,j)
+                g(counter,k) = aa2(i,j)
             enddo
         enddo
     enddo
-
 end subroutine gradcomat
 
 
 subroutine amat(y,aa, ntau, nstate)
-
     integer(8),intent(in):: ntau, nstate
-    integer(8):: i,j,k1,i1
+    integer(8):: i,j,k
     real(8), intent(in)::y(ntau)
     real(8), intent(out):: aa(nstate,nstate)
     real(8)::a(ntau,nstate,nstate)
-
+    !f2py intent(hide) :: ntau = shape(y,0)
 
     a=0.d0
     aa=0.d0
-    do i=1,ntau
+    do i=1,nstate
         a(:,i,i)=1.0d0
-        aa(i,i)=1.0d0
+        aa(i,i) =1.0d0
     enddo
 
-    k1=0
+    k=0
 
     do j=2,nstate
         do i=1,j-1
-        k1=k1+1      !i.e.a12 is denoted as a1, a13 is denoted as a2, a23 is denoted as a3 etc.
+            k=k+1 !i.e.a12 is denoted as a1, a13 is denoted as a2, a23 is denoted as a3 etc.
 
-        a(k1,i,i)=dcos(y(k1))
-        a(k1,j,j)=dcos(y(k1))          
-        a(k1,i,j)=dsin(y(k1))
-        a(k1,j,i)=-dsin(y(k1))
+            a(k,i,i)= dcos(y(k))
+            a(k,j,j)= a(k,i,i)          
+            a(k,i,j)= dsin(y(k))
+            a(k,j,i)=-a(k,i,j)
         enddo
     enddo
 
-    do i1=1,ntau
-        aa = matmul(aa,a(i1,:,:))
+    do i=1,ntau
+        aa = matmul(aa,a(i,:,:))
     enddo
 end subroutine amat
 
 
-
-subroutine wmat(uu,aa,wa,nstate)
-
-    integer(8),intent(in):: nstate
-    real(8),intent(in)   :: uu(nstate),aa(nstate,nstate)
-    real(8),intent(out)  :: wa(nstate,nstate)
-    integer(8)           :: j, umat(nstate,nstate)
-
-    umat = 0.d0
-    forall(j=1:nstate) umat(j,j)=uu(j)
-
-    wa = matmul(transpose(aa),matmul(umat,aa))
-end subroutine wmat
-
-
-end module adtFuncs
+end module adt
