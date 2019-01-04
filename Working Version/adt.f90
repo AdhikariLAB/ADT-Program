@@ -1,6 +1,7 @@
-
 ! Compile this module using f2py as
 ! f2py -c adt.f90 -m adt_module only: get_angle amat
+
+
 module adt
 implicit none
 ! 'e' means expanded

@@ -103,7 +103,7 @@ select case(nacttype)
         ph = sgr(jj)*pi/180.0d0
         do kk = 1,ncoupling
           do i = 1,4
-            read(12,*)
+          read(12,*)
           enddo
           do i = 1,natom
             read(12,*)(grad(ii,jj,kk,l),l=3*i-2,3*i)
