@@ -1,10 +1,13 @@
+import os
 import numpy as np 
 from adt_module import adt
 from h5py import File
 from time import time
 
 
+
 def adt_numerical(enrf, rhof, phif, path, outfile, logger,h5, txt):
+    print enrf, rhof, phif, path, outfile, logger,h5, txt
 
     logger.info("Starting program")
     start = time()
@@ -13,7 +16,6 @@ def adt_numerical(enrf, rhof, phif, path, outfile, logger,h5, txt):
     rdat = np.loadtxt(rhof)
     pdat = np.loadtxt(phif)
     enr  = np.loadtxt(enrf)[:,2:]
-    path = path
 
     logger.info("Processing data")
     adt.gridr  = np.unique(rdat[:,0])
@@ -24,7 +26,7 @@ def adt_numerical(enrf, rhof, phif, path, outfile, logger,h5, txt):
     adt.nstate = enr.shape[1]
 
     assert rdat.shape==pdat.shape , "Mismath in nact data"
-    assert adt.nstate*(adt.nstate-1)/2==adt.ntau, "Mismath in number of states and nacts"
+    assert adt.nstate*(adt.nstate-1)/2==adt.ntau, "Mismatch in number of states and nacts"
 
 
     adt.taur  = rdat[:,2:].reshape(adt.ngridr, adt.ngridp, adt.ntau)
@@ -76,19 +78,22 @@ def adt_numerical(enrf, rhof, phif, path, outfile, logger,h5, txt):
             dbd.create_dataset("Row %s"%(i+1),data =np.column_stack([rdat[:,[0,1]],db[:,i,:]]), compression="gzip")
 
     if txt:
-        file = outfile+ "_Angles.dat"
+        outpath = outfile+"_%s"%path
+        if not os.path.exists(outpath):os.makedirs(outpath)
+        os.chdir(outpath)
+        file = "Angles.dat"
         logger.info("Writing ADT Angles in '%s'"%file)
         file_write(file, adtAngle, adt.gridr)
 
         
         for i in range(adt.nstate):
-            file = outfile + "_Matrix_Row_%s.dat"%(i+1)
+            file =  "Matrix_Row_%s.dat"%(i+1)
             logger.info("Writing ADT Matrix elements in '%s'"%(file))
             file_write(file, np.column_stack([rdat[:,[0,1]],amat[:,i,:]]), adt.gridr )
 
 
         for i in range(adt.nstate):
-            file = outfile + "_Diabatic_Row_%s.dat"%(i+1)
+            file =  "Diabatic_Row_%s.dat"%(i+1)
             logger.info("Writing Diabatic Matrix elements in '%s'"%(file))
             file_write(file, np.column_stack([rdat[:,[0,1]],db[:,i,:]]), adt.gridr )
 
@@ -101,3 +106,9 @@ def file_write(file, data, col):
     for r in col:
         np.savetxt( file, data[data[:,0]==r] ,delimiter="\t", fmt="%.8f")
         file.write("\n")
+# rhof = np.loadtxt("/home/koushik/CODES/ADT-Program Test/CurrentWorking/INPUT/taur.dat")
+# phif = np.loadtxt("/home/koushik/CODES/ADT-Program Test/CurrentWorking/INPUT/taup.dat")
+# enrf  = np.loadtxt("/home/koushik/CODES/ADT-Program Test/CurrentWorking/INPUT/pes.dat")[:,2:]
+# path = 1
+
+# adt_numerical(enrf, rhof, phif, path, "test", logger,h5, txt)

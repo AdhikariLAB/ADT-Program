@@ -1,14 +1,16 @@
 ! Compile this module using f2py as
-! f2py -c adt.f90 -m adt_module only: get_angle amat
+! f2py -c adt.f90 -m adt_module --f90flags='-fopenmp' -lgomp only: get_angle amat
 
 
 module adt
+!$ use omp_lib
 implicit none
 ! 'e' means expanded
 real(8) ,allocatable, dimension(:,:,:) :: taur, taup, etaur, etaup
 real(8) ,allocatable, dimension(:)     :: gridr, gridp, egridr, egridp
 integer(8)                             :: ngridr, ngridp, ntau, nstate
 real(8)                                :: wt(16,16), gridr_val, gridp_val, s,cx(3), cy(117)
+
 data wt/1,0,-3,2,4*0,-3,0,9,-6,2,0,-6,4,8*0,3,0,-9,6,-2,0,6,-4,10*0,9,-6,2*0,-6,4,2*0,3,-2,6*0,-9,6,2*0,6,-4,&
         &4*0,1,0,-3,2,-2,0,6,-4,1,0,-3,2,8*0,-1,0,3,-2,1,0,-3,2,10*0,-3,2,2*0,3,-2,6*0,3,-2,2*0,-6,4,2*0,3,-2,&
         &0,1,-2,1,5*0,-3,6,-3,0,2,-4,2,9*0,3,-6,3,0,-2,4,-2,10*0,-3,3,2*0,2,-2,2*0,-1,1,6*0,3,-3,2*0,-2,2,&
@@ -68,62 +70,63 @@ subroutine init()
 end subroutine init
 
 
-subroutine rungeKutta8(fun,x,y,dx,n)
+subroutine rungeKutta8(fun,x,xy,y,dx,n)
     !takes y at x returns y at x+dx
     !fun = dy/dx
     external fun
     integer(8), intent(in):: n
-    real(8), intent(in)   :: x,dx
+    real(8), intent(in)   :: x,dx,xy
     real(8), intent(inout):: y(n)
 
     real(8) ,dimension(n) :: tmp,fo,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11
 
 
-    call fun(x, y, fo,n)
+    call fun(x,xy, y, fo,n)
     a1=fo*dx
     tmp=y+a1*cy(21)
 
-    call fun(x+cx(1)*dx, tmp, fo,n)
+    call fun(x+cx(1)*dx,xy, tmp, fo,n)
     a2=fo*dx
     tmp=y+a1*cy(31)+a2*cy(32)
 
-    call fun(x+cx(1)*dx, tmp, fo,n)
+    call fun(x+cx(1)*dx,xy, tmp, fo,n)
     a3=fo*dx
     tmp=y+a1*cy(41)+a2*cy(42)+a3*cy(43)
 
-    call fun(x+cx(2)*dx, tmp, fo,n)
+    call fun(x+cx(2)*dx,xy, tmp, fo,n)
     a4=fo*dx
     tmp=y+a1*cy(51)+a3*cy(52)+a4*cy(53)
 
-    call fun(x+cx(2)*dx, tmp, fo,n)
+    call fun(x+cx(2)*dx,xy, tmp, fo,n)
     a5=fo*dx
     tmp=y+a1*cy(61)+a3*cy(62)+a4*cy(63)+a5*cy(64)
 
-    call fun(x+cx(1)*dx, tmp, fo,n)
+    call fun(x+cx(1)*dx,xy, tmp, fo,n)
     a6=fo*dx
     tmp=y+a1*cy(71)+a3*cy(72)+a4*cy(73)+a5*cy(74)+a6*cy(75)
 
-    call fun(x+cx(3)*dx, tmp, fo,n)
+    call fun(x+cx(3)*dx,xy, tmp, fo,n)
     a7=fo*dx
     tmp=y+a1*cy(81)+a5*cy(82)+a6*cy(83)+a7*cy(84)
 
-    call fun(x+cx(3)*dx, tmp, fo,n)
+    call fun(x+cx(3)*dx,xy, tmp, fo,n)
     a8=fo*dx
     tmp=y+a1*cy(91)+a5*cy(92)+a6*cy(93)+a7*cy(94)+a8*cy(95)
 
-    call fun(x+cx(1)*dx, tmp, fo,n)
+    call fun(x+cx(1)*dx,xy, tmp, fo,n)
     a9=fo*dx
     tmp=y+a1*cy(101)+a5*cy(102)+a6*cy(103)+a7*cy(104)+a8*cy(105)+a9*cy(106)
 
-    call fun(x+cx(2)*dx, tmp, fo,n)
+    call fun(x+cx(2)*dx,xy, tmp, fo,n)
     a10=fo*dx
     tmp=y+a5*cy(111)+a6*cy(112)+a7*cy(113)+a8*cy(114)+a9*cy(115)+a10*cy(116)
 
-    call fun(x+dx, tmp,fo,n)
+    call fun(x+dx,xy, tmp,fo,n)
     a11=fo*dx
 
     y=y+(9.0d0*a1+49.0d0*a8+64.0d0*a9+49.0d0*a10+9.0d0*a11)/180.0d0
 end subroutine rungeKutta8
+
 
 
 subroutine get_angle(full_angle, ngridr, ngridp, ntau, path)    
@@ -159,104 +162,123 @@ subroutine get_angle(full_angle, ngridr, ngridp, ntau, path)
             call path8(full_angle, ngridr, ngridp, ntau)
 
         case default
-            stop "Invalid integration path."
+            stop "This line should never be executed."
 
     end select
 end subroutine get_angle
 
 
+
 subroutine path1(full_angle, ngridr, ngridp, ntau)     
     integer(8),  intent(in):: ngridr, ngridp, ntau
     real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
-    real(8)                :: angle(ntau), tmp(ntau),h1, h2
+    real(8)                :: angle(ntau), h1, h2, fangle(ngridp, ntau)
     integer(8)             :: i,j
 
+    call init()
     h1 = gridr(2) - gridr(1)
     h2 = gridp(2) - gridp(1)
-    tmp=0.0d0
+
+    angle=0.0d0
 
     gridp_val = gridp(1)-0.5d0*h2
+    gridr_val = gridr(1)
 
-    fullloop: do i=1,ngridp
-        gridr_val = gridr(1)
-        angle = tmp
-        call rungeKutta8(funcp, gridp_val,angle,h2,ntau)
-        tmp = angle
-
-        gridr_val = gridr(1)-0.5d0*h1
+    do i=1,ngridp
+        call rungeKutta8(funcp, gridp_val,gridr_val,angle,h2,ntau)
+        fangle(i,:) = angle
         gridp_val = gridp(i)
+    enddo 
 
-        innerloop : do j=1,ngridr
-            call rungeKutta8(funcr, gridr_val, angle, h1, ntau)
-            full_angle(j,i,:)=angle
+    !$omp parallel do default(shared) private(angle, gridp_val, gridr_val, i,j)
+    do i=1,ngridp
+        angle = fangle(i,:)
+        gridp_val = gridp(i)
+        gridr_val = gridr(1)-0.5d0*h1
+        do j=1,ngridr
+            call rungeKutta8(funcr, gridr_val, gridp_val, angle, h1, ntau)
             gridr_val = gridr(j)
-        enddo innerloop
-    enddo fullloop
+            ! print *,omp_get_thread_num()
+            full_angle(j,i,:) = angle
+        enddo 
+    enddo
+    !$omp end parallel do
+
 end subroutine path1
+
 
 
 subroutine path2(full_angle, ngridr, ngridp, ntau)     
     integer(8),  intent(in):: ngridr, ngridp, ntau
     real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
-    real(8)                :: angle(ntau), tmp(ntau),h1, h2
+    real(8)                :: angle(ntau), h1, h2, fangle(ngridp, ntau)
     integer(8)             :: i,j
 
     h1 = gridr(2) - gridr(1)
     h2 = -gridp(2) + gridp(1)
-    tmp=0.0d0
+    angle=0.0d0
 
 
     gridp_val = gridp(ngridp)-0.5d0*h2
+    gridr_val = gridr(1)
 
-    fullloop: do i=ngridp,1,-1
-        gridr_val = gridr(1)
-        angle = tmp
-        call rungeKutta8(funcp, gridp_val,angle,h2,ntau)
-        tmp = angle
+    do i=ngridp,1,-1
+        call rungeKutta8(funcp, gridp_val,gridr_val,angle,h2,ntau)
+        fangle(i,:) = angle
+        gridp_val = gridp(i)
+    enddo
 
+
+
+
+    do i=ngridp,1,-1
+        angle = fangle(i,:)
         gridr_val = gridr(1)-0.5d0*h1
         gridp_val = gridp(i)
 
-        innerloop : do j=1,ngridr
-            call rungeKutta8(funcr, gridr_val, angle, h1, ntau)
+        do j=1,ngridr
+            call rungeKutta8(funcr, gridr_val,gridp_val, angle, h1, ntau)
             full_angle(j,i,:)=angle
             gridr_val = gridr(j)
-        enddo innerloop
-    enddo fullloop
+        enddo
+    enddo
 end subroutine path2
 
 
 subroutine path3(full_angle, ngridr, ngridp, ntau)     
     integer(8),  intent(in):: ngridr, ngridp, ntau
     real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
-    real(8)                :: angle(ntau), tmp(ntau),h1, h2
+    real(8)                :: angle(ntau), h1, h2, fangle(ngridp, ntau)
     integer(8)             :: i,j
 
     h1 = -gridr(2) + gridr(1)
     h2 = gridp(2) - gridp(1)
-    tmp=0.0d0
+    angle=0.0d0
 
 
 
 
     gridp_val = gridp(1)-0.5d0*h2
+    gridr_val = gridr(ngridr)
+    do i=1,ngridp
+        call rungeKutta8(funcp, gridp_val,gridr_val,angle,h2,ntau)
+        fangle(i,:) = angle
+        gridp_val = gridp(i)
+    enddo
 
 
-    fullloop: do i=1,ngridp
-        gridr_val = gridr(ngridr)
-        angle = tmp
-        call rungeKutta8(funcp, gridp_val,angle,h2,ntau)
-        tmp = angle
 
+    do i=1,ngridp
+        angle = fangle(i,:)
         gridr_val = gridr(ngridr)-0.5d0*h1
         gridp_val = gridp(i)
 
-        innerloop : do j=ngridr,1,-1
-            call rungeKutta8(funcr, gridr_val, angle, h1, ntau)
+        do j=ngridr,1,-1
+            call rungeKutta8(funcr, gridr_val,gridp_val, angle, h1, ntau)
             full_angle(j,i,:)=angle
             gridr_val = gridr(j)
-        enddo innerloop
-    enddo fullloop
+        enddo
+    enddo
 end subroutine path3
 
 
@@ -264,32 +286,36 @@ end subroutine path3
 subroutine path4(full_angle, ngridr, ngridp, ntau)     
     integer(8),  intent(in):: ngridr, ngridp, ntau
     real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
-    real(8)                :: angle(ntau), tmp(ntau),h1, h2
+    real(8)                :: angle(ntau), h1, h2, fangle(ngridp, ntau)
     integer(8)             :: i,j
 
     h1 = -gridr(2)+ gridr(1)
     h2 = -gridp(2)+ gridp(1)
-    tmp=0.0d0
+    angle=0.0d0
 
 
     gridp_val = gridp(ngridp)-0.5d0*h2
+    gridr_val = gridr(ngridr)
+
+    do i=ngridp,1,-1
+        call rungeKutta8(funcp, gridp_val,gridr_val,angle,h2,ntau)
+        fangle(i,:) = angle
+        gridp_val = gridp(i)
+
+    enddo
 
 
-    fullloop: do i=ngridp,1,-1
-        gridr_val = gridr(ngridr)
-        angle = tmp
-        call rungeKutta8(funcp, gridp_val,angle,h2,ntau)
-        tmp = angle
-
+    do i=ngridp,1,-1
+        angle = fangle(i,:)
         gridr_val = gridr(ngridr)-0.5d0*h1
         gridp_val = gridp(i)
 
-        innerloop : do j=ngridr,1,-1
-            call rungeKutta8(funcr, gridr_val, angle, h1, ntau)
+        do j=ngridr,1,-1
+            call rungeKutta8(funcr, gridr_val,gridp_val, angle, h1, ntau)
             full_angle(j,i,:)=angle
             gridr_val = gridr(j)
-        enddo innerloop
-    enddo fullloop
+        enddo
+    enddo
 end subroutine path4
 
 
@@ -297,32 +323,34 @@ end subroutine path4
 subroutine path5(full_angle, ngridr, ngridp, ntau)     
     integer(8),  intent(in):: ngridr, ngridp, ntau
     real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
-    real(8)                :: angle(ntau), tmp(ntau),h1, h2
+    real(8)                :: angle(ntau), h1, h2, fangle(ngridr, ntau)
     integer(8)             :: i,j
 
     h1 = gridr(2) - gridr(1)
     h2 = gridp(2) - gridp(1)
-    tmp=0.0d0
+    angle=0.0d0
 
 
     gridr_val = gridr(1)-0.5d0*h1
+    gridp_val = gridp(1)
+    do i=1,ngridr
+        call rungeKutta8(funcr, gridr_val,gridp_val,angle,h1,ntau)
+        fangle(i,:) = angle
+        gridr_val = gridr(i)
+    enddo
 
 
-    fullloop: do i=1,ngridr
-        gridp_val = gridp(1)
-        angle = tmp
-        call rungeKutta8(funcr, gridr_val,angle,h1,ntau)
-        tmp = angle
-
+    do i=1,ngridr
+        angle = fangle(i,:)
         gridp_val = gridp(1)-0.5d0*h2
         gridr_val = gridr(i)
 
-        innerloop : do j=1,ngridp
-            call rungeKutta8(funcp, gridp_val, angle, h2, ntau)
+        do j=1,ngridp
+            call rungeKutta8(funcp, gridp_val,gridr_val, angle, h2, ntau)
             full_angle(i,j,:)=angle
             gridp_val = gridp(j)
-        enddo innerloop
-    enddo fullloop
+        enddo
+    enddo
 end subroutine path5
 
 
@@ -330,32 +358,34 @@ end subroutine path5
 subroutine path6(full_angle, ngridr, ngridp, ntau)     
     integer(8),  intent(in):: ngridr, ngridp, ntau
     real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
-    real(8)                :: angle(ntau), tmp(ntau),h1, h2
+    real(8)                :: angle(ntau), h1, h2, fangle(ngridr, ntau)
     integer(8)             :: i,j
 
     h1 = -gridr(2)+ gridr(1)
     h2 = gridp(2) - gridp(1)
-    tmp=0.0d0
+    angle=0.0d0
 
 
     gridr_val = gridr(ngridr)-0.5d0*h1
+    gridp_val = gridp(1)
 
+    do i=ngridr,1,-1
+        call rungeKutta8(funcr, gridr_val,gridp_val,angle,h1,ntau)
+        fangle(i,:) = angle
+        gridr_val = gridr(i)
+    enddo
 
-    fullloop: do i=ngridr,1,-1
-        gridp_val = gridp(1)
-        angle = tmp
-        call rungeKutta8(funcr, gridr_val,angle,h1,ntau)
-        tmp = angle
-
+    do i=ngridr,1,-1
+        angle = fangle(i,:)
         gridp_val = gridp(1)-0.5d0*h2
         gridr_val = gridr(i)
 
-        innerloop : do j=1,ngridp
-            call rungeKutta8(funcp, gridp_val, angle, h2, ntau)
+        do j=1,ngridp
+            call rungeKutta8(funcp, gridp_val,gridr_val, angle, h2, ntau)
             full_angle(i,j,:)=angle
             gridp_val = gridp(j)
-        enddo innerloop
-    enddo fullloop
+        enddo
+    enddo
 end subroutine path6
 
 
@@ -364,30 +394,32 @@ end subroutine path6
 subroutine path7(full_angle, ngridr, ngridp, ntau)     
     integer(8),  intent(in):: ngridr, ngridp, ntau
     real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
-    real(8)                :: angle(ntau), tmp(ntau),h1, h2
+    real(8)                :: angle(ntau), h1, h2, fangle(ngridr, ntau)
     integer(8)             :: i,j
 
     h1 = gridr(2) - gridr(1)
     h2 = -gridp(2) + gridp(1)
-    tmp=0.0d0
+    angle=0.0d0
 
     gridr_val = gridr(1)-0.5d0*h1
+    gridp_val = gridp(ngridp)
 
+    do i=1,ngridr
+        call rungeKutta8(funcr, gridr_val,gridp_val,angle,h1,ntau)
+        fangle(i,:) = angle
+        gridr_val = gridr(i)
+    enddo
 
-    fullloop: do i=1,ngridr
-        gridp_val = gridp(ngridp)
-        angle = tmp
-        call rungeKutta8(funcr, gridr_val,angle,h1,ntau)
-        tmp = angle
-
+    do i=1,ngridr
+        angle = fangle(i,:)
         gridp_val = gridp(ngridp)-0.5d0*h2
         gridr_val = gridr(i)
-        innerloop : do j=ngridp,1,-1
-            call rungeKutta8(funcp, gridp_val, angle, h2, ntau)
+        do j=ngridp,1,-1
+            call rungeKutta8(funcp, gridp_val,gridr_val, angle, h2, ntau)
             full_angle(i,j,:)=angle
             gridp_val = gridp(j)
-        enddo innerloop
-    enddo fullloop
+        enddo
+    enddo
 
 end subroutine path7
 
@@ -397,41 +429,45 @@ end subroutine path7
 subroutine path8(full_angle, ngridr, ngridp, ntau)     
     integer(8),  intent(in):: ngridr, ngridp, ntau
     real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
-    real(8)                :: angle(ntau), tmp(ntau),h1, h2
+    real(8)                :: angle(ntau), h1, h2, fangle(ngridr, ntau)
     integer(8)             :: i,j
 
     h1 = -gridr(2) + gridr(1)
     h2 = gridp(2) - gridp(1)
-    tmp=0.0d0
+    angle=0.0d0
 
     gridr_val = gridr(ngridr)-0.5d0*h1
+    gridp_val = gridp(ngridp)
+
+    do i=ngridr,1,-1
+        call rungeKutta8(funcr, gridr_val,gridp_val,angle,h1,ntau)
+        fangle(i,:) = angle
+        gridr_val = gridr(i)
+    enddo
 
 
-    fullloop: do i=ngridr,1,-1
-        gridp_val = gridp(ngridp)
-        angle = tmp
-        call rungeKutta8(funcr, gridr_val,angle,h1,ntau)
-        tmp = angle
-
+    do i=ngridr,1,-1
+        angle = fangle(i,:)
         gridp_val = gridp(ngridp)-0.5d0*h2
         gridr_val = gridr(i)
 
-        innerloop : do j=ngridp,1,-1
-            call rungeKutta8(funcp, gridp_val, angle, h2, ntau)
+        do j=ngridp,1,-1
+            call rungeKutta8(funcp, gridp_val,gridr_val, angle, h2, ntau)
             full_angle(i,j,:)=angle
             gridp_val = gridp(j)
-        enddo innerloop
-    enddo fullloop
+        enddo
+    enddo
 
 end subroutine path8
 
 
 
-subroutine funcr(gridr_val, ini_angle, output,ntau)
+
+subroutine funcr(gridr_val,gridp_val, ini_angle, output,ntau)
 
 
     integer(8),  intent(in):: ntau
-    real(8), intent(in)    :: gridr_val, ini_angle(ntau)
+    real(8), intent(in)    :: gridr_val, ini_angle(ntau), gridp_val
     real(8), intent(out)   :: output(ntau)
     real(8) :: tau_val(ntau)
 
@@ -442,10 +478,10 @@ end subroutine funcr
 
 
 
-subroutine funcp(gridp_val, ini_angle, output,ntau)
+subroutine funcp(gridp_val,gridr_val, ini_angle, output,ntau)
 
     integer(8),  intent(in):: ntau
-    real(8), intent(in) :: gridp_val, ini_angle(ntau)
+    real(8), intent(in) :: gridp_val, ini_angle(ntau), gridr_val
     real(8), intent(out) :: output(ntau)
     real(8) :: outval(ntau)
 
