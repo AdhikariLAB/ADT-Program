@@ -1,3 +1,8 @@
+
+!###########################################################################################################################
+! Authors are Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari
+!###########################################################################################################################
+
 ! Compile this module using f2py as
 ! f2py -c adt.f90 -m adt_module --f90flags='-fopenmp' -lgomp only: get_angle amat
 
@@ -20,6 +25,7 @@ private :: wt, gridr_val, gridp_val, s,cx, cy
 contains
 
 
+! This subroutine returns the parameters of 8th order Runge-Kutta method  
 
 subroutine init()
     s=dsqrt(21.0d0)
@@ -69,6 +75,8 @@ subroutine init()
     cy(116)=(49.0d0-7.0d0*s)/18.0d0
 end subroutine init
 
+
+! This subroutine solves coupled differential equations by Runge-Kutta method   
 
 subroutine rungeKutta8(fun,x,xy,y,dx,n)
     !takes y at x returns y at x+dx
@@ -128,6 +136,7 @@ subroutine rungeKutta8(fun,x,xy,y,dx,n)
 end subroutine rungeKutta8
 
 
+! This subroutine returns ADT angles over a 2D grid of geometries
 
 subroutine get_angle(full_angle, ngridr, ngridp, ntau, path)    
     integer(8),  intent(in):: ngridr, ngridp, ntau, path
@@ -169,6 +178,8 @@ end subroutine get_angle
 
 
 
+! This subroutine returns ADT angles over a 2D grid of geometries along path1
+
 subroutine path1(full_angle, ngridr, ngridp, ntau)     
     integer(8),  intent(in):: ngridr, ngridp, ntau
     real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
@@ -208,6 +219,8 @@ end subroutine path1
 
 
 
+! This subroutine returns ADT angles over a 2D grid of geometries along path2
+
 subroutine path2(full_angle, ngridr, ngridp, ntau)     
     integer(8),  intent(in):: ngridr, ngridp, ntau
     real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
@@ -244,6 +257,9 @@ subroutine path2(full_angle, ngridr, ngridp, ntau)
     enddo
 end subroutine path2
 
+
+
+! This subroutine returns ADT angles over a 2D grid of geometries along path3
 
 subroutine path3(full_angle, ngridr, ngridp, ntau)     
     integer(8),  intent(in):: ngridr, ngridp, ntau
@@ -283,6 +299,8 @@ end subroutine path3
 
 
 
+! This subroutine returns ADT angles over a 2D grid of geometries along path4
+
 subroutine path4(full_angle, ngridr, ngridp, ntau)     
     integer(8),  intent(in):: ngridr, ngridp, ntau
     real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
@@ -320,6 +338,8 @@ end subroutine path4
 
 
 
+! This subroutine returns ADT angles over a 2D grid of geometries along path5
+
 subroutine path5(full_angle, ngridr, ngridp, ntau)     
     integer(8),  intent(in):: ngridr, ngridp, ntau
     real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
@@ -354,6 +374,8 @@ subroutine path5(full_angle, ngridr, ngridp, ntau)
 end subroutine path5
 
 
+
+! This subroutine returns ADT angles over a 2D grid of geometries along path6
 
 subroutine path6(full_angle, ngridr, ngridp, ntau)     
     integer(8),  intent(in):: ngridr, ngridp, ntau
@@ -390,6 +412,7 @@ end subroutine path6
 
 
 
+! This subroutine returns ADT angles over a 2D grid of geometries along path7
 
 subroutine path7(full_angle, ngridr, ngridp, ntau)     
     integer(8),  intent(in):: ngridr, ngridp, ntau
@@ -425,6 +448,7 @@ end subroutine path7
 
 
 
+! This subroutine returns ADT angles over a 2D grid of geometries along path8
 
 subroutine path8(full_angle, ngridr, ngridp, ntau)     
     integer(8),  intent(in):: ngridr, ngridp, ntau
@@ -462,6 +486,12 @@ end subroutine path8
 
 
 
+!*****************************************************************************************
+!This subroutine returns the magnitude of $^{N}$C$_{2}$ numbers of ADT angles at a 
+!specific nuclear geometry using a pre-calculated/predefined set of ADT angles (initial 
+!value). This routine is implemented during integration along first coordinate when the 
+!second coordinate is fixed at a definite value 
+!*****************************************************************************************
 
 subroutine funcr(gridr_val,gridp_val, ini_angle, output,ntau)
 
@@ -478,6 +508,13 @@ end subroutine funcr
 
 
 
+!*****************************************************************************************
+!This subroutine returns the magnitude of $^{N}$C$_{2}$ numbers of ADT angles at a 
+!specific nuclear geometry using a pre-calculated/predefined set of ADT angles (initial 
+!value). This routine is implemented during integration along second coordinate when the 
+!first coordinate is fixed at a definite value 
+!*****************************************************************************************
+
 subroutine funcp(gridp_val,gridr_val, ini_angle, output,ntau)
 
     integer(8),  intent(in):: ntau
@@ -490,6 +527,19 @@ subroutine funcp(gridp_val,gridr_val, ini_angle, output,ntau)
 end subroutine funcp
 
 
+
+!***********************************************************************************************************
+!      Subroutine 'INTERPOL' (taken from 'W. H. Press, S. A. Teukolsky, W.T. Vetterling, B. P. Flannery, 
+!      Numerical Recipes in FORTRAN, Cambridge University Press, A-229, DSIDC Industrial Park, Narela, 
+!      Delhi-110040, 2000.')
+!***********************************************************************************************************
+
+!*****************************************************************************************************
+!While integrating the differential equations by 8th order Runge-Kutta method, NACT values for the 
+!intermediate geometries between two grid points are required and therefore, bi-cubic interpolation 
+!is adopted to dig out the magnitude of NACTs at those unknown points. This subroutine is used to  
+!perform this interpolation.
+!*****************************************************************************************************
 
 subroutine interpol(tau,x1,y1,tout,ngridr, ngridp, ntau)
 
@@ -650,6 +700,19 @@ end subroutine interpol
 
 
 
+!***********************************************************************************************************
+!      Subroutine 'BCUINT' (taken from 'W. H. Press, S. A. Teukolsky, W.T. Vetterling, B. P. Flannery, 
+!      Numerical Recipes in FORTRAN, Cambridge University Press, A-229, DSIDC Industrial Park, Narela, 
+!      Delhi-110040, 2000.')
+!***********************************************************************************************************
+
+!*****************************************************************************************************
+!While integrating the differential equations by 8th order Runge-Kutta method, NACT values for the 
+!intermediate geometries between two grid points are required and therefore, bi-cubic interpolation 
+!is adopted to dig out the magnitude of NACTs at those unknown points. This subroutine is used as a 
+!secondary subroutine in 'INTERPOL'.
+!*****************************************************************************************************
+
 subroutine bcuint(y,y1,y2,y12,x1l,x1u,x2l,x2u,x1,x2,ansy)
 
     real(8), intent(in) :: x1,x1l,x1u,x2,x2l,x2u,y(4),y1(4),y12(4),y2(4)
@@ -669,6 +732,19 @@ end subroutine bcuint
 
 
 
+!***********************************************************************************************************
+!      Subroutine 'BCUCOF' (taken from 'W. H. Press, S. A. Teukolsky, W.T. Vetterling, B. P. Flannery, 
+!      Numerical Recipes in FORTRAN, Cambridge University Press, A-229, DSIDC Industrial Park, Narela, 
+!      Delhi-110040, 2000.')
+!***********************************************************************************************************
+
+!*****************************************************************************************************
+!While integrating the differential equations by 8th order Runge-Kutta method, NACT values for the 
+!intermediate geometries between two grid points are required and therefore, bi-cubic interpolation 
+!is adopted to dig out the magnitude of NACTs at those unknown points. This subroutine is used as a 
+!secondary subroutine in 'INTERPOL'.
+!*****************************************************************************************************
+
 subroutine bcucof (y,y1,y2,y12,d1,d2,c)
 
     real(8), intent(in) :: d1,d2,y(4),y1(4),y12(4),y2(4)
@@ -679,6 +755,15 @@ subroutine bcucof (y,y1,y2,y12,d1,d2,c)
 end subroutine bcucof
 
 
+
+!**********************************
+!      Subroutine 'RES'
+!**********************************
+
+!**************************************************************************************
+!Magnitudes of gradient of ADT angles at every grid point in the nuclear
+!CS is returned by this subroutine
+!**************************************************************************************
 
 subroutine res(ang,nact,f, ntau, nstate)
 
@@ -710,6 +795,18 @@ subroutine res(ang,nact,f, ntau, nstate)
 end subroutine res
 
 
+
+!**********************************
+!      Subroutine 'AMATSPL'
+!**********************************
+
+!**********************************************************************************************************
+!This subroutine is implemented not only to generate the complete ADT matrix (AA), but also two sets of 
+!partially multiplied ADT matrices (AFOR, ABACK). Adiabatic to diabatic transformation matrix
+!is generated by multiplying elementary rotation matrices in a definite order, but partial ADT matrices 
+!can be constructed by collecting one or more [2,3,4,.....,(N-1); N = number of elementary matrices] 
+!matrices from that set and multiplying them in the same order as the parent one.
+!**********************************************************************************************************
 
 subroutine amatspl(y,aa,afor,aback, ntau, nstate)
 
@@ -757,6 +854,16 @@ subroutine amatspl(y,aa,afor,aback, ntau, nstate)
 end subroutine amatspl
 
 
+
+!**********************************
+!      Subroutine 'INVERSE'
+!**********************************
+
+!********************************************************************************
+!The inverse of coefficient matrix of gradient of ADT angles is
+!evaluated by Gauss-Jordon Method.
+!********************************************************************************
+      
 subroutine inverse(g,gi, ntau)
 
 
@@ -828,6 +935,15 @@ end subroutine inverse
 
 
 
+!**********************************
+!      Subroutine 'NEGTAU'
+!**********************************
+
+!*****************************************************************************************
+!This subprogram accepts the NACM as input and returns the negative form
+!of the matrix at each and every grid point in nuclear CS.         
+!*****************************************************************************************
+
 subroutine negtau(tau,taumat, ntau, nstate)
 
 
@@ -852,6 +968,16 @@ subroutine negtau(tau,taumat, ntau, nstate)
     enddo
 end subroutine negtau
 
+
+
+!**********************************
+!      Subroutine 'GRADCOMAT'
+!**********************************
+
+!**************************************************************************************
+!This subprogram is implemented for calculating the elements of coefficient matrix 
+!of gradient of ADT angles
+!**************************************************************************************
 
 subroutine gradcomat(y,afor,aback,g, ntau, nstate)
 
@@ -892,6 +1018,16 @@ subroutine gradcomat(y,afor,aback,g, ntau, nstate)
     enddo
 end subroutine gradcomat
 
+
+
+!**********************************
+!      Subroutine 'AMAT'
+!**********************************
+
+!*********************************************************************
+!This subroutine returns numerically calculated ADT matrix (AA) for a
+!particular set of ADT angles (Y).
+!*********************************************************************
 
 subroutine amat(y,aa, ntau, nstate)
     integer(8),intent(in):: ntau, nstate

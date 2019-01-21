@@ -1,8 +1,14 @@
+
+############################################################################################################################
+# Authors are Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari
+############################################################################################################################
+
 import ModuleBase
 from time import time
 
 
 #Main switcher function
+
 def adt_analytical(N,p, logger):
     start = time()
     logger.info("Starting program")
@@ -15,6 +21,7 @@ def adt_analytical(N,p, logger):
 
 
 
+#This definition returns elements of adiabatic potential energy matrix
 
 def adt1(N,logger):
     logger.info("Deriving adiabatic potential energy matrix")
@@ -32,6 +39,7 @@ def adt1(N,logger):
         f.write(txt)
 
 
+#This definition returns elements of nonadiabatic coupling matrix (NACM)
 
 def adt2(N,logger):
     logger.info("Deriving NACM")
@@ -48,6 +56,7 @@ def adt2(N,logger):
         f.write(txt)
 
 
+#This definition returns elements of adiabatic to diabatic transformation (ADT) matrix
 
 def adt3(N,logger):
     logger.info("Deriving ADT matrix elements")
@@ -59,6 +68,7 @@ def adt3(N,logger):
         txt += 'c({c}) = cos(theta({i2},{i1}))\n\ns({c}) = sin(theta({i2},{i1}))\n\n'\
             .format(c=count, i1=index1, i2=index2)
 
+    A_Matrix = ModuleBase.matman(N)
 
     for i in range(1,N+1):
       for j in range(1,N+1):
@@ -71,6 +81,7 @@ def adt3(N,logger):
         f.write(txt)
 
 
+#This definition returns partially substituted forms of ADT equations
 
 def adt4(N,logger):
     logger.info("Deriving partially substituted ADT equations")
@@ -114,6 +125,7 @@ def adt4(N,logger):
     Equations = ModuleBase.equation_partial(LHSelems,RHSelems,N)
 
 
+#This definition returns complete forms of ADT equations
 
 def adt5(N,logger):
     logger.info("Deriving complete form of ADT equations")
@@ -155,6 +167,7 @@ def adt5(N,logger):
     Equations = ModuleBase.equation_complete(LHSelems,RHSelems,N)
 
 
+#This definition returns elements of coefficient matrix of gradient of ADT angles
 
 def adt6(N,logger):
     logger.info("Deriving coefficient matrix of gradient of ADT angles")
@@ -185,6 +198,7 @@ def adt6(N,logger):
         ModuleBase.extractgrad(i,N,j)
 
 
+#This definition returns elements of coefficient matrix of nonadiabatic coupling terms (NACTs)
 
 def adt7(N,logger):
     logger.info("Deriving elements of coefficient matrix of NACTs")
@@ -217,6 +231,7 @@ def adt7(N,logger):
 
 
 
+#This definition returns elements of diabatic potential energy matrix 
 
 def adt8(N,logger):
     logger.info("Deriving elements of diabatic potential energy matrix")

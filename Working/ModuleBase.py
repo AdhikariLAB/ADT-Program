@@ -95,7 +95,7 @@ def diabatic(mat):
 #     return elemfinal
 def diff(elem,N):
 
-    '''This definition returns the derivatives of any adiabatic to diabatic (ADT) matrix elements.'''
+    '''This definition returns the derivatives of any adiabatic to diabatic transformation (ADT) matrix elements.'''
 
     lltot = elem.split('+')
     convertlist=indextostate(N)

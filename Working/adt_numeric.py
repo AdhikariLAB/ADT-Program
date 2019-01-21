@@ -1,3 +1,8 @@
+
+############################################################################################################################
+# Authors are Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari
+############################################################################################################################
+
 import os
 import numpy as np 
 from adt_module import adt
