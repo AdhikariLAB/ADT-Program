@@ -1,7 +1,24 @@
 
-############################################################################################################################
-# Authors are Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari
-############################################################################################################################
+########################################################################################################################
+#                                                                                                                      #
+#    This python script is specifically implemented for devising analytic expressions of eight adiabatic to diabatic   #
+#    transformation (ADT) quantities for any 'N' number of coupled electronic states.                                  #
+#                                                                                                                      #
+#    Short description of eight definitions:                                                                           #
+#                                                                                                                      #
+#    adt1 :  gives elements of adiabatic potential energy matrix                                                       #
+#    adt2 :  gives elements of nonadiabatic coupling matrix (NACM)                                                     #
+#    adt3 :  gives elements of adiabatic to diabatic transformation (ADT) matrix                                       #
+#    adt4 :  gives partially substituted forms of ADT equations                                                        #
+#    adt5 :  gives complete forms of ADT equations                                                                     #
+#    adt6 :  gives elements of coefficient matrix of gradient of ADT angles                                            #
+#    adt7 :  gives elements of coefficient matrix of nonadiabatic coupling terms (NACTs)                               #
+#    adt8 :  gives elements of diabatic potential energy matrix                                                        #
+#                                                                                                                      # 
+#    Written by Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit     #
+#    Adhikari                                                                                                          #
+#                                                                                                                      # 
+########################################################################################################################
 
 import ModuleBase
 from time import time
@@ -13,8 +30,8 @@ def adt_analytical(N,p, logger):
     start = time()
     logger.info("Starting program")
 
-    {1: adt1, 2: adt2, 3: adt3, 4:adt4,
-     5: adt5, 6: adt6, 7: adt7, 8:adt8
+    {1: adt1, 2: adt2, 3: adt3, 4: adt4,
+     5: adt5, 6: adt6, 7: adt7, 8: adt8
     }[p](N,logger)
 
     logger.info("Program completed successfully in %.5f seconds\n"%(time()-start)+"-"*121)
@@ -261,3 +278,5 @@ def adt8(N,logger):
             E = W_Matrix[i-1][j-1] 
             txt += "\n".join(E[i:i+140] for i in range(0,len(E),140)) + "\n\n" 
             fl.write(txt)
+
+########################################################################################################################

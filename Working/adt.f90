@@ -1,10 +1,18 @@
 
-!###########################################################################################################################
-! Authors are Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari
-!###########################################################################################################################
-
-! Compile this module using f2py as
-! f2py -c adt.f90 -m adt_module --f90flags='-fopenmp' -lgomp only: get_angle amat
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                                                                                                                      !
+!    This fortran file contains all necessary fortran subroutines to solve the adiabatic to diabatic transformation    !
+!    (ADT) equations along eight different paths of integration. The stiff differential equations are solved by        !
+!    employing 8th order Runge-Kutta method. While performing the initialization step, 'f2py' generates the python     !
+!    module, 'adt_module.so' according to user specified compiler flags. As for example, the following command has to  !
+!    be written in 'init.sh' for f90 compiler with openmp parallelization scheme:                                      !
+!                                                                                                                      !
+!    f2py -c adt.f90 -m adt_module --f90flags='-fopenmp' -lgomp only: get_angle amat                                   !
+!                                                                                                                      !
+!    Written by Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit     !
+!    Adhikari                                                                                                          !
+!                                                                                                                      !   
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 module adt
@@ -24,10 +32,268 @@ data wt/1,0,-3,2,4*0,-3,0,9,-6,2,0,-6,4,8*0,3,0,-9,6,-2,0,6,-4,10*0,9,-6,2*0,-6,
 private :: wt, gridr_val, gridp_val, s,cx, cy
 contains
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-! This subroutine returns the parameters of 8th order Runge-Kutta method  
+subroutine amat(y,aa, ntau, nstate)
+   
+    ! This subroutine returns numerically calculated ADT matrix for a particular set of ADT angles.
+
+    integer(8),intent(in):: ntau, nstate
+    integer(8):: i,j,k
+    real(8), intent(in)::y(ntau)
+    real(8), intent(out):: aa(nstate,nstate)
+    real(8)::a(ntau,nstate,nstate)
+    !f2py intent(hide) :: ntau = shape(y,0)
+
+    a=0.d0
+    aa=0.d0
+    do i=1,nstate
+        a(:,i,i)=1.0d0
+        aa(i,i) =1.0d0
+    enddo
+
+    k=0
+
+    do j=2,nstate
+        do i=1,j-1
+            k=k+1 !i.e.a12 is denoted as a1, a13 is denoted as a2, a23 is denoted as a3 etc.
+
+            a(k,i,i)= dcos(y(k))
+            a(k,j,j)= a(k,i,i)          
+            a(k,i,j)= dsin(y(k))
+            a(k,j,i)=-a(k,i,j)
+        enddo
+    enddo
+
+    do i=1,ntau
+        aa = matmul(aa,a(i,:,:))
+    enddo
+
+end subroutine amat
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+subroutine amatspl(y,aa,afor,aback, ntau, nstate)
+
+    ! This subroutine generates complete ADT matrix (aa) and two sets of partially multiplied ADT matrices (afor,aback)
+ 
+    integer(8),  intent(in)::  ntau, nstate
+    real(8), intent(in) :: y(ntau)
+    real(8), intent(out) :: aa(nstate,nstate),afor(0:ntau,nstate,nstate),aback(ntau+1,nstate,nstate)
+    integer(8) :: i,j,k
+    real(8) :: a(ntau,nstate,nstate),aa1(nstate,nstate)
+
+    a = 0.0d0
+    aa=0d0
+    aa1=0d0
+    afor = 0.0d0
+    aback = 0.0d0
+    do i = 1,nstate
+        a(:,i,i) = 1.0d0
+        aa(i,i) = 1.0d0
+        aa1(i,i) = 1.0d0
+        afor(0,i,i) = 1.0d0
+        aback(ntau+1,i,i) = 1.0d0
+    enddo
+
+    k = 0
+    do j = 2,nstate
+        do i = 1,j-1
+            k = k+1
+            a(k,i,i) = dcos(y(k))
+            a(k,j,j) = dcos(y(k))
+            a(k,i,j) = dsin(y(k))
+            a(k,j,i) = -dsin(y(k))
+        enddo
+    enddo
+
+    do k = 1,ntau
+        aa1 = matmul(aa1,a(k,:,:))
+        afor(k,:,:) = aa1
+    enddo
+
+    do k = ntau,1,-1 
+        aa = matmul(a(k,:,:),aa)
+        aback(k,:,:) = aa
+    enddo
+
+end subroutine amatspl
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!***********************************************************************************************************
+!   Subroutine 'bcucof' (taken from 'W. H. Press, S. A. Teukolsky, W.T. Vetterling, B. P. Flannery, 
+!   Numerical Recipes in FORTRAN, Cambridge University Press, A-229, DSIDC Industrial Park, Narela, 
+!   Delhi-110040, 2000.')
+!***********************************************************************************************************
+
+subroutine bcucof (y,y1,y2,y12,d1,d2,c)
+
+    ! This subroutine is used as a secondary subroutine in 'interpol'
+
+    real(8), intent(in) :: d1,d2,y(4),y1(4),y12(4),y2(4)
+    real(8), intent(out):: c(4,4)
+    real(8)             :: x(16)
+    x=(/y, y1*d1, y2*d2, y12*d1*d2/)
+    c = transpose(reshape(matmul(wt,x),(/4,4/)))
+end subroutine bcucof
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!***********************************************************************************************************
+!   Subroutine 'bcuint' (taken from 'W. H. Press, S. A. Teukolsky, W.T. Vetterling, B. P. Flannery, 
+!   Numerical Recipes in FORTRAN, Cambridge University Press, A-229, DSIDC Industrial Park, Narela, 
+!   Delhi-110040, 2000.')
+!***********************************************************************************************************
+
+subroutine bcuint(y,y1,y2,y12,x1l,x1u,x2l,x2u,x1,x2,ansy)
+
+    ! This subroutine is used as a secondary subroutine in 'interpol'
+
+    real(8), intent(in) :: x1,x1l,x1u,x2,x2l,x2u,y(4),y1(4),y12(4),y2(4)
+    real(8), intent(out)::ansy!,ansy1,ansy2
+
+    integer(8):: i
+    real(8):: t,u,c(4,4)
+    call bcucof (y,y1,y2,y12,x1u-x1l,x2u-x2l,c)
+    if(x1u.eq.x1l .or. x2u.eq.x2l) stop 'bad input in bcuint'
+    t=(x1-x1l)/(x1u-x1l)
+    u=(x2-x2l)/(x2u-x2l)
+    ansy=0.0d0
+    do i=4,1,-1
+        ansy =t*ansy+((c(i,4)*u+c(i,3))*u+c(i,2))*u+c(i,1)
+    enddo
+
+end subroutine bcuint
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+subroutine funcr(gridr_val,gridp_val, ini_angle, output,ntau)
+
+    ! This subroutine returns the magnitude of ADT angles at a specific nuclear geometry during integration along
+    ! first coordinate  
+
+    integer(8),  intent(in):: ntau
+    real(8), intent(in)    :: gridr_val, ini_angle(ntau), gridp_val
+    real(8), intent(out)   :: output(ntau)
+    real(8) :: tau_val(ntau)
+
+
+    call interpol(etaur, gridr_val, gridp_val, tau_val, ngridr, ngridp, ntau)
+    call res(ini_angle,tau_val,output, ntau, nstate)
+
+end subroutine funcr
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+subroutine funcp(gridp_val,gridr_val, ini_angle, output,ntau)
+
+    ! This subroutine returns the magnitude of ADT angles at a specific nuclear geometry during integration along
+    ! second coordinate  
+
+    integer(8),  intent(in):: ntau
+    real(8), intent(in) :: gridp_val, ini_angle(ntau), gridr_val
+    real(8), intent(out) :: output(ntau)
+    real(8) :: outval(ntau)
+
+    call interpol(etaup, gridr_val, gridp_val, outval, ngridr, ngridp, ntau)
+    call res(ini_angle,outval,output, ntau, nstate)
+
+end subroutine funcp
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+subroutine get_angle(full_angle, ngridr, ngridp, ntau, path)   
+ 
+    ! This subroutine returns ADT angles over a 2D grid of geometries along any one of the eight paths of integration
+
+    integer(8),  intent(in):: ngridr, ngridp, ntau, path
+    real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
+
+    call init()
+
+    select case (path)
+
+        case (1) 
+            call path1(full_angle, ngridr, ngridp, ntau)
+
+        case (2)
+            call path2(full_angle, ngridr, ngridp, ntau)
+
+        case (3) 
+            call path3(full_angle, ngridr, ngridp, ntau)
+
+        case (4)
+            call path4(full_angle, ngridr, ngridp, ntau)
+
+        case (5)
+            call path5(full_angle, ngridr, ngridp, ntau)
+
+        case (6)
+            call path6(full_angle, ngridr, ngridp, ntau)
+
+        case (7)
+            call path7(full_angle, ngridr, ngridp, ntau)
+
+        case (8)
+            call path8(full_angle, ngridr, ngridp, ntau)
+
+        case default
+            stop "This line should never be executed."
+
+    end select
+
+end subroutine get_angle
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+subroutine gradcomat(y,afor,aback,g, ntau, nstate)
+
+    ! This subroutine returns the elements of coefficient matrix of gradient of ADT angles
+
+    integer(8),  intent(in):: ntau, nstate
+    real(8), intent(in) :: afor(0:ntau,nstate,nstate),aback(ntau+1,nstate,nstate),y(ntau)
+    real(8), intent(out) :: g(ntau,ntau)
+    integer(8) :: i,j,k,counter
+    real(8) :: adiff(ntau+1,nstate,nstate),aa1(nstate,nstate),aa2(nstate,nstate),b1(nstate,nstate),b2(nstate,nstate),&
+                    &b3(nstate,nstate)
+
+    adiff = 0.0d0
+
+    k = 0
+    do j = 2,nstate
+        do i = 1,j-1
+            k = k+1
+            adiff(k,i,i) = -dsin(y(k))
+            adiff(k,j,j) = -dsin(y(k))
+            adiff(k,i,j) = dcos(y(k))
+            adiff(k,j,i) = -dcos(y(k))
+        enddo
+    enddo
+
+    do k = ntau,1,-1
+        b1 = afor(k-1,:,:)
+        b2 = adiff(k,:,:)
+        b3 = aback(k+1,:,:)
+        aa1 = matmul(b1,b2)
+        aa2 = matmul(aa1,b3)
+        counter = 0
+        do i = 2,nstate
+            do j = 1,i-1
+                counter = counter+1
+                g(counter,k) = aa2(i,j)
+            enddo
+        enddo
+    enddo
+
+end subroutine gradcomat
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 subroutine init()
+
+!   This subroutine returns the parameters of 8th order Runge-Kutta method  
+
     s=dsqrt(21.0d0)
 
     cx(1)=0.5d0
@@ -73,483 +339,27 @@ subroutine init()
     cy(114)=(301.0d0+53.0d0*s)/72.0d0
     cy(115)=(28.0d0-28.0d0*s)/45.0d0
     cy(116)=(49.0d0-7.0d0*s)/18.0d0
+
 end subroutine init
 
-
-! This subroutine solves coupled differential equations by Runge-Kutta method   
-
-subroutine rungeKutta8(fun,x,xy,y,dx,n)
-    !takes y at x returns y at x+dx
-    !fun = dy/dx
-    external fun
-    integer(8), intent(in):: n
-    real(8), intent(in)   :: x,dx,xy
-    real(8), intent(inout):: y(n)
-
-    real(8) ,dimension(n) :: tmp,fo,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11
-
-
-    call fun(x,xy, y, fo,n)
-    a1=fo*dx
-    tmp=y+a1*cy(21)
-
-    call fun(x+cx(1)*dx,xy, tmp, fo,n)
-    a2=fo*dx
-    tmp=y+a1*cy(31)+a2*cy(32)
-
-    call fun(x+cx(1)*dx,xy, tmp, fo,n)
-    a3=fo*dx
-    tmp=y+a1*cy(41)+a2*cy(42)+a3*cy(43)
-
-    call fun(x+cx(2)*dx,xy, tmp, fo,n)
-    a4=fo*dx
-    tmp=y+a1*cy(51)+a3*cy(52)+a4*cy(53)
-
-    call fun(x+cx(2)*dx,xy, tmp, fo,n)
-    a5=fo*dx
-    tmp=y+a1*cy(61)+a3*cy(62)+a4*cy(63)+a5*cy(64)
-
-    call fun(x+cx(1)*dx,xy, tmp, fo,n)
-    a6=fo*dx
-    tmp=y+a1*cy(71)+a3*cy(72)+a4*cy(73)+a5*cy(74)+a6*cy(75)
-
-    call fun(x+cx(3)*dx,xy, tmp, fo,n)
-    a7=fo*dx
-    tmp=y+a1*cy(81)+a5*cy(82)+a6*cy(83)+a7*cy(84)
-
-    call fun(x+cx(3)*dx,xy, tmp, fo,n)
-    a8=fo*dx
-    tmp=y+a1*cy(91)+a5*cy(92)+a6*cy(93)+a7*cy(94)+a8*cy(95)
-
-    call fun(x+cx(1)*dx,xy, tmp, fo,n)
-    a9=fo*dx
-    tmp=y+a1*cy(101)+a5*cy(102)+a6*cy(103)+a7*cy(104)+a8*cy(105)+a9*cy(106)
-
-    call fun(x+cx(2)*dx,xy, tmp, fo,n)
-    a10=fo*dx
-    tmp=y+a5*cy(111)+a6*cy(112)+a7*cy(113)+a8*cy(114)+a9*cy(115)+a10*cy(116)
-
-    call fun(x+dx,xy, tmp,fo,n)
-    a11=fo*dx
-
-    y=y+(9.0d0*a1+49.0d0*a8+64.0d0*a9+49.0d0*a10+9.0d0*a11)/180.0d0
-end subroutine rungeKutta8
-
-
-! This subroutine returns ADT angles over a 2D grid of geometries
-
-subroutine get_angle(full_angle, ngridr, ngridp, ntau, path)    
-    integer(8),  intent(in):: ngridr, ngridp, ntau, path
-    real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
-
-    call init()
-
-    select case (path)
-
-        case (1) 
-            call path1(full_angle, ngridr, ngridp, ntau)
-
-        case (2)
-            call path2(full_angle, ngridr, ngridp, ntau)
-
-        case (3) 
-            call path3(full_angle, ngridr, ngridp, ntau)
-
-        case (4)
-            call path4(full_angle, ngridr, ngridp, ntau)
-
-        case (5)
-            call path5(full_angle, ngridr, ngridp, ntau)
-
-        case (6)
-            call path6(full_angle, ngridr, ngridp, ntau)
-
-        case (7)
-            call path7(full_angle, ngridr, ngridp, ntau)
-
-        case (8)
-            call path8(full_angle, ngridr, ngridp, ntau)
-
-        case default
-            stop "This line should never be executed."
-
-    end select
-end subroutine get_angle
-
-
-
-! This subroutine returns ADT angles over a 2D grid of geometries along path1
-
-subroutine path1(full_angle, ngridr, ngridp, ntau)     
-    integer(8),  intent(in):: ngridr, ngridp, ntau
-    real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
-    real(8)                :: angle(ntau), h1, h2, fangle(ngridp, ntau)
-    integer(8)             :: i,j
-
-    call init()
-    h1 = gridr(2) - gridr(1)
-    h2 = gridp(2) - gridp(1)
-
-    angle=0.0d0
-
-    gridp_val = gridp(1)-0.5d0*h2
-    gridr_val = gridr(1)
-
-    do i=1,ngridp
-        call rungeKutta8(funcp, gridp_val,gridr_val,angle,h2,ntau)
-        fangle(i,:) = angle
-        gridp_val = gridp(i)
-    enddo 
-
-    !$omp parallel do default(shared) private(angle, gridp_val, gridr_val, i,j)
-    do i=1,ngridp
-        angle = fangle(i,:)
-        gridp_val = gridp(i)
-        gridr_val = gridr(1)-0.5d0*h1
-        do j=1,ngridr
-            call rungeKutta8(funcr, gridr_val, gridp_val, angle, h1, ntau)
-            gridr_val = gridr(j)
-            ! print *,omp_get_thread_num()
-            full_angle(j,i,:) = angle
-        enddo 
-    enddo
-    !$omp end parallel do
-
-end subroutine path1
-
-
-
-! This subroutine returns ADT angles over a 2D grid of geometries along path2
-
-subroutine path2(full_angle, ngridr, ngridp, ntau)     
-    integer(8),  intent(in):: ngridr, ngridp, ntau
-    real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
-    real(8)                :: angle(ntau), h1, h2, fangle(ngridp, ntau)
-    integer(8)             :: i,j
-
-    h1 = gridr(2) - gridr(1)
-    h2 = -gridp(2) + gridp(1)
-    angle=0.0d0
-
-
-    gridp_val = gridp(ngridp)-0.5d0*h2
-    gridr_val = gridr(1)
-
-    do i=ngridp,1,-1
-        call rungeKutta8(funcp, gridp_val,gridr_val,angle,h2,ntau)
-        fangle(i,:) = angle
-        gridp_val = gridp(i)
-    enddo
-
-
-
-
-    do i=ngridp,1,-1
-        angle = fangle(i,:)
-        gridr_val = gridr(1)-0.5d0*h1
-        gridp_val = gridp(i)
-
-        do j=1,ngridr
-            call rungeKutta8(funcr, gridr_val,gridp_val, angle, h1, ntau)
-            full_angle(j,i,:)=angle
-            gridr_val = gridr(j)
-        enddo
-    enddo
-end subroutine path2
-
-
-
-! This subroutine returns ADT angles over a 2D grid of geometries along path3
-
-subroutine path3(full_angle, ngridr, ngridp, ntau)     
-    integer(8),  intent(in):: ngridr, ngridp, ntau
-    real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
-    real(8)                :: angle(ntau), h1, h2, fangle(ngridp, ntau)
-    integer(8)             :: i,j
-
-    h1 = -gridr(2) + gridr(1)
-    h2 = gridp(2) - gridp(1)
-    angle=0.0d0
-
-
-
-
-    gridp_val = gridp(1)-0.5d0*h2
-    gridr_val = gridr(ngridr)
-    do i=1,ngridp
-        call rungeKutta8(funcp, gridp_val,gridr_val,angle,h2,ntau)
-        fangle(i,:) = angle
-        gridp_val = gridp(i)
-    enddo
-
-
-
-    do i=1,ngridp
-        angle = fangle(i,:)
-        gridr_val = gridr(ngridr)-0.5d0*h1
-        gridp_val = gridp(i)
-
-        do j=ngridr,1,-1
-            call rungeKutta8(funcr, gridr_val,gridp_val, angle, h1, ntau)
-            full_angle(j,i,:)=angle
-            gridr_val = gridr(j)
-        enddo
-    enddo
-end subroutine path3
-
-
-
-! This subroutine returns ADT angles over a 2D grid of geometries along path4
-
-subroutine path4(full_angle, ngridr, ngridp, ntau)     
-    integer(8),  intent(in):: ngridr, ngridp, ntau
-    real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
-    real(8)                :: angle(ntau), h1, h2, fangle(ngridp, ntau)
-    integer(8)             :: i,j
-
-    h1 = -gridr(2)+ gridr(1)
-    h2 = -gridp(2)+ gridp(1)
-    angle=0.0d0
-
-
-    gridp_val = gridp(ngridp)-0.5d0*h2
-    gridr_val = gridr(ngridr)
-
-    do i=ngridp,1,-1
-        call rungeKutta8(funcp, gridp_val,gridr_val,angle,h2,ntau)
-        fangle(i,:) = angle
-        gridp_val = gridp(i)
-
-    enddo
-
-
-    do i=ngridp,1,-1
-        angle = fangle(i,:)
-        gridr_val = gridr(ngridr)-0.5d0*h1
-        gridp_val = gridp(i)
-
-        do j=ngridr,1,-1
-            call rungeKutta8(funcr, gridr_val,gridp_val, angle, h1, ntau)
-            full_angle(j,i,:)=angle
-            gridr_val = gridr(j)
-        enddo
-    enddo
-end subroutine path4
-
-
-
-! This subroutine returns ADT angles over a 2D grid of geometries along path5
-
-subroutine path5(full_angle, ngridr, ngridp, ntau)     
-    integer(8),  intent(in):: ngridr, ngridp, ntau
-    real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
-    real(8)                :: angle(ntau), h1, h2, fangle(ngridr, ntau)
-    integer(8)             :: i,j
-
-    h1 = gridr(2) - gridr(1)
-    h2 = gridp(2) - gridp(1)
-    angle=0.0d0
-
-
-    gridr_val = gridr(1)-0.5d0*h1
-    gridp_val = gridp(1)
-    do i=1,ngridr
-        call rungeKutta8(funcr, gridr_val,gridp_val,angle,h1,ntau)
-        fangle(i,:) = angle
-        gridr_val = gridr(i)
-    enddo
-
-
-    do i=1,ngridr
-        angle = fangle(i,:)
-        gridp_val = gridp(1)-0.5d0*h2
-        gridr_val = gridr(i)
-
-        do j=1,ngridp
-            call rungeKutta8(funcp, gridp_val,gridr_val, angle, h2, ntau)
-            full_angle(i,j,:)=angle
-            gridp_val = gridp(j)
-        enddo
-    enddo
-end subroutine path5
-
-
-
-! This subroutine returns ADT angles over a 2D grid of geometries along path6
-
-subroutine path6(full_angle, ngridr, ngridp, ntau)     
-    integer(8),  intent(in):: ngridr, ngridp, ntau
-    real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
-    real(8)                :: angle(ntau), h1, h2, fangle(ngridr, ntau)
-    integer(8)             :: i,j
-
-    h1 = -gridr(2)+ gridr(1)
-    h2 = gridp(2) - gridp(1)
-    angle=0.0d0
-
-
-    gridr_val = gridr(ngridr)-0.5d0*h1
-    gridp_val = gridp(1)
-
-    do i=ngridr,1,-1
-        call rungeKutta8(funcr, gridr_val,gridp_val,angle,h1,ntau)
-        fangle(i,:) = angle
-        gridr_val = gridr(i)
-    enddo
-
-    do i=ngridr,1,-1
-        angle = fangle(i,:)
-        gridp_val = gridp(1)-0.5d0*h2
-        gridr_val = gridr(i)
-
-        do j=1,ngridp
-            call rungeKutta8(funcp, gridp_val,gridr_val, angle, h2, ntau)
-            full_angle(i,j,:)=angle
-            gridp_val = gridp(j)
-        enddo
-    enddo
-end subroutine path6
-
-
-
-! This subroutine returns ADT angles over a 2D grid of geometries along path7
-
-subroutine path7(full_angle, ngridr, ngridp, ntau)     
-    integer(8),  intent(in):: ngridr, ngridp, ntau
-    real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
-    real(8)                :: angle(ntau), h1, h2, fangle(ngridr, ntau)
-    integer(8)             :: i,j
-
-    h1 = gridr(2) - gridr(1)
-    h2 = -gridp(2) + gridp(1)
-    angle=0.0d0
-
-    gridr_val = gridr(1)-0.5d0*h1
-    gridp_val = gridp(ngridp)
-
-    do i=1,ngridr
-        call rungeKutta8(funcr, gridr_val,gridp_val,angle,h1,ntau)
-        fangle(i,:) = angle
-        gridr_val = gridr(i)
-    enddo
-
-    do i=1,ngridr
-        angle = fangle(i,:)
-        gridp_val = gridp(ngridp)-0.5d0*h2
-        gridr_val = gridr(i)
-        do j=ngridp,1,-1
-            call rungeKutta8(funcp, gridp_val,gridr_val, angle, h2, ntau)
-            full_angle(i,j,:)=angle
-            gridp_val = gridp(j)
-        enddo
-    enddo
-
-end subroutine path7
-
-
-
-! This subroutine returns ADT angles over a 2D grid of geometries along path8
-
-subroutine path8(full_angle, ngridr, ngridp, ntau)     
-    integer(8),  intent(in):: ngridr, ngridp, ntau
-    real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
-    real(8)                :: angle(ntau), h1, h2, fangle(ngridr, ntau)
-    integer(8)             :: i,j
-
-    h1 = -gridr(2) + gridr(1)
-    h2 = gridp(2) - gridp(1)
-    angle=0.0d0
-
-    gridr_val = gridr(ngridr)-0.5d0*h1
-    gridp_val = gridp(ngridp)
-
-    do i=ngridr,1,-1
-        call rungeKutta8(funcr, gridr_val,gridp_val,angle,h1,ntau)
-        fangle(i,:) = angle
-        gridr_val = gridr(i)
-    enddo
-
-
-    do i=ngridr,1,-1
-        angle = fangle(i,:)
-        gridp_val = gridp(ngridp)-0.5d0*h2
-        gridr_val = gridr(i)
-
-        do j=ngridp,1,-1
-            call rungeKutta8(funcp, gridp_val,gridr_val, angle, h2, ntau)
-            full_angle(i,j,:)=angle
-            gridp_val = gridp(j)
-        enddo
-    enddo
-
-end subroutine path8
-
-
-
-!*****************************************************************************************
-!This subroutine returns the magnitude of $^{N}$C$_{2}$ numbers of ADT angles at a 
-!specific nuclear geometry using a pre-calculated/predefined set of ADT angles (initial 
-!value). This routine is implemented during integration along first coordinate when the 
-!second coordinate is fixed at a definite value 
-!*****************************************************************************************
-
-subroutine funcr(gridr_val,gridp_val, ini_angle, output,ntau)
-
-
-    integer(8),  intent(in):: ntau
-    real(8), intent(in)    :: gridr_val, ini_angle(ntau), gridp_val
-    real(8), intent(out)   :: output(ntau)
-    real(8) :: tau_val(ntau)
-
-
-    call interpol(etaur, gridr_val, gridp_val, tau_val, ngridr, ngridp, ntau)
-    call res(ini_angle,tau_val,output, ntau, nstate)
-end subroutine funcr
-
-
-
-!*****************************************************************************************
-!This subroutine returns the magnitude of $^{N}$C$_{2}$ numbers of ADT angles at a 
-!specific nuclear geometry using a pre-calculated/predefined set of ADT angles (initial 
-!value). This routine is implemented during integration along second coordinate when the 
-!first coordinate is fixed at a definite value 
-!*****************************************************************************************
-
-subroutine funcp(gridp_val,gridr_val, ini_angle, output,ntau)
-
-    integer(8),  intent(in):: ntau
-    real(8), intent(in) :: gridp_val, ini_angle(ntau), gridr_val
-    real(8), intent(out) :: output(ntau)
-    real(8) :: outval(ntau)
-
-    call interpol(etaup, gridr_val, gridp_val, outval, ngridr, ngridp, ntau)
-    call res(ini_angle,outval,output, ntau, nstate)
-end subroutine funcp
-
-
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !***********************************************************************************************************
-!      Subroutine 'INTERPOL' (taken from 'W. H. Press, S. A. Teukolsky, W.T. Vetterling, B. P. Flannery, 
-!      Numerical Recipes in FORTRAN, Cambridge University Press, A-229, DSIDC Industrial Park, Narela, 
-!      Delhi-110040, 2000.')
+!   Subroutine 'interpol' (taken from 'W. H. Press, S. A. Teukolsky, W.T. Vetterling, B. P. Flannery, 
+!   Numerical Recipes in FORTRAN, Cambridge University Press, A-229, DSIDC Industrial Park, Narela, 
+!   Delhi-110040, 2000.')
 !***********************************************************************************************************
-
-!*****************************************************************************************************
-!While integrating the differential equations by 8th order Runge-Kutta method, NACT values for the 
-!intermediate geometries between two grid points are required and therefore, bi-cubic interpolation 
-!is adopted to dig out the magnitude of NACTs at those unknown points. This subroutine is used to  
-!perform this interpolation.
-!*****************************************************************************************************
 
 subroutine interpol(tau,x1,y1,tout,ngridr, ngridp, ntau)
+
+    ! This subroutine is used to perform bi-cubic interpolation to evaluate the magnitude of nonadiabatic coupling terms 
+    ! (NACTs) at intermediate geometries between two grid points 
 
     integer(8),  intent(in):: ngridr, ngridp, ntau
     real(8),intent(in) :: tau(ngridr+2, ngridp+2, ntau), x1,y1
     real(8),intent(out):: tout(ntau)
     real(8)            :: yf(4),yf1(4),yf2(4),yf12(4), dx,dy,x1l,x1u,x2l,x2u,ansy!,ansy1,ansy2        
     integer(8)         :: ii1,ii2,jj1,jj2,k
-
-
 
     dx=egridr(2)-egridr(1)
     dy=egridp(2)-egridp(1)
@@ -674,198 +484,14 @@ subroutine interpol(tau,x1,y1,tout,ngridr, ngridp, ntau)
         call bcuint(yf,yf1,yf2,yf12,x1l,x1u,x2l,x2u,x1,y1,ansy)
         tout(k)=ansy
     enddo
+
 end subroutine interpol
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-
-! subroutine locate(xx,n,x,jj)
-
-!     integer(8), intent(in) :: n
-!     real(8),    intent(in) :: xx(n),x
-!     integer(8), intent(out):: jj
-!     integer(8)             :: jl,ju,jm
-
-!     jl=0
-!     ju=n+1
-!     do while((ju-jl).gt.1)
-!         jm=(ju+jl)/2
-!         if((xx(n).gt.xx(1)).eqv.(x.ge.xx(jm)))then
-!             jl=jm
-!           else
-!             ju=jm
-!         endif
-!     enddo
-!     jj=jl
-! end subroutine locate
-
-
-
-!***********************************************************************************************************
-!      Subroutine 'BCUINT' (taken from 'W. H. Press, S. A. Teukolsky, W.T. Vetterling, B. P. Flannery, 
-!      Numerical Recipes in FORTRAN, Cambridge University Press, A-229, DSIDC Industrial Park, Narela, 
-!      Delhi-110040, 2000.')
-!***********************************************************************************************************
-
-!*****************************************************************************************************
-!While integrating the differential equations by 8th order Runge-Kutta method, NACT values for the 
-!intermediate geometries between two grid points are required and therefore, bi-cubic interpolation 
-!is adopted to dig out the magnitude of NACTs at those unknown points. This subroutine is used as a 
-!secondary subroutine in 'INTERPOL'.
-!*****************************************************************************************************
-
-subroutine bcuint(y,y1,y2,y12,x1l,x1u,x2l,x2u,x1,x2,ansy)
-
-    real(8), intent(in) :: x1,x1l,x1u,x2,x2l,x2u,y(4),y1(4),y12(4),y2(4)
-    real(8), intent(out)::ansy!,ansy1,ansy2
-
-    integer(8):: i
-    real(8):: t,u,c(4,4)
-    call bcucof (y,y1,y2,y12,x1u-x1l,x2u-x2l,c)
-    if(x1u.eq.x1l .or. x2u.eq.x2l) stop 'bad input in bcuint'
-    t=(x1-x1l)/(x1u-x1l)
-    u=(x2-x2l)/(x2u-x2l)
-    ansy=0.0d0
-    do i=4,1,-1
-        ansy =t*ansy+((c(i,4)*u+c(i,3))*u+c(i,2))*u+c(i,1)
-    enddo
-end subroutine bcuint
-
-
-
-!***********************************************************************************************************
-!      Subroutine 'BCUCOF' (taken from 'W. H. Press, S. A. Teukolsky, W.T. Vetterling, B. P. Flannery, 
-!      Numerical Recipes in FORTRAN, Cambridge University Press, A-229, DSIDC Industrial Park, Narela, 
-!      Delhi-110040, 2000.')
-!***********************************************************************************************************
-
-!*****************************************************************************************************
-!While integrating the differential equations by 8th order Runge-Kutta method, NACT values for the 
-!intermediate geometries between two grid points are required and therefore, bi-cubic interpolation 
-!is adopted to dig out the magnitude of NACTs at those unknown points. This subroutine is used as a 
-!secondary subroutine in 'INTERPOL'.
-!*****************************************************************************************************
-
-subroutine bcucof (y,y1,y2,y12,d1,d2,c)
-
-    real(8), intent(in) :: d1,d2,y(4),y1(4),y12(4),y2(4)
-    real(8), intent(out):: c(4,4)
-    real(8)             :: x(16)
-    x=(/y, y1*d1, y2*d2, y12*d1*d2/)
-    c = transpose(reshape(matmul(wt,x),(/4,4/)))
-end subroutine bcucof
-
-
-
-!**********************************
-!      Subroutine 'RES'
-!**********************************
-
-!**************************************************************************************
-!Magnitudes of gradient of ADT angles at every grid point in the nuclear
-!CS is returned by this subroutine
-!**************************************************************************************
-
-subroutine res(ang,nact,f, ntau, nstate)
-
-
-    integer(8),  intent(in)::  ntau, nstate
-    real(8), intent(in) :: ang(ntau), nact(ntau)
-    real(8), intent(out) :: f(ntau)
-    integer(8) :: i,j,counter
-    real(8) :: val(ntau),g(ntau,ntau),gi(ntau,ntau),amat(nstate,nstate),tmat(nstate,nstate),prod(nstate,nstate)
-    real(8) :: afor(0:ntau,nstate,nstate),aback(ntau+1,nstate,nstate)
-
-
-    call amatspl(ang,amat,afor,aback, ntau, nstate)
-    call gradcomat(ang,afor,aback,g, ntau, nstate)
-    call inverse(g,gi,ntau)
-    call negtau(nact,tmat, ntau, nstate)
-
-    prod = matmul(tmat,amat)
-
-    counter = 0
-    do i=2,nstate
-        do j=1,i-1
-            counter = counter+1
-            val(counter) = prod(i,j)
-        enddo
-    enddo
-
-    f = matmul(gi,val)
-end subroutine res
-
-
-
-!**********************************
-!      Subroutine 'AMATSPL'
-!**********************************
-
-!**********************************************************************************************************
-!This subroutine is implemented not only to generate the complete ADT matrix (AA), but also two sets of 
-!partially multiplied ADT matrices (AFOR, ABACK). Adiabatic to diabatic transformation matrix
-!is generated by multiplying elementary rotation matrices in a definite order, but partial ADT matrices 
-!can be constructed by collecting one or more [2,3,4,.....,(N-1); N = number of elementary matrices] 
-!matrices from that set and multiplying them in the same order as the parent one.
-!**********************************************************************************************************
-
-subroutine amatspl(y,aa,afor,aback, ntau, nstate)
-
-
-    integer(8),  intent(in)::  ntau, nstate
-    real(8), intent(in) :: y(ntau)
-    real(8), intent(out) :: aa(nstate,nstate),afor(0:ntau,nstate,nstate),aback(ntau+1,nstate,nstate)
-    integer(8) :: i,j,k
-    real(8) :: a(ntau,nstate,nstate),aa1(nstate,nstate)
-
-    a = 0.0d0
-    aa=0d0
-    aa1=0d0
-    afor = 0.0d0
-    aback = 0.0d0
-    do i = 1,nstate
-        a(:,i,i) = 1.0d0
-        aa(i,i) = 1.0d0
-        aa1(i,i) = 1.0d0
-        afor(0,i,i) = 1.0d0
-        aback(ntau+1,i,i) = 1.0d0
-    enddo
-
-    k = 0
-    do j = 2,nstate
-        do i = 1,j-1
-            k = k+1
-            a(k,i,i) = dcos(y(k))
-            a(k,j,j) = dcos(y(k))
-            a(k,i,j) = dsin(y(k))
-            a(k,j,i) = -dsin(y(k))
-        enddo
-    enddo
-
-
-    do k = 1,ntau
-        aa1 = matmul(aa1,a(k,:,:))
-        afor(k,:,:) = aa1
-    enddo
-
-    do k = ntau,1,-1 
-        aa = matmul(a(k,:,:),aa)
-        aback(k,:,:) = aa
-    enddo
-end subroutine amatspl
-
-
-
-!**********************************
-!      Subroutine 'INVERSE'
-!**********************************
-
-!********************************************************************************
-!The inverse of coefficient matrix of gradient of ADT angles is
-!evaluated by Gauss-Jordon Method.
-!********************************************************************************
-      
 subroutine inverse(g,gi, ntau)
 
+    ! This subroutine returns the inverse of coefficient matrix of gradient of ADT angles by Gauss-Jordon method
 
     integer(8),  intent(in)::  ntau
     real(8), intent(in) :: g(ntau,ntau)
@@ -879,13 +505,11 @@ subroutine inverse(g,gi, ntau)
 
     forall(i=1:ntau) en(i,i) = 1.0d0
 
-
     gi = en
     irank = ntau
     ! 1 irow = ntau+1-irank
     do while(irank .ne. 0)
         irow = ntau+1-irank
-
 
         if(dabs(a(irow,irow)) .le. zero) then
             j = 0
@@ -931,21 +555,15 @@ subroutine inverse(g,gi, ntau)
 
         irank = irank-1
     enddo
+
 end subroutine inverse
 
-
-
-!**********************************
-!      Subroutine 'NEGTAU'
-!**********************************
-
-!*****************************************************************************************
-!This subprogram accepts the NACM as input and returns the negative form
-!of the matrix at each and every grid point in nuclear CS.         
-!*****************************************************************************************
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 subroutine negtau(tau,taumat, ntau, nstate)
 
+    ! This subroutine returns the negative form of nonadiabatic coupling matrix (NACM) at each and every grid point 
+    ! in nuclear CS 
 
     integer(8),  intent(in):: ntau, nstate
     real(8), intent(in) :: tau(ntau)
@@ -966,101 +584,428 @@ subroutine negtau(tau,taumat, ntau, nstate)
             taumat(i,j) = -taumat(j,i)
         enddo
     enddo
+
 end subroutine negtau
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+subroutine path1(full_angle, ngridr, ngridp, ntau)    
+
+    ! This subroutine returns ADT angles over a 2D grid of geometries along path1
+     
+    integer(8),  intent(in):: ngridr, ngridp, ntau
+    real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
+    real(8)                :: angle(ntau), h1, h2, fangle(ngridp, ntau)
+    integer(8)             :: i,j
+
+    call init()
+    h1 = gridr(2) - gridr(1)
+    h2 = gridp(2) - gridp(1)
+
+    angle=0.0d0
+
+    gridp_val = gridp(1)-0.5d0*h2
+    gridr_val = gridr(1)
+
+    do i=1,ngridp
+        call rungeKutta8(funcp, gridp_val,gridr_val,angle,h2,ntau)
+        fangle(i,:) = angle
+        gridp_val = gridp(i)
+    enddo 
+
+    !$omp parallel do default(shared) private(angle, gridp_val, gridr_val, i,j)
+    do i=1,ngridp
+        angle = fangle(i,:)
+        gridp_val = gridp(i)
+        gridr_val = gridr(1)-0.5d0*h1
+        do j=1,ngridr
+            call rungeKutta8(funcr, gridr_val, gridp_val, angle, h1, ntau)
+            gridr_val = gridr(j)
+            ! print *,omp_get_thread_num()
+            full_angle(j,i,:) = angle
+        enddo 
+    enddo
+    !$omp end parallel do
+
+end subroutine path1
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+subroutine path2(full_angle, ngridr, ngridp, ntau)    
+ 
+    ! This subroutine returns ADT angles over a 2D grid of geometries along path2
+
+    integer(8),  intent(in):: ngridr, ngridp, ntau
+    real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
+    real(8)                :: angle(ntau), h1, h2, fangle(ngridp, ntau)
+    integer(8)             :: i,j
+
+    h1 = gridr(2) - gridr(1)
+    h2 = -gridp(2) + gridp(1)
+    angle=0.0d0
 
 
-!**********************************
-!      Subroutine 'GRADCOMAT'
-!**********************************
+    gridp_val = gridp(ngridp)-0.5d0*h2
+    gridr_val = gridr(1)
 
-!**************************************************************************************
-!This subprogram is implemented for calculating the elements of coefficient matrix 
-!of gradient of ADT angles
-!**************************************************************************************
+    do i=ngridp,1,-1
+        call rungeKutta8(funcp, gridp_val,gridr_val,angle,h2,ntau)
+        fangle(i,:) = angle
+        gridp_val = gridp(i)
+    enddo
 
-subroutine gradcomat(y,afor,aback,g, ntau, nstate)
+    !$omp parallel do default(shared) private(angle, gridp_val, gridr_val, i,j)
+    do i=ngridp,1,-1
+        angle = fangle(i,:)
+        gridr_val = gridr(1)-0.5d0*h1
+        gridp_val = gridp(i)
+
+        do j=1,ngridr
+            call rungeKutta8(funcr, gridr_val,gridp_val, angle, h1, ntau)
+            full_angle(j,i,:)=angle
+            gridr_val = gridr(j)
+        enddo
+    enddo
+    !$omp end parallel do
+
+end subroutine path2
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+subroutine path3(full_angle, ngridr, ngridp, ntau)  
+
+    ! This subroutine returns ADT angles over a 2D grid of geometries along path3
+   
+    integer(8),  intent(in):: ngridr, ngridp, ntau
+    real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
+    real(8)                :: angle(ntau), h1, h2, fangle(ngridp, ntau)
+    integer(8)             :: i,j
+
+    h1 = -gridr(2) + gridr(1)
+    h2 = gridp(2) - gridp(1)
+    angle=0.0d0
+
+    gridp_val = gridp(1)-0.5d0*h2
+    gridr_val = gridr(ngridr)
+    do i=1,ngridp
+        call rungeKutta8(funcp, gridp_val,gridr_val,angle,h2,ntau)
+        fangle(i,:) = angle
+        gridp_val = gridp(i)
+    enddo
+
+    !$omp parallel do default(shared) private(angle, gridp_val, gridr_val, i,j)
+    do i=1,ngridp
+        angle = fangle(i,:)
+        gridr_val = gridr(ngridr)-0.5d0*h1
+        gridp_val = gridp(i)
+
+        do j=ngridr,1,-1
+            call rungeKutta8(funcr, gridr_val,gridp_val, angle, h1, ntau)
+            full_angle(j,i,:)=angle
+            gridr_val = gridr(j)
+        enddo
+    enddo
+    !$omp end parallel do
+
+end subroutine path3
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+subroutine path4(full_angle, ngridr, ngridp, ntau) 
+
+    ! This subroutine returns ADT angles over a 2D grid of geometries along path4
+        
+    integer(8),  intent(in):: ngridr, ngridp, ntau
+    real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
+    real(8)                :: angle(ntau), h1, h2, fangle(ngridp, ntau)
+    integer(8)             :: i,j
+
+    h1 = -gridr(2)+ gridr(1)
+    h2 = -gridp(2)+ gridp(1)
+    angle=0.0d0
+
+    gridp_val = gridp(ngridp)-0.5d0*h2
+    gridr_val = gridr(ngridr)
+
+    do i=ngridp,1,-1
+        call rungeKutta8(funcp, gridp_val,gridr_val,angle,h2,ntau)
+        fangle(i,:) = angle
+        gridp_val = gridp(i)
+
+    enddo
+
+    !$omp parallel do default(shared) private(angle, gridp_val, gridr_val, i,j)
+    do i=ngridp,1,-1
+        angle = fangle(i,:)
+        gridr_val = gridr(ngridr)-0.5d0*h1
+        gridp_val = gridp(i)
+
+        do j=ngridr,1,-1
+            call rungeKutta8(funcr, gridr_val,gridp_val, angle, h1, ntau)
+            full_angle(j,i,:)=angle
+            gridr_val = gridr(j)
+        enddo
+    enddo
+    !$omp end parallel do
+
+end subroutine path4
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+subroutine path5(full_angle, ngridr, ngridp, ntau)    
+ 
+    ! This subroutine returns ADT angles over a 2D grid of geometries along path5
+
+    integer(8),  intent(in):: ngridr, ngridp, ntau
+    real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
+    real(8)                :: angle(ntau), h1, h2, fangle(ngridr, ntau)
+    integer(8)             :: i,j
+
+    h1 = gridr(2) - gridr(1)
+    h2 = gridp(2) - gridp(1)
+    angle=0.0d0
 
 
-    integer(8),  intent(in):: ntau, nstate
-    real(8), intent(in) :: afor(0:ntau,nstate,nstate),aback(ntau+1,nstate,nstate),y(ntau)
-    real(8), intent(out) :: g(ntau,ntau)
-    integer(8) :: i,j,k,counter
-    real(8) :: adiff(ntau+1,nstate,nstate),aa1(nstate,nstate),aa2(nstate,nstate),b1(nstate,nstate),b2(nstate,nstate),&
-                    &b3(nstate,nstate)
+    gridr_val = gridr(1)-0.5d0*h1
+    gridp_val = gridp(1)
+    do i=1,ngridr
+        call rungeKutta8(funcr, gridr_val,gridp_val,angle,h1,ntau)
+        fangle(i,:) = angle
+        gridr_val = gridr(i)
+    enddo
 
-    adiff = 0.0d0
+    !$omp parallel do default(shared) private(angle, gridp_val, gridr_val, i,j)
+    do i=1,ngridr
+        angle = fangle(i,:)
+        gridp_val = gridp(1)-0.5d0*h2
+        gridr_val = gridr(i)
 
-    k = 0
-    do j = 2,nstate
-        do i = 1,j-1
-            k = k+1
-            adiff(k,i,i) = -dsin(y(k))
-            adiff(k,j,j) = -dsin(y(k))
-            adiff(k,i,j) = dcos(y(k))
-            adiff(k,j,i) = -dcos(y(k))
+        do j=1,ngridp
+            call rungeKutta8(funcp, gridp_val,gridr_val, angle, h2, ntau)
+            full_angle(i,j,:)=angle
+            gridp_val = gridp(j)
+        enddo
+    enddo
+    !$omp end parallel do
+
+end subroutine path5
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+subroutine path6(full_angle, ngridr, ngridp, ntau)    
+
+    ! This subroutine returns ADT angles over a 2D grid of geometries along path6
+ 
+    integer(8),  intent(in):: ngridr, ngridp, ntau
+    real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
+    real(8)                :: angle(ntau), h1, h2, fangle(ngridr, ntau)
+    integer(8)             :: i,j
+
+    h1 = -gridr(2)+ gridr(1)
+    h2 = gridp(2) - gridp(1)
+    angle=0.0d0
+
+    gridr_val = gridr(ngridr)-0.5d0*h1
+    gridp_val = gridp(1)
+
+    do i=ngridr,1,-1
+        call rungeKutta8(funcr, gridr_val,gridp_val,angle,h1,ntau)
+        fangle(i,:) = angle
+        gridr_val = gridr(i)
+    enddo
+
+    !$omp parallel do default(shared) private(angle, gridp_val, gridr_val, i,j)
+    do i=ngridr,1,-1
+        angle = fangle(i,:)
+        gridp_val = gridp(1)-0.5d0*h2
+        gridr_val = gridr(i)
+
+        do j=1,ngridp
+            call rungeKutta8(funcp, gridp_val,gridr_val, angle, h2, ntau)
+            full_angle(i,j,:)=angle
+            gridp_val = gridp(j)
+        enddo
+    enddo
+    !$omp end parallel do
+
+end subroutine path6
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+subroutine path7(full_angle, ngridr, ngridp, ntau)    
+
+    ! This subroutine returns ADT angles over a 2D grid of geometries along path7
+ 
+    integer(8),  intent(in):: ngridr, ngridp, ntau
+    real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
+    real(8)                :: angle(ntau), h1, h2, fangle(ngridr, ntau)
+    integer(8)             :: i,j
+
+    h1 = gridr(2) - gridr(1)
+    h2 = -gridp(2) + gridp(1)
+    angle=0.0d0
+
+    gridr_val = gridr(1)-0.5d0*h1
+    gridp_val = gridp(ngridp)
+
+    do i=1,ngridr
+        call rungeKutta8(funcr, gridr_val,gridp_val,angle,h1,ntau)
+        fangle(i,:) = angle
+        gridr_val = gridr(i)
+    enddo
+
+    !$omp parallel do default(shared) private(angle, gridp_val, gridr_val, i,j)
+    do i=1,ngridr
+        angle = fangle(i,:)
+        gridp_val = gridp(ngridp)-0.5d0*h2
+        gridr_val = gridr(i)
+        do j=ngridp,1,-1
+            call rungeKutta8(funcp, gridp_val,gridr_val, angle, h2, ntau)
+            full_angle(i,j,:)=angle
+            gridp_val = gridp(j)
+        enddo
+    enddo
+    !$omp end parallel do
+
+end subroutine path7
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+subroutine path8(full_angle, ngridr, ngridp, ntau)
+
+    ! This subroutine returns ADT angles over a 2D grid of geometries along path8
+     
+    integer(8),  intent(in):: ngridr, ngridp, ntau
+    real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
+    real(8)                :: angle(ntau), h1, h2, fangle(ngridr, ntau)
+    integer(8)             :: i,j
+
+    h1 = -gridr(2) + gridr(1)
+    h2 = gridp(2) - gridp(1)
+    angle=0.0d0
+
+    gridr_val = gridr(ngridr)-0.5d0*h1
+    gridp_val = gridp(ngridp)
+
+    do i=ngridr,1,-1
+        call rungeKutta8(funcr, gridr_val,gridp_val,angle,h1,ntau)
+        fangle(i,:) = angle
+        gridr_val = gridr(i)
+    enddo
+
+    !$omp parallel do default(shared) private(angle, gridp_val, gridr_val, i,j)
+    do i=ngridr,1,-1
+        angle = fangle(i,:)
+        gridp_val = gridp(ngridp)-0.5d0*h2
+        gridr_val = gridr(i)
+
+        do j=ngridp,1,-1
+            call rungeKutta8(funcp, gridp_val,gridr_val, angle, h2, ntau)
+            full_angle(i,j,:)=angle
+            gridp_val = gridp(j)
+        enddo
+    enddo
+    !$omp end parallel do
+
+end subroutine path8
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+subroutine res(ang,nact,f, ntau, nstate)
+
+    ! This subroutine returns magnitude of ADT angles at every grid point in the nuclear configuration space (CS)
+
+    integer(8),  intent(in)::  ntau, nstate
+    real(8), intent(in) :: ang(ntau), nact(ntau)
+    real(8), intent(out) :: f(ntau)
+    integer(8) :: i,j,counter
+    real(8) :: val(ntau),g(ntau,ntau),gi(ntau,ntau),amat(nstate,nstate),tmat(nstate,nstate),prod(nstate,nstate)
+    real(8) :: afor(0:ntau,nstate,nstate),aback(ntau+1,nstate,nstate)
+
+    call amatspl(ang,amat,afor,aback, ntau, nstate)
+    call gradcomat(ang,afor,aback,g, ntau, nstate)
+    call inverse(g,gi,ntau)
+    call negtau(nact,tmat, ntau, nstate)
+
+    prod = matmul(tmat,amat)
+
+    counter = 0
+    do i=2,nstate
+        do j=1,i-1
+            counter = counter+1
+            val(counter) = prod(i,j)
         enddo
     enddo
 
-    do k = ntau,1,-1
-        b1 = afor(k-1,:,:)
-        b2 = adiff(k,:,:)
-        b3 = aback(k+1,:,:)
-        aa1 = matmul(b1,b2)
-        aa2 = matmul(aa1,b3)
-        counter = 0
-        do i = 2,nstate
-            do j = 1,i-1
-                counter = counter+1
-                g(counter,k) = aa2(i,j)
-            enddo
-        enddo
-    enddo
-end subroutine gradcomat
+    f = matmul(gi,val)
+
+end subroutine res
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+subroutine rungeKutta8(fun,x,xy,y,dx,n)
+
+    ! This subroutine solves coupled differential equations (ADT equations) by 8th order Runge-Kutta method   
+
+    ! takes y at x returns y at x+dx
+    ! fun = dy/dx
+
+    external fun
+    integer(8), intent(in):: n
+    real(8), intent(in)   :: x,dx,xy
+    real(8), intent(inout):: y(n)
+
+    real(8) ,dimension(n) :: tmp,fo,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11
 
 
+    call fun(x,xy, y, fo,n)
+    a1=fo*dx
+    tmp=y+a1*cy(21)
 
-!**********************************
-!      Subroutine 'AMAT'
-!**********************************
+    call fun(x+cx(1)*dx,xy, tmp, fo,n)
+    a2=fo*dx
+    tmp=y+a1*cy(31)+a2*cy(32)
 
-!*********************************************************************
-!This subroutine returns numerically calculated ADT matrix (AA) for a
-!particular set of ADT angles (Y).
-!*********************************************************************
+    call fun(x+cx(1)*dx,xy, tmp, fo,n)
+    a3=fo*dx
+    tmp=y+a1*cy(41)+a2*cy(42)+a3*cy(43)
 
-subroutine amat(y,aa, ntau, nstate)
-    integer(8),intent(in):: ntau, nstate
-    integer(8):: i,j,k
-    real(8), intent(in)::y(ntau)
-    real(8), intent(out):: aa(nstate,nstate)
-    real(8)::a(ntau,nstate,nstate)
-    !f2py intent(hide) :: ntau = shape(y,0)
+    call fun(x+cx(2)*dx,xy, tmp, fo,n)
+    a4=fo*dx
+    tmp=y+a1*cy(51)+a3*cy(52)+a4*cy(53)
 
-    a=0.d0
-    aa=0.d0
-    do i=1,nstate
-        a(:,i,i)=1.0d0
-        aa(i,i) =1.0d0
-    enddo
+    call fun(x+cx(2)*dx,xy, tmp, fo,n)
+    a5=fo*dx
+    tmp=y+a1*cy(61)+a3*cy(62)+a4*cy(63)+a5*cy(64)
 
-    k=0
+    call fun(x+cx(1)*dx,xy, tmp, fo,n)
+    a6=fo*dx
+    tmp=y+a1*cy(71)+a3*cy(72)+a4*cy(73)+a5*cy(74)+a6*cy(75)
 
-    do j=2,nstate
-        do i=1,j-1
-            k=k+1 !i.e.a12 is denoted as a1, a13 is denoted as a2, a23 is denoted as a3 etc.
+    call fun(x+cx(3)*dx,xy, tmp, fo,n)
+    a7=fo*dx
+    tmp=y+a1*cy(81)+a5*cy(82)+a6*cy(83)+a7*cy(84)
 
-            a(k,i,i)= dcos(y(k))
-            a(k,j,j)= a(k,i,i)          
-            a(k,i,j)= dsin(y(k))
-            a(k,j,i)=-a(k,i,j)
-        enddo
-    enddo
+    call fun(x+cx(3)*dx,xy, tmp, fo,n)
+    a8=fo*dx
+    tmp=y+a1*cy(91)+a5*cy(92)+a6*cy(93)+a7*cy(94)+a8*cy(95)
 
-    do i=1,ntau
-        aa = matmul(aa,a(i,:,:))
-    enddo
-end subroutine amat
+    call fun(x+cx(1)*dx,xy, tmp, fo,n)
+    a9=fo*dx
+    tmp=y+a1*cy(101)+a5*cy(102)+a6*cy(103)+a7*cy(104)+a8*cy(105)+a9*cy(106)
+
+    call fun(x+cx(2)*dx,xy, tmp, fo,n)
+    a10=fo*dx
+    tmp=y+a5*cy(111)+a6*cy(112)+a7*cy(113)+a8*cy(114)+a9*cy(115)+a10*cy(116)
+
+    call fun(x+dx,xy, tmp,fo,n)
+    a11=fo*dx
+
+    y=y+(9.0d0*a1+49.0d0*a8+64.0d0*a9+49.0d0*a10+9.0d0*a11)/180.0d0
+
+end subroutine rungeKutta8
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 end module adt
