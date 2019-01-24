@@ -66,7 +66,7 @@ def adt_numerical(enrf, rhof, phif, path, outfile, logger,h5, txt):
     logger.info("Calculating ADT matrix elements")
     amat =  np.apply_along_axis(adt.amat,1,full_angle,adt.nstate)
 
-    # calculation of diabatic potential energy matrix elements by Einstein summation
+    # calculation of diabatic potential energy matrix elements 
     logger.info("Calculating Diabatic matrix elements")
     db = np.einsum("ijk,ij,ijl->ikl",amat,enr,amat)
 

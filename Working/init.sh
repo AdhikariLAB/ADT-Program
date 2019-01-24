@@ -22,11 +22,18 @@
 
 #Creation of adt_module.so from adt.f90 using f2py command
 
-# with openmp parallelization, NOTE: 'fopenmp' is a gfortran flag
+# for gfortran with openmp parallelization
 f2py -c adt.f90 -m adt_module --f90flags='-fopenmp' -lgomp only: get_angle amat 
-# for ifort, following flags may not work universally
-#f2py -c adt.f90 -m adt_module --fcompiler=intelem --f90flags='-qopenmp' -liomp5 only: get_angle amat 
-# f2py -c adt.f90 -m adt_module only: get_angle amat     #non-openmp
+
+########################################################################################################################
+#                                                                                                                      #
+# User can modify the above f2py command according to the compiler options and other flags. For detailed desciption of #
+# 'f2py' command and its flags, visit 'https://docs.scipy.org/doc/numpy/f2py/'.                                        #
+#                                                                                                                      #
+# As for example, in case of ifort compiler, the 'f2py' command can be written as (for openmp parallelization):        #
+# f2py -c adt.f90 -m adt_module --fcompiler=intelem --f90flags='-qopenmp' -liomp5 only: get_angle amat                 #
+#                                                                                                                      #
+########################################################################################################################
 
 #Aliasing the path of 'adt_final.py' as adt
 
