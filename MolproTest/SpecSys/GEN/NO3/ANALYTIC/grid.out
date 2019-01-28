@@ -1,0 +1,335 @@
+
+ Primary working directories    : /tmp/koushik/molpro.9aR9569rLQ
+ Secondary working directories  : /tmp/koushik/molpro.9aR9569rLQ
+ Wavefunction directory         : /home/koushik/CODES/ADT-Program_Test/MolproTest/SpecSys/GEN/NO3/ANALYTIC/./
+ Main file repository           : /tmp/koushik/molpro.9aR9569rLQ/
+
+ id        : iacsdirector
+
+ Nodes     nprocs
+ koushik      1
+
+ Using customized tuning parameters: mindgm=1; mindgv=20; mindgc=4; mindgr=1; noblas=0; minvec=7
+ default implementation of scratch files=df  
+
+
+ Variables initialized (930), CPU time= 0.01 sec
+ 
+ ***,Molpro template created from ADT program for "WhatEver"
+ memory,100,m
+ file,2,molpro.wfu;
+ 
+ basis=6-31G**;
+ 
+ symmetry,nosym
+ 
+ 
+ geometry=geom.xyz
+ Including file /home/koushik/CODES/ADT-Program_Test/MolproTest/SpecSys/GEN/NO3/ANALYTIC/geom.xyz
+ 
+ {multi;occ,19;closed,11; wf,31,1,1,0;state,5;start,2140.2; orbital,2140.2;}
+ 
+ show, energy
+ table, energy
+ save,enr.res,new
+ {table,____; noprint,heading}
+ 
+ 
+ basis=6-31G**
+ 
+ {multi;occ,19;closed,11; wf,31,1,1,0;state,5; start,2140.2;
+ cpmcscf,nacm,1.1,2.1,record=5112.1;
+ cpmcscf,nacm,1.1,3.1,record=5113.1;
+ cpmcscf,nacm,1.1,4.1,record=5114.1;
+ cpmcscf,nacm,1.1,5.1,record=5115.1;
+ cpmcscf,nacm,2.1,3.1,record=5123.1;
+ }
+ 
+ force;nacm,5112.1;varsav
+ table,gradx,grady,gradz;
+ save,ananac12.res,new;
+ {table,____;  noprint,heading}
+ 
+ 
+ force;nacm,5113.1;varsav
+ table,gradx,grady,gradz;
+ save,ananac13.res,new;
+ {table,____;  noprint,heading}
+ 
+ 
+ force;nacm,5114.1;varsav
+ table,gradx,grady,gradz;
+ save,ananac14.res,new;
+ {table,____;  noprint,heading}
+ 
+ 
+ force;nacm,5115.1;varsav
+ table,gradx,grady,gradz;
+ save,ananac15.res,new;
+ {table,____;  noprint,heading}
+ 
+ 
+ force;nacm,5123.1;varsav
+ table,gradx,grady,gradz;
+ save,ananac23.res,new;
+ {table,____;  noprint,heading}
+ 
+ 
+ {multi;occ,19;closed,11; wf,31,1,1,0;state,5; start,2140.2;
+ cpmcscf,nacm,2.1,4.1,record=5124.1;
+ cpmcscf,nacm,2.1,5.1,record=5125.1;
+ cpmcscf,nacm,3.1,4.1,record=5134.1;
+ cpmcscf,nacm,3.1,5.1,record=5135.1;
+ cpmcscf,nacm,4.1,5.1,record=5145.1;
+ }
+ 
+ force;nacm,5124.1;varsav
+ table,gradx,grady,gradz;
+ save,ananac24.res,new;
+ {table,____;  noprint,heading}
+ 
+ 
+ force;nacm,5125.1;varsav
+ table,gradx,grady,gradz;
+ save,ananac25.res,new;
+ {table,____;  noprint,heading}
+ 
+ 
+ force;nacm,5134.1;varsav
+ table,gradx,grady,gradz;
+ save,ananac34.res,new;
+ {table,____;  noprint,heading}
+ 
+ 
+ force;nacm,5135.1;varsav
+ table,gradx,grady,gradz;
+ save,ananac35.res,new;
+ {table,____;  noprint,heading}
+ 
+ 
+ force;nacm,5145.1;varsav
+ table,gradx,grady,gradz;
+ save,ananac45.res,new;
+ {table,____;  noprint,heading}
+ 
+ 
+ Commands  initialized (760), CPU time= 0.01 sec, 617 directives.
+ Default parameters read. Elapsed time= 0.03 sec
+
+ Checking input...
+ Passed
+1
+
+
+                                         ***  PROGRAM SYSTEM MOLPRO  ***
+                                       Copyright, TTI GmbH Stuttgart, 2015
+                                    Version 2018.2 linked Nov 10 2018 21:55:55
+
+
+ **********************************************************************************************************************************
+ LABEL *   Molpro template created from ADT program for "WhatEver"                       
+  64 bit serial version                                                                  DATE: 23-Jan-19          TIME: 20:31:06  
+ **********************************************************************************************************************************
+
+ SHA1:             5ea806b172b3d20b18658228ad0b1c212d33fc17
+ **********************************************************************************************************************************
+
+ Variable memory set to  100000000 words,  buffer space 
+
+
+
+ Permanent file  2  molpro.wfu       assigned.  Implementation=df    Size= 16.75 MB
+
+
+ PROGRAM * RESTART 
+
+
+ Reading variables from file 2
+
+ _FNUC           =      0.00000000
+ _BASIS          =    6-31G**
+ _NELEC          =     31.00000000
+ _PROGRAM        =    MULTI
+ _DMX(1:5)       =      0.00000024     0.41706146    -0.41706142     0.48806970    -0.48807188
+ _DMY(1:5)       =      0.00000000     0.00000593    -0.00000593     0.00000216    -0.00000216
+ _DMZ(1:5)       =     -0.00000000     0.00000000     0.00000000     0.00000000    -0.00000000
+ _DMX_SCF        =      0.00000284
+ _DMY_SCF        =      0.00000000
+ _DMZ_SCF        =      0.00000000
+ _HOMO           =    -15.10000000
+ _EHOMO          =     -0.46890262
+ _LUMO           =    -16.10000000
+ _ELUMO          =     -0.10959782
+ _ENERGY(1:5)    =   -278.88529769  -278.84737751  -278.84737737  -278.80710977  -278.80710962
+ _ENERGY_METHOD  =    MULTI
+ _ENERGY_BASIS   =    6-31G**
+ _ENUC           =    119.30930208
+ _IPROC_MPP      =      0.00000000
+ _IPROC_MPPX     =      0.00000000
+ _ORBITAL        =   2140.20000000
+ _SSQUARED       =      0.78299674
+ _STATUS         =      1.00000000
+ _LASTORB        =    MCSCF
+ _OUTPUT         =    /home/koushik/CODES/ADT-Program_Test/MolproTest/SpecSys/GEN/NO3/ANALYTIC/equi.xml
+ _PGROUP         =    C1  
+ _TIME           =    20:31:04
+ _DMX_CC(1:5)    =      0.00000103     0.00000103     0.00000103     0.00000103     0.00000103
+ _DMY_CC(1:5)    =     -0.00000000    -0.00000000    -0.00000000    -0.00000000    -0.00000000
+ _DMZ_CC(1:5)    =     -0.00000000    -0.00000000    -0.00000000    -0.00000000    -0.00000000
+ _DMX_NUC(1:5)   =      0.00000800     0.00000800     0.00000800     0.00000800     0.00000800
+ _DMY_NUC(1:5)   =      0.00000000     0.00000000     0.00000000     0.00000000     0.00000000
+ _DMZ_NUC(1:5)   =      0.00000000     0.00000000     0.00000000     0.00000000     0.00000000
+ _TRDMX(1:10)    =      0.00000000     0.00000000    -0.00000593     0.60246686    -0.00000000     0.00000000
+                       -0.00000133    -0.00000000     0.00000000    -0.00000216
+ _TRDMY(1:10)    =     -0.00000000     0.00000000     0.41705998    -0.00000133     0.00000000    -0.00000000
+                       -0.60246501     0.00000000    -0.00000000     0.48807130
+ _TRDMZ(1:10)    =     -0.00000000    -0.00000003    -0.00000000     0.00000000    -0.00000008    -0.01635239
+                        0.00000000     0.01635243    -0.00000008    -0.00000000
+
+ Geometry written to block  1 of record 700
+
+
+ **********************************************************************************************************************************
+ DATASETS  * FILE   NREC   LENGTH (MB)   RECORD NAMES
+              2       7       17.56       500      610      700     1000      520     2200     2140   
+                                          VAR    BASINP    GEOM     BASIS   MCVARS     UHF     MCSCF   
+
+ PROGRAMS   *        TOTAL   RESTART
+ CPU TIMES  *         0.14      0.00
+ REAL TIME  *         0.15 SEC
+ DISK USED  *        29.60 MB
+ **********************************************************************************************************************************
+ SETTING BASIS          =    6-31G**
+ ZSYMEL=NOSYM
+
+
+Geometry recognized as XYZ
+
+
+
+ Recomputing integrals since basis changed
+
+
+ Using spherical harmonics
+
+ Library entry N      S 6-31G                selected for orbital group  1
+ Library entry N      P 6-31G                selected for orbital group  1
+ Library entry N      D 6-31G*               selected for orbital group  1
+ Library entry O      S 6-31G                selected for orbital group  2
+ Library entry O      P 6-31G                selected for orbital group  2
+ Library entry O      D 6-31G*               selected for orbital group  2
+
+
+ PROGRAM * SEWARD (Integral evaluation for generally contracted gaussian basis sets)     Author: Roland Lindh, 1990
+
+ Geometry written to block  1 of record 700
+
+
+ Point group  C1  
+
+
+
+ ATOMIC COORDINATES
+
+ NR  ATOM    CHARGE       X              Y              Z
+
+   1  N       7.00    0.000110692    0.006341620    0.000000000
+   2  O       8.00    2.337139067    0.000596936    0.000000000
+   3  O       8.00   -1.170737146   -2.027196544    0.000000000
+   4  O       8.00   -1.166497826    2.021047826    0.000000000
+
+ Bond lengths in Bohr (Angstrom)
+
+ 1-2  2.337035435  1-3  2.346521282  1-4  2.328092896
+     ( 1.236705893)     ( 1.241725587)     ( 1.231973706)
+
+ Bond angles
+
+  2-1-3  119.79115573   2-1-4  120.21367467   3-1-4  119.99516960
+
+ NUCLEAR CHARGE:                   31
+ NUMBER OF PRIMITIVE AOS:         112
+ NUMBER OF SYMMETRY AOS:          108
+ NUMBER OF CONTRACTIONS:           56   (   56A   )
+ NUMBER OF CORE ORBITALS:           4   (    4A   )
+ NUMBER OF VALENCE ORBITALS:       16   (   16A   )
+
+
+ NUCLEAR REPULSION ENERGY  119.30995103
+
+ EXTRA SYMMETRY OF AOS IN SYMMETRY 1:   1 1 1 1 1 2 1 1 2 1   1 2 1 2 1 1 1 1 1 2   1 1 2 1 1 2 1 2 1 1   1 1 1 2 1 1 2 1 1 2
+                                        1 2 1 1 1 1 1 2 1 1   2 1 1 2 1 2
+
+ Eigenvalues of metric
+
+         1 0.683E-02 0.695E-02 0.707E-02 0.123E+00 0.139E+00 0.139E+00 0.175E+00 0.257E+00
+
+
+ Contracted 2-electron integrals neglected if value below      1.0D-11
+ AO integral compression algorithm  1   Integral accuracy      1.0D-11
+
+     3.932 MB (compressed) written to integral file ( 31.0%)
+
+
+ NUMBER OF SORTED TWO-ELECTRON INTEGRALS:    1274406.     BUFFER LENGTH:  32768
+ NUMBER OF SEGMENTS:   1  SEGMENT LENGTH:    1274406      RECORD LENGTH: 524288
+
+ Memory used in sort:       1.83 MW
+
+ SORT1 READ     1605098. AND WROTE      648225. INTEGRALS IN      2 RECORDS. CPU TIME:     0.00 SEC, REAL TIME:     0.01 SEC
+ SORT2 READ      648225. AND WROTE     1274406. INTEGRALS IN     15 RECORDS. CPU TIME:     0.03 SEC, REAL TIME:     0.04 SEC
+
+ FILE SIZES:   FILE 1:    34.1 MBYTE,  FILE 4:     8.4 MBYTE,   TOTAL:     42.5 MBYTE
+
+ OPERATOR DM      FOR CENTER  0  COORDINATES:    0.000000    0.000000    0.000000
+
+
+ **********************************************************************************************************************************
+ DATASETS  * FILE   NREC   LENGTH (MB)   RECORD NAMES
+              1      19       33.16       500      700      610      900      950      970     1000      129      960     1100   
+                                          VAR     GEOM    BASINP   SYMINP    ZMAT    AOBASIS   BASIS     P2S    ABASIS      S 
+                                         1400     1410     1200     1210     1080     1600     1650     1300     1700   
+                                           T        V       H0       H01     AOSYM     SMH    MOLCAS    ERIS     OPER   
+
+              2       7       17.56       500      610      700     1000      520     2200     2140   
+                                          VAR    BASINP    GEOM     BASIS   MCVARS     UHF     MCSCF   
+
+ PROGRAMS   *        TOTAL       INT   RESTART
+ CPU TIMES  *         0.38      0.25      0.00
+ REAL TIME  *         0.48 SEC
+ DISK USED  *        60.09 MB
+ **********************************************************************************************************************************
+
+
+ PROGRAM * MULTI (Direct Multiconfiguration SCF)       Authors: P.J. Knowles, H.-J. Werner (1984)
+
+
+ Number of closed-shell orbitals:  11 (  11 )
+ Number of active  orbitals:        8 (   8 )
+ Number of external orbitals:      37 (  37 )
+
+ State symmetry 1
+
+ Number of electrons:     9    Spin symmetry=Doublet   Space symmetry=1
+ Number of states:        5
+ Number of CSFs:       2352   (3920 determinants, 3920 intermediate states)
+
+ Molecular orbitals read from record     2140.2  Type=MCSCF/NATURAL (state averaged)
+
+ EXTRA SYMMETRY OF MOS IN SYMMETRY 1:   1 1 1 1 1 1 1 1 2 1   1 1 1 1 2 2 2 1 1 1   1 1 2 1 1 1 1 1 1 2   2 2 1 1 2 2 1 1 1 1
+                                        2 2 2 1 1 1 1 2 1 2   2 1 1 1 1 1
+
+ Wavefunction dump at record             2140.2
+
+ Convergence thresholds  0.10E-01 (gradient)  0.10E-05 (energy)  0.10E-02 (step length)
+
+ Weight factors for state symmetry  1:    0.20000   0.20000   0.20000   0.20000   0.20000
+
+ Number of orbital rotations:      791   (    88 Core/Active    407 Core/Virtual   0 Active/Active    296 Active/Virtual)
+ Total number of variables:      20391
+
+ Micro-Iterations solved by the two-step solver
+
+ ITER. MIC  NCI  NEG     ENERGY(VAR)     ENERGY(PROJ)   ENERGY CHANGE     GRAD(0)  GRAD(ORB)   GRAD(CI)     STEP       TIME
+
+   1    9   21    0    -278.83874662    -278.83880788   -0.00006126    0.01207040 0.00003852 0.00037100  0.17D-01      0.33

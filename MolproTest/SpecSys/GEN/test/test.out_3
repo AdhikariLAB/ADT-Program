@@ -1,0 +1,60 @@
+
+ Primary working directories    : /tmp/koushik/molpro.LESBhwlXb2
+ Secondary working directories  : /tmp/koushik/molpro.LESBhwlXb2
+ Wavefunction directory         : /home/koushik/wfu/
+ Main file repository           : /tmp/koushik/molpro.LESBhwlXb2/
+
+ id        : iacsdirector
+
+ Nodes     nprocs
+ koushik      1
+
+ Using customized tuning parameters: mindgm=1; mindgv=20; mindgc=4; mindgr=1; noblas=0; minvec=7
+ default implementation of scratch files=df  
+
+
+ Variables initialized (930), CPU time= 0.01 sec
+ a(1) = 1
+ a(2) = 2
+ a(3) = 3
+ 
+ b = 2*$a
+ table , b,a
+ Commands  initialized (760), CPU time= 0.00 sec, 617 directives.
+ Default parameters read. Elapsed time= 0.03 sec
+
+ Checking input...
+ Passed
+1
+
+
+                                         ***  PROGRAM SYSTEM MOLPRO  ***
+                                       Copyright, TTI GmbH Stuttgart, 2015
+                                    Version 2018.2 linked Nov 10 2018 21:55:55
+
+
+ **********************************************************************************************************************************
+ LABEL *                                                                                 
+  64 bit serial version                                                                  DATE: 23-Jan-19          TIME: 11:27:39  
+ **********************************************************************************************************************************
+
+ SHA1:             5ea806b172b3d20b18658228ad0b1c212d33fc17
+ **********************************************************************************************************************************
+ SETTING A(1)           =         1.00000000                                  
+ SETTING A(2)           =         2.00000000                                  
+ SETTING A(3)           =         3.00000000                                  
+ SETTING B(1)           =         2.00000000
+ SETTING B(2)           =    2*A
+ SETTING B(3)           =    2*A
+
+ Variable memory set to    8000000 words,  buffer space 
+
+
+
+      B     A
+    2.0   1.0
+    0.0   2.0
+    0.0   3.0
+                                                  
+ **********************************************************************************************************************************
+ Molpro calculation terminated
