@@ -1,2 +1,4 @@
 *.wfu
 *.xml*
+*.pyc
+*.so
