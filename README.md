@@ -8,6 +8,7 @@ Authors
 
 Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari (corresponding author)
 
+[![GPL License](https://img.shields.io/badge/License-GPLv3-brightgreen.svg)](https://gitlab.com/AdhikariLAB/adt-program/blob/master/LICENSE)
 
 ******************************************** 
 Licensing Provisions 
