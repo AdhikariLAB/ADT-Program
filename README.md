@@ -1,42 +1,35 @@
-                 **************************************************************************************************************
-                 #                                             ADT PROGRAM                                                    #
-                 **************************************************************************************************************
 
-****************************************************************************************************************** 
-Authors 
-******************************************************************************************************************
-
-Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari (corresponding author)
+# ADT PROGRAM
+#### *a proper tagline*
 
 [![GPL License](https://img.shields.io/badge/License-GPLv3-brightgreen.svg)](https://gitlab.com/AdhikariLAB/adt-program/blob/master/LICENSE)
 
-******************************************** 
-Licensing Provisions 
-********************************************
-GNU General Public License 3 (GPLv3)
+### *Authors:*
 
 
-******************************************** 
-System Requirements 
-********************************************
-
-(I) linux operating system 
-(II) ifort/gfortran compiler
-(III) python interpreter
+Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari (corresponding author)
 
 
-******************************************** 
-Brief Description of Source Code 
-********************************************
+
+### *System Requirements:* 
+
+1. linux operating system 
+2. ifort/gfortran compiler
+3. python interpreter
+
+
+
+### Brief Description of Source Code 
+
 
 ADT program has two subsections. They are
 
-(I)  ADT1 : This package gives analytic expressions of adiabatic potential energy matrix, nonadiabatic 
+1.  ADT1 : This package gives analytic expressions of adiabatic potential energy matrix, nonadiabatic 
             coupling matrix (NACM), adiabatic to diabatic transformation (ADT) matrix, ADT equations, 
             coefficients of gradient of ADT angles, coefficients of nonadiabatic coupling terms (NACTs) 
             and diabatic potential energy matrix for any number of electronic states constituting the sub-Hilbert space.
 
-(II) ADT2 : This package calculates the ADT angles, ADT matrices, diabatic potential energy matrices and 
+2. ADT2 : This package calculates the ADT angles, ADT matrices, diabatic potential energy matrices and 
             ADT angle residues at any number of grid points and for N-dimensional sub-Hilbert space 
             (N is arbitrary) in the interested domain of nuclear configuration space (CS).
 
