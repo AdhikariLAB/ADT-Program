@@ -23,7 +23,7 @@ from time import time
 
 #  This definition evaluates ADT angles, ADT matrix elements, diabatic potential energy matrix elements and residue of ADT angles
 
-def adt_numerical(enrf, rhof, phif, path, outfile, logger,h5, txt, nb):
+def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger,h5, txt, nb):
 
     logger.info("Starting program")
     start = time()
@@ -41,22 +41,45 @@ def adt_numerical(enrf, rhof, phif, path, outfile, logger,h5, txt, nb):
         pdat = np.load(phif)
     else:
         pdat = np.loadtxt(phif)
-    if is_bin(enrf):
-        enr  = np.load(enrf)[:,2:]
-    else:
-        enr  = np.loadtxt(enrf)[:,2:]
+    assert rdat.shape==pdat.shape , "Mismatch in nact data"
 
-    # evaluating number of grid points, number of electronic states and number of couplings
+    if enrf != None:
+        if is_bin(enrf):
+            enr  = np.load(enrf)
+        else:
+            enr  = np.loadtxt(enrf)
+
     logger.info("Processing data")
+
+
+    if nstate !=None:
+        adt.nstate = nstate
+        adt.ntau   = adt.nstate*(adt.nstate-1)/2
+        if enrf != None: assert enr.shape[1]-2 >= adt.nstate, 'Not enough data in energy file for %s states calculation.'%adt.nstate
+        assert rdat.shape[1]-2>= adt.ntau, 'Not enough NACT data for %s states calculation.'%adt.nstate
+
+    else:
+        adt.ntau   = rdat.shape[1]-2
+        if enrf != None:
+            adt.nstate = enr.shape[1] -2
+            assert adt.nstate*(adt.nstate-1)/2==adt.ntau, "Mismatch in number of states and nacts"
+        else :
+        # trying automatic state calculation, not sure, checks required
+            r = np.roots([1,-1,-2*adt.ntau])
+            r = r.real[abs(r.imag)<1e-6]    # 
+            adt.nstate = r[(r>1) & (r==r.astype(int))][0].astype(int)
+            # print adt.nstate
+    # evaluating number of grid points, number of electronic states and number of couplings
+
+
+
+    rdat   = rdat[:,:adt.ntau+2]
+    pdat   = pdat[:,:adt.ntau+2]
     adt.gridr  = np.unique(rdat[:,0])
     adt.gridp  = np.unique(rdat[:,1])
     adt.ngridr = adt.gridr.shape[0]
     adt.ngridp = adt.gridp.shape[0]
-    adt.ntau   = rdat.shape[1]-2
-    adt.nstate = enr.shape[1]
-
-    assert rdat.shape==pdat.shape , "Mismath in nact data"
-    assert adt.nstate*(adt.nstate-1)/2==adt.ntau, "Mismatch in number of states and nacts"
+    
 
     # reshaping the nonadiabatic coupling terms (NACTs) according to the number of grid points
     adt.taur  = rdat[:,2:].reshape(adt.ngridr, adt.ngridp, adt.ntau)
@@ -77,9 +100,11 @@ def adt_numerical(enrf, rhof, phif, path, outfile, logger,h5, txt, nb):
     logger.info("Calculating ADT matrix elements")
     amat =  np.apply_along_axis(adt.amat,1,full_angle,adt.nstate)
 
-    # calculation of diabatic potential energy matrix elements 
-    logger.info("Calculating Diabatic matrix elements")
-    db = np.einsum("ijk,ij,ijl->ikl",amat,enr,amat)
+    if enrf != None:
+        # calculation of diabatic potential energy matrix elements
+        enr    = enr[:,:adt.nstate+2] 
+        logger.info("Calculating Diabatic matrix elements")
+        db = np.einsum("ijk,ij,ijl->ikl",amat,enr[:,2:],amat)
 
 
 
@@ -98,10 +123,11 @@ def adt_numerical(enrf, rhof, phif, path, outfile, logger,h5, txt, nb):
         for i in range(adt.nstate):
             mat.create_dataset("Row %s"%(i+1),data =np.column_stack([rdat[:,[0,1]],amat[:,i,:]]), compression="gzip")
 
-        logger.info("Writing Diabatic matrix elements")
-        dbd = file.create_group("Diabatic Matrix elements")
-        for i in range(adt.nstate):
-            dbd.create_dataset("Row %s"%(i+1),data =np.column_stack([rdat[:,[0,1]],db[:,i,:]]), compression="gzip")
+        if enrf != None:
+            logger.info("Writing Diabatic matrix elements")
+            dbd = file.create_group("Diabatic Matrix elements")
+            for i in range(adt.nstate):
+                dbd.create_dataset("Row %s"%(i+1),data =np.column_stack([rdat[:,[0,1]],db[:,i,:]]), compression="gzip")
 
     # Writing of numerical output in '.dat' files
     if txt:
@@ -118,11 +144,11 @@ def adt_numerical(enrf, rhof, phif, path, outfile, logger,h5, txt, nb):
             logger.info("Writing ADT Matrix elements in '%s'"%(file))
             file_write(file, np.column_stack([rdat[:,[0,1]],amat[:,i,:]]), adt.gridr )
 
-
-        for i in range(adt.nstate):
-            file =  "Diabatic_Row_%s.dat"%(i+1)
-            logger.info("Writing Diabatic Matrix elements in '%s'"%(file))
-            file_write(file, np.column_stack([rdat[:,[0,1]],db[:,i,:]]), adt.gridr )
+        if enrf != None:
+            for i in range(adt.nstate):
+                file =  "Diabatic_Row_%s.dat"%(i+1)
+                logger.info("Writing Diabatic Matrix elements in '%s'"%(file))
+                file_write(file, np.column_stack([rdat[:,[0,1]],db[:,i,:]]), adt.gridr )
 
 
     # Writing of numerical output in '.npy' files
@@ -140,11 +166,11 @@ def adt_numerical(enrf, rhof, phif, path, outfile, logger,h5, txt, nb):
             logger.info("Writing ADT Matrix elements in '%s.npy'"%(file))
             np.save(file, np.column_stack([rdat[:,[0,1]],amat[:,i,:]]) )
 
-
-        for i in range(adt.nstate):
-            file =  "Diabatic_Row_%s"%(i+1)
-            logger.info("Writing Diabatic Matrix elements in '%s.npy'"%(file))
-            np.save(file, np.column_stack([rdat[:,[0,1]],db[:,i,:]]) )
+        if enrf != None:
+            for i in range(adt.nstate):
+                file =  "Diabatic_Row_%s"%(i+1)
+                logger.info("Writing Diabatic Matrix elements in '%s.npy'"%(file))
+                np.save(file, np.column_stack([rdat[:,[0,1]],db[:,i,:]]) )
 
 
 
