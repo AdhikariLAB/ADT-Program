@@ -23,17 +23,28 @@ from time import time
 
 #  This definition evaluates ADT angles, ADT matrix elements, diabatic potential energy matrix elements and residue of ADT angles
 
-def adt_numerical(enrf, rhof, phif, path, outfile, logger,h5, txt):
-    print enrf, rhof, phif, path, outfile, logger,h5, txt
+def adt_numerical(enrf, rhof, phif, path, outfile, logger,h5, txt, nb):
 
     logger.info("Starting program")
     start = time()
     logger.info("Reading data from files")
 
+    # a fumction to check if the file is in numpy binary  format
+    is_bin = lambda file: os.path.splitext(file)[1] in ['.npy', '.npz']
+
     # reading data from input files
-    rdat = np.loadtxt(rhof)
-    pdat = np.loadtxt(phif)
-    enr  = np.loadtxt(enrf)[:,2:]
+    if is_bin(rhof):
+        rdat = np.load(rhof)
+    else:
+        rdat = np.loadtxt(rhof)
+    if is_bin(phif):
+        pdat = np.load(phif)
+    else:
+        pdat = np.loadtxt(phif)
+    if is_bin(enrf):
+        enr  = np.load(enrf)[:,2:]
+    else:
+        enr  = np.loadtxt(enrf)[:,2:]
 
     # evaluating number of grid points, number of electronic states and number of couplings
     logger.info("Processing data")
@@ -112,6 +123,29 @@ def adt_numerical(enrf, rhof, phif, path, outfile, logger,h5, txt):
             file =  "Diabatic_Row_%s.dat"%(i+1)
             logger.info("Writing Diabatic Matrix elements in '%s'"%(file))
             file_write(file, np.column_stack([rdat[:,[0,1]],db[:,i,:]]), adt.gridr )
+
+
+    # Writing of numerical output in '.npy' files
+    if nb:
+        outpath = outfile+"_%s"%path
+        if not os.path.exists(outpath):os.makedirs(outpath)
+        os.chdir(outpath)
+        file = "Angles"
+        logger.info("Writing ADT Angles in '%s.npy'"%file)
+        np.save(file, adtAngle)
+
+        
+        for i in range(adt.nstate):
+            file =  "Matrix_Row_%s"%(i+1)
+            logger.info("Writing ADT Matrix elements in '%s.npy'"%(file))
+            np.save(file, np.column_stack([rdat[:,[0,1]],amat[:,i,:]]) )
+
+
+        for i in range(adt.nstate):
+            file =  "Diabatic_Row_%s"%(i+1)
+            logger.info("Writing Diabatic Matrix elements in '%s.npy'"%(file))
+            np.save(file, np.column_stack([rdat[:,[0,1]],db[:,i,:]]) )
+
 
 
     logger.info("Program completed successfully in %.5f seconds\n"%(time()-start)+"-"*121)
