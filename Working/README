@@ -1,0 +1,203 @@
+                 **************************************************************************************************************
+                 #                                             ADT PROGRAM                                                    #
+                 **************************************************************************************************************
+
+**************************************************************************************************************************************** 
+Authors 
+****************************************************************************************************************************************
+
+Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari (corresponding author)
+
+
+******************************************** 
+Licensing Provisions 
+********************************************
+GNU General Public License 3 (GPLv3)
+
+
+******************************************** 
+System Requirements 
+********************************************
+
+(I) linux operating system
+(II) any fortran95 compiler  
+(III) python interpreter with numpy and f2py library
+
+
+******************************************** 
+Brief Description of Source Code 
+********************************************
+
+ADT program resolves two major issues of beyond Born-Oppenheimer (BBO) theory
+
+(I)  This package gives analytic expressions of adiabatic potential energy matrix, nonadiabatic 
+     coupling matrix (NACM), adiabatic to diabatic transformation (ADT) matrix, ADT equations, 
+     coefficients of gradient of ADT angles, coefficients of nonadiabatic coupling terms (NACTs) 
+     and diabatic potential energy matrix for any number of electronic states constituting the sub-Hilbert space.
+
+(II) This package calculates the ADT angles, ADT matrices, diabatic potential energy matrices and 
+     ADT angle residues at any number of grid points and for N-dimensional sub-Hilbert space 
+     (N is arbitrary) in the interested domain of nuclear configuration space (CS).
+
+
+---------------
+Brief Outline 
+---------------
+
+(1) THIS "ADT" SOFTWARE PACKAGE CAN BE USED FOR ANY DIMENSIONAL SUB-HILBERT SPACE.
+
+(2) THE ANALYTICAL SECTION PROVIDES SEVEN QUANTITIES :
+   
+     (i) ADIABATIC POTENTIAL ENERGY MATRIX
+     (ii) NACM
+     (iii) ADT MATRIX
+     (iv) ADT EQUATIONS
+     (v) COEFFICIENT MATRIX OF GRADIENT OF ADT ANGLE
+     (vi) COEFFICIENT MATRIX OF NACT   
+     (vii) DIABATIC POTENTIAL ENERGY MATRIX
+
+(3) THE NUMERICAL SECTION PROVIDES MAGNITUDE OF FOUR QUANTITIES AT EVERY GRID POINT:
+
+      (i) ADT ANGLES
+      (ii) ADT MATRIX
+      (iii) DIABATIC POTENTIAL ENERGY MATRIX
+      (iv) RESIDUE OF ADT ANGLES
+
+(4) THE LATER SECTION REQUIRES FOLLOWING INPUTS:
+       
+      (i) ADIABATIC POTENTIAL ENERGY VALUES AT EVERGY GRID POINT
+      (ii) NONADIABATIC COUPLING TERMS AT EVERY GRID POINT
+
+(5) THE COORDINATES OF GRID POINTS CAN BE CHOSEN FROM ANY COORDINATE SYSTEM LIKE 
+    PLANE POLAR COORDINATE, HYPERSPHERICAL COORDINATE, JACOBI COORDINATE ETC.
+
+(6) THE NUMERICAL PACKAGE CAN BE APPLIED FOR ANY NUMBER OF GRID POINTS.
+
+(7) ADT MATRIX IS FORMED BY MULTIPLYING THE ELEMENTARY ROTATION MATRICES IN A 
+    PARTICULAR ORDER. THEY ARE ARRANGED IN INCREASING ORDER OF THEIR SECOND INDECES
+    AND THEN IN ASCENDING ORDER OF THEIR FIRST INDECES KEEPING THE SECOND INDEX FIXED. 
+    [FOR FOUR ELECTRONIC STATES, THE ORDER IS A(1,2)*A(1,3)*A(2,3)*A(1,4)*A(2,4)*A(3,4)] 
+
+(7) THE ADT EQUATIONS ARE NUMERICALLY SOLVED BY 8TH ORDER RUNGE-KUTTA METHOD.
+
+(8) THE NUMERICAL SECTION IS VALID FOR TWO-DIMENSIONAL NUCLEAR CS, WHERE THE REST OF
+    THE COORDINATES ARE KEPT FIXED AT A DEFINITE MAGNITUDE.
+
+(9) NUMERICAL INTEGRATION OF THE ADT EQUATIONS CAN BE SOLVED ALONG INFINITE NUMBER OF
+    PATHS IN A TWO-DIMENSIONAL COORDINATE SYSTEM. HERE THE DIFFERENTIAL EQUATIONS CAN 
+    BE SOLVED ALONG EIGHT (8) POSSIBLE PATHS. THOSE PATHS ARE DESCRIBED LATER.
+
+
+********************************************* 
+Description of Files and Folders 
+*********************************************
+
+ADT program contains nine files and one folder. 
+
+*****************
+FILES
+*****************
+
+(I) init.sh : This script file produces 'adt_module.so' from 'adt.f90' by f2py command with necessary compiler
+              flags. Moreover, the '.bashrc' file is upgraded by aliasing the path of 'adt_final.py' as 'adt' 
+              such that analytic jobs/numerical calculations can be carried out from any directory.   
+
+(II) adt_final.py : This python file is employed to do the following jobs:
+
+                    (i) parsing the command line arguments provided by user.
+
+                    (ii) executing either adt_analytic or adt_numeric (definitions for analytic jobs/numerical calculation) 
+                         according to user's specification.
+
+                    (iii) writing down the progress of execution in a log file, 'ADT.log'.
+
+(III) adt_analytic.py : This python file is devoted for carrying out symbolic manipulation to formulate eight ADT quantities. The
+                        necessary python definitions are:  
+                             
+                                                                 Table 1
+   
+                ------------------------------------------------------------------------------------------------------------
+                     filename               arguments (-anajob)                        output      
+                ------------------------------------------------------------------------------------------------------------
+                       
+                     adt1                         1                        adiabatic potential energy matrix
+
+                     adt2                         2                        nonadiabatic coupling matrix (NACM)
+  
+                     adt3                         3                                   ADT matrix
+
+                     adt4                         4                    partially substituted form of ADT equations
+
+                     adt5                         5                         complete form of ADT equations
+
+                     adt6                         6                    expression of coefficients of gradient of ADT angles
+                                                                           (detailed description in main article)
+
+                     adt7                         7                        functional form of coefficients of NACTs 
+                                                                            (detailed description in main article)
+
+                     adt8                         8                          diabatic potential energy matrix 
+
+                ------------------------------------------------------------------------------------------------------------
+
+(IV) ModuleBase.py : This python file contains necessary definitions for devising eight ADT quantities.
+
+(V) adt_numeric.py : This python file is employed for computing ADT quantities (ADT angles, ADT matrix elements, diabatic potential
+                     energy matrix elements and residue of ADT angles).
+
+(VI) adt.f95 : This fortran file contains all necessary fortran subroutines to evaluate ADT angles by 8th order Runge-Kutta 
+               method and to compute the ADT matrix elements along eight paths of integration. The paths are depicted below,
+
+
+                                                                 Table 2
+
+                -------------------------------------------------------------------------------------------------------------------------
+                          subroutine name           argument                               description of integration path 
+                                                   (-intpath)               (let, first coordinate is R and second coordinate is P)
+                -------------------------------------------------------------------------------------------------------------------------
+
+                               path1                   1                  1. Intially, along each positive step of P grid at lowest R.
+                                                                          2. Then along each positive increment of R for each P grid.
+
+                               path2                   2                  1. Intially, along each negative step of P grid at lowest R.
+                                                                          2. Then along each positive increment of R for each P grid.
+
+                               path3                   3                  1. Intially, along each positive step of P grid at highest R.
+                                                                          2. Then along each negative increment of R for each P grid.
+
+                               path4                   4                  1. Intially, along each negative step of P grid at highest R.
+                                                                          2. Then along each negative increment of R for each P grid.
+
+                               path5                   5                  1. Intially, along each positive step of R grid at lowest P.
+                                                                          2. Then along each positive increment of P for each R grid.
+
+                               path6                   6                  1. Intially, along each negative step of R grid at lowest P.
+                                                                          2. Then along each positive increment of P for each R grid.
+
+                               path7                   7                  1. Intially, along each positive step of R grid at highest P.
+                                                                          2. Then along each negative increment of P for each R grid.
+
+                               path8                   8                  1. Intially, along each negative step of R grid at highest P.
+                                                                          2. Then along each negative increment of P for each R grid.
+
+                ------------------------------------------------------------------------------------------------------------------------
+
+(VII) README : This file itself, which contains all necessary information about the program package.   
+
+(VIII) USER_MANUAL : This file contains instructions for users to run the code.
+
+(IX) LICENSE : This file contains the license information of this software package.            
+
+
+*****************
+FOLDER
+*****************
+                    
+(IV) TEST_RUNS : This folder contains necessary user-command and input files for some trial runs. Result files are also
+                 stored in this directory.
+
+----------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+

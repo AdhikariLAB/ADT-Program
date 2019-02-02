@@ -139,7 +139,6 @@ subroutine path1(full_angle, ngridr, ngridp, ntau)
     real(8)                :: angle(ntau), h1, h2, fangle(ngridp, ntau)
     integer(8)             :: i,j
 
-    call init()
     h1 = gridr(2) - gridr(1)
     h2 = gridp(2) - gridp(1)
 
@@ -149,7 +148,7 @@ subroutine path1(full_angle, ngridr, ngridp, ntau)
     gridr_val = gridr(1)
 
     do i=1,ngridp
-        call rungeKutta8(funcp, gridp_val,gridr_val,angle,h2,ntau)
+        call rungekutta8(funcp, gridp_val,gridr_val,angle,h2,ntau)
         fangle(i,:) = angle
         gridp_val = gridp(i)
     enddo 
@@ -160,7 +159,7 @@ subroutine path1(full_angle, ngridr, ngridp, ntau)
         gridp_val = gridp(i)
         gridr_val = gridr(1)-0.5d0*h1
         do j=1,ngridr
-            call rungeKutta8(funcr, gridr_val, gridp_val, angle, h1, ntau)
+            call rungekutta8(funcr, gridr_val, gridp_val, angle, h1, ntau)
             gridr_val = gridr(j)
             ! print *,omp_get_thread_num()
             full_angle(j,i,:) = angle
@@ -190,7 +189,7 @@ subroutine path2(full_angle, ngridr, ngridp, ntau)
     gridr_val = gridr(1)
 
     do i=ngridp,1,-1
-        call rungeKutta8(funcp, gridp_val,gridr_val,angle,h2,ntau)
+        call rungekutta8(funcp, gridp_val,gridr_val,angle,h2,ntau)
         fangle(i,:) = angle
         gridp_val = gridp(i)
     enddo
@@ -202,7 +201,7 @@ subroutine path2(full_angle, ngridr, ngridp, ntau)
         gridp_val = gridp(i)
 
         do j=1,ngridr
-            call rungeKutta8(funcr, gridr_val,gridp_val, angle, h1, ntau)
+            call rungekutta8(funcr, gridr_val,gridp_val, angle, h1, ntau)
             full_angle(j,i,:)=angle
             gridr_val = gridr(j)
         enddo
@@ -229,7 +228,7 @@ subroutine path3(full_angle, ngridr, ngridp, ntau)
     gridp_val = gridp(1)-0.5d0*h2
     gridr_val = gridr(ngridr)
     do i=1,ngridp
-        call rungeKutta8(funcp, gridp_val,gridr_val,angle,h2,ntau)
+        call rungekutta8(funcp, gridp_val,gridr_val,angle,h2,ntau)
         fangle(i,:) = angle
         gridp_val = gridp(i)
     enddo
@@ -241,7 +240,7 @@ subroutine path3(full_angle, ngridr, ngridp, ntau)
         gridp_val = gridp(i)
 
         do j=ngridr,1,-1
-            call rungeKutta8(funcr, gridr_val,gridp_val, angle, h1, ntau)
+            call rungekutta8(funcr, gridr_val,gridp_val, angle, h1, ntau)
             full_angle(j,i,:)=angle
             gridr_val = gridr(j)
         enddo
@@ -269,7 +268,7 @@ subroutine path4(full_angle, ngridr, ngridp, ntau)
     gridr_val = gridr(ngridr)
 
     do i=ngridp,1,-1
-        call rungeKutta8(funcp, gridp_val,gridr_val,angle,h2,ntau)
+        call rungekutta8(funcp, gridp_val,gridr_val,angle,h2,ntau)
         fangle(i,:) = angle
         gridp_val = gridp(i)
 
@@ -282,7 +281,7 @@ subroutine path4(full_angle, ngridr, ngridp, ntau)
         gridp_val = gridp(i)
 
         do j=ngridr,1,-1
-            call rungeKutta8(funcr, gridr_val,gridp_val, angle, h1, ntau)
+            call rungekutta8(funcr, gridr_val,gridp_val, angle, h1, ntau)
             full_angle(j,i,:)=angle
             gridr_val = gridr(j)
         enddo
@@ -310,7 +309,7 @@ subroutine path5(full_angle, ngridr, ngridp, ntau)
     gridr_val = gridr(1)-0.5d0*h1
     gridp_val = gridp(1)
     do i=1,ngridr
-        call rungeKutta8(funcr, gridr_val,gridp_val,angle,h1,ntau)
+        call rungekutta8(funcr, gridr_val,gridp_val,angle,h1,ntau)
         fangle(i,:) = angle
         gridr_val = gridr(i)
     enddo
@@ -322,7 +321,7 @@ subroutine path5(full_angle, ngridr, ngridp, ntau)
         gridr_val = gridr(i)
 
         do j=1,ngridp
-            call rungeKutta8(funcp, gridp_val,gridr_val, angle, h2, ntau)
+            call rungekutta8(funcp, gridp_val,gridr_val, angle, h2, ntau)
             full_angle(i,j,:)=angle
             gridp_val = gridp(j)
         enddo
@@ -350,7 +349,7 @@ subroutine path6(full_angle, ngridr, ngridp, ntau)
     gridp_val = gridp(1)
 
     do i=ngridr,1,-1
-        call rungeKutta8(funcr, gridr_val,gridp_val,angle,h1,ntau)
+        call rungekutta8(funcr, gridr_val,gridp_val,angle,h1,ntau)
         fangle(i,:) = angle
         gridr_val = gridr(i)
     enddo
@@ -362,7 +361,7 @@ subroutine path6(full_angle, ngridr, ngridp, ntau)
         gridr_val = gridr(i)
 
         do j=1,ngridp
-            call rungeKutta8(funcp, gridp_val,gridr_val, angle, h2, ntau)
+            call rungekutta8(funcp, gridp_val,gridr_val, angle, h2, ntau)
             full_angle(i,j,:)=angle
             gridp_val = gridp(j)
         enddo
@@ -390,7 +389,7 @@ subroutine path7(full_angle, ngridr, ngridp, ntau)
     gridp_val = gridp(ngridp)
 
     do i=1,ngridr
-        call rungeKutta8(funcr, gridr_val,gridp_val,angle,h1,ntau)
+        call rungekutta8(funcr, gridr_val,gridp_val,angle,h1,ntau)
         fangle(i,:) = angle
         gridr_val = gridr(i)
     enddo
@@ -401,7 +400,7 @@ subroutine path7(full_angle, ngridr, ngridp, ntau)
         gridp_val = gridp(ngridp)-0.5d0*h2
         gridr_val = gridr(i)
         do j=ngridp,1,-1
-            call rungeKutta8(funcp, gridp_val,gridr_val, angle, h2, ntau)
+            call rungekutta8(funcp, gridp_val,gridr_val, angle, h2, ntau)
             full_angle(i,j,:)=angle
             gridp_val = gridp(j)
         enddo
@@ -429,7 +428,7 @@ subroutine path8(full_angle, ngridr, ngridp, ntau)
     gridp_val = gridp(ngridp)
 
     do i=ngridr,1,-1
-        call rungeKutta8(funcr, gridr_val,gridp_val,angle,h1,ntau)
+        call rungekutta8(funcr, gridr_val,gridp_val,angle,h1,ntau)
         fangle(i,:) = angle
         gridr_val = gridr(i)
     enddo
@@ -441,7 +440,7 @@ subroutine path8(full_angle, ngridr, ngridp, ntau)
         gridr_val = gridr(i)
 
         do j=ngridp,1,-1
-            call rungeKutta8(funcp, gridp_val,gridr_val, angle, h2, ntau)
+            call rungekutta8(funcp, gridp_val,gridr_val, angle, h2, ntau)
             full_angle(i,j,:)=angle
             gridp_val = gridp(j)
         enddo
@@ -452,7 +451,7 @@ end subroutine path8
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-subroutine rungeKutta8(fun,x,xy,y,dx,n)
+subroutine rungekutta8(fun,x,xy,y,dx,n)
 
     ! This subroutine solves coupled differential equations (ADT equations) by 8th order Runge-Kutta method   
 
@@ -512,7 +511,7 @@ subroutine rungeKutta8(fun,x,xy,y,dx,n)
 
     y=y+(9.0d0*a1+49.0d0*a8+64.0d0*a9+49.0d0*a10+9.0d0*a11)/180.0d0
 
-end subroutine rungeKutta8
+end subroutine rungekutta8
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
