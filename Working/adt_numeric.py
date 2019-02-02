@@ -93,18 +93,23 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger,h5, txt, nb):
 
     # calculation of ADT angles
     logger.info("Calculating ADT Angles on path %s"%path)
-    full_angle = adt.get_angle(adt.ngridr, adt.ngridp, adt.ntau, path).reshape(adt.ngridr*adt.ngridp, adt.ntau)
-    adtAngle = np.column_stack([rdat[:,[0,1]], full_angle ])
+    full_angle = adt.get_angle(adt.ngridr, adt.ngridp, adt.ntau, path)
+    residue    = np.sum(full_angle, axis=1)
+
+    full_angle = full_angle.reshape(adt.ngridr*adt.ngridp, adt.ntau)
+    adtAngle   = np.column_stack([rdat[:,[0,1]], full_angle])
+    residue    = np.column_stack((adt.gridr, residue))
 
     # calculation of ADT matrix elements
     logger.info("Calculating ADT matrix elements")
     amat =  np.apply_along_axis(adt.amat,1,full_angle,adt.nstate)
 
+
     if enrf != None:
         # calculation of diabatic potential energy matrix elements
-        enr    = enr[:,:adt.nstate+2] 
+        enr    = enr[:,2:adt.nstate+2] 
         logger.info("Calculating Diabatic matrix elements")
-        db = np.einsum("ijk,ij,ijl->ikl",amat,enr[:,2:],amat)
+        db = np.einsum("ijk,ij,ijl->ikl",amat,enr,amat)
 
 
 
@@ -117,6 +122,9 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger,h5, txt, nb):
         logger.info("Writing ADT Angles")
         ang = file.create_group("ADT Angles")
         ang.create_dataset("Angles",data=adtAngle, compression="gzip")
+
+        logger.info('Writing ADT Angle residues')
+        ang.create_dataset("Residue", data= residue, compression="gzip")
 
         logger.info("Writing ADT matrix elements")
         mat = file.create_group("ADT Matrix elements")
@@ -137,6 +145,8 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger,h5, txt, nb):
         file = "Angles.dat"
         logger.info("Writing ADT Angles in '%s'"%file)
         file_write(file, adtAngle, adt.gridr)
+        logger.info("Writing ADT Angles in 'Angle_residues.dat'")
+        np.savetxt('Angle_residues.dat', residue ,delimiter="\t", fmt="%.8f")
 
         
         for i in range(adt.nstate):
@@ -159,6 +169,8 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger,h5, txt, nb):
         file = "Angles"
         logger.info("Writing ADT Angles in '%s.npy'"%file)
         np.save(file, adtAngle)
+        logger.info("Writing ADT Angles in 'Angle_residues.npy'")
+        np.save('Angle_residues', residue)
 
         
         for i in range(adt.nstate):
