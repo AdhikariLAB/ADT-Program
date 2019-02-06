@@ -64,10 +64,19 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger,h5, txt, nb):
             adt.nstate = enr.shape[1] -2
             assert adt.nstate*(adt.nstate-1)/2==adt.ntau, "Mismatch in number of states and nacts"
         else :
-        # trying automatic state calculation, not sure, checks required
-            r = np.roots([1,-1,-2*adt.ntau])
-            r = r.real[abs(r.imag)<1e-6]    # 
-            adt.nstate = r[(r>1) & (r==r.astype(int))][0].astype(int)
+        # trying automatic state calculation, not sure, checks required 
+            # Using explicit solution of the quadratic equation
+            # r = np.roots([1,-1,-2*adt.ntau])
+            # r = r.real[abs(r.imag)<1e-6]    # 
+            # adt.nstate = r[(r>1) & (r==r.astype(int))][0].astype(int)
+            # Using a lazy loop to check for the number of states
+            i= 1
+            while True:
+                i+=1
+                x=i*(i-1)/2
+                assert x<= adt.ntau, 'Bad number of NACTs'
+                if x==adt.ntau: break
+            adt.nstate = i 
             # print adt.nstate
     # evaluating number of grid points, number of electronic states and number of couplings
 
