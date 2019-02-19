@@ -20,9 +20,9 @@ def to_jacobi(rho,theta,phi):
     phi   = np.deg2rad(phi)
     mult  = np.sqrt(rho*rho/np.sqrt(3.0))
 
-    R1 = np.sqrt((1.0+np.sin(theta)*np.sin(phi+4.0*np.pi/3.0)))*mult # H2-H3 distance
-    R2 = np.sqrt((1.0+np.sin(theta)*np.sin(phi-4.0*np.pi/3.0)))*mult # H1-H3 distance
-    R3 = np.sqrt((1.0+np.sin(theta)*np.sin(phi)))*mult               # H1-H2 distance
+    R1 = np.sqrt((1.0+np.sin(theta)*np.sin(phi+4.0*np.pi/3.0)))*mult
+    R2 = np.sqrt((1.0+np.sin(theta)*np.sin(phi-4.0*np.pi/3.0)))*mult
+    R3 = np.sqrt((1.0+np.sin(theta)*np.sin(phi)))*mult              
 
 
     if R3 > 1e-10:
