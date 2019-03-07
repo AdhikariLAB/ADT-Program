@@ -73,15 +73,16 @@ analytical         .add_argument("-anajob", type=int, help="Specify the type of 
 
 
 #adding options for numerical jobs
-numeric         .add_argument("-intpath", type=int, help="Specify the path for calculation (default: %(default)s)", choices=range(1,9),metavar="[1-8]", default=1)
-numeric         .add_argument("-ofile", type=str, help="Specify the output file name (w/o extension) (default: %(default)s)", metavar="FILE", default="'ADT_numeric'")
-# numeric         .add_argument("-h5", default=True, metavar="True/False", help="Write results in a HDF5 file (fast and efficient)  (default: %(default)s)",action='store_false')
-numeric_required.add_argument("-efile",type=str, help="Specify path of the Energy file", metavar="FILE", required=True)
-numeric_required.add_argument("-nfile1",type=str, help="Specify path of the NACT file along first coordinate", metavar="FILE", required=True)
-numeric_required.add_argument("-nfile2",type=str, help="Specify path of the NACT file along second coordinate", metavar="FILE", required=True)
-numeric.add_argument("-h5", action='store_true', help="Write results in a HDF5 file (fast and efficient). (default behaviour)" )
-numeric.add_argument("-txt" ,action="store_true", help="Write results in a text file.")
-numeric.set_defaults(h5=False,txt=False)
+numeric         .add_argument("-intpath", type=int, help="Specify the path for calculation (default: %(default)s).\n ", choices=range(1,9),metavar="[1-8]", default=1)
+numeric         .add_argument("-efile",   type=str, help="Specify the Energy file for calculating the diabatic potential energy matrix elements.\n ", metavar="FILE")
+numeric         .add_argument('-nstate',  type=int, help="Specify the number of states to do the calculation.\nBy default it includes all the data for calculation.\n  ")
+numeric         .add_argument("-ofile",   type=str, help="Specify the output file name (w/o extension) (default: %(default)s).\n ", metavar="FILE", default="'ADT_numeric'")
+numeric_required.add_argument("-nfile1",  type=str, help="Specify the NACT file along first coordinate.\n ", metavar="FILE", required=True)
+numeric_required.add_argument("-nfile2",  type=str, help="Specify the NACT file along second coordinate.", metavar="FILE", required=True)
+numeric.add_argument("-h5", action='store_true',    help="Write results in a HDF5 file (.h5). (default behaviour).\nFast IO, smaller file size and hierarchical filesystem-like data format, \npreferable for saving and sharing large datasets in an organised way.\n " )
+numeric.add_argument("-nb", action='store_true',    help='Write results in Numpy binary file (.npy). \nPreferable when working with numpy for its much faster IO and easy portability.\n ')
+numeric.add_argument("-txt" ,action="store_true",   help="Write results in a text file.")
+numeric.set_defaults(h5=False,txt=False, nb = False)
 
 
 
@@ -124,16 +125,18 @@ if args.choice =="ana":
 if args.choice == "num":
     path = args.intpath 
     enrf = args.efile 
+    nstate = args.nstate
     rhof = args.nfile1 
     phif = args.nfile2
     outfile = args.ofile.strip("'")
     h5 = args.h5
     txt = args.txt
-    if (h5==False and txt== False) : h5=True 
+    nb = args.nb
+    if (h5==False and txt== False and nb==False ) : h5=True 
 
     logger = make_logger("ADT Numerical Program")
     try:
-        adt_numerical(enrf, rhof, phif, path, outfile, logger, h5, txt)
+        adt_numerical(enrf,nstate, rhof, phif, path, outfile, logger, h5, txt, nb)
         print("Log saved in 'ADT.log'.")
     except Exception as e:
         logger.error("Program failed\n"+"-"*121)
