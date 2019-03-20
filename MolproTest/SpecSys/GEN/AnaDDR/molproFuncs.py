@@ -45,10 +45,6 @@ def parseData(geomFile, freqFile, wilsonFile):
 
 
 
-
-
-
-
 def parseResult(file):
     with open(file,"r") as f:
         dat = f.read().replace("D","E").strip().split("\n")[1:]

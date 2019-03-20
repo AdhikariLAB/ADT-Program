@@ -103,19 +103,32 @@ def createTemplate(eInfo, nInfo):
 
 
 
-def createGeometry(atomNames, equiGeom,wilFM,vModes, rho, phi):
+def createGridGeom(atomNames, equiGeom,wilFM,vModes, rho, phi):
     nModes = wilFM.shape[2]
     qCord  = np.zeros(nModes)
     qCord[vModes[0]] = rho*np.cos(phi)
     qCord[vModes[1]] = rho*np.sin(phi)
 
     curGeom  = equiGeom+np.einsum('ijk,k->ij',wilFM, qCord)
-    
+    msg = 'for Rho = {}, Phi = {}'.format(rho, phi)
     nAtoms = len(atomNames)
     tmp = " {}\n".format(nAtoms)
     tmp+= "Geometry file created from ADT program. %s \n"%msg
     for i in range(nAtoms):
-        tmp += "{},{},{},{}\n".format(atomNames[i], *geomData[i])
+        tmp += "{},{},{},{}\n".format(atomNames[i], *curGeom[i])
 
     with open('geom.xyz',"w") as f:
         f.write(tmp)
+
+
+
+def parseNact(i,j,rho,phi):
+    file = 'ananac{}{}.res'.format(i,j)
+
+    nacts = angtobohr*parseResult(file)
+    rotoMat = np.array([[np.cos(phi), np.sin(phi)], [-rho*np.sin(phi), rho*np.cos(phi)]])
+    tau = np.einsum('ijk,ij,lk->l',wilFM[...,vModes],nacts,rotoMat)
+
+    return np.abs(tau)
+
+

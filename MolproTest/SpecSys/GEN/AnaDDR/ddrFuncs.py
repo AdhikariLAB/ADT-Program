@@ -143,7 +143,7 @@ def createTemplate(eInfo, nInfo,dr,dp):
 
 
 
-def createAllGridGeom(atomNames, equiGeom,wilFM,vModes, rho, phi, dr, dp):
+def createGridGeom(atomNames, equiGeom,wilFM,vModes, rho, phi, dr, dp):
     createGridGeom(atomNames, equiGeom, wilFM,vModes, rho, phi,'geom1.xyz')
     createGridGeom(atomNames, equiGeom, wilFM,vModes, rho+dr, phi,'geom2.xyz')
     createGridGeom(atomNames, equiGeom, wilFM,vModes, rho-dr, phi,'geom3.xyz')
@@ -151,7 +151,7 @@ def createAllGridGeom(atomNames, equiGeom,wilFM,vModes, rho, phi, dr, dp):
     createGridGeom(atomNames, equiGeom, wilFM,vModes, rho, phi-dp,'geom5.xyz')
 
 
-def createGridGeom(atomNames, equiGeom,wilFM,vModes, rho, phi,outFile):
+def createAllGridGeom(atomNames, equiGeom,wilFM,vModes, rho, phi,outFile):
     nModes = wilFM.shape[2]
     qCord  = np.zeros(nModes)
     qCord[vModes[0]] = rho*np.cos(phi)

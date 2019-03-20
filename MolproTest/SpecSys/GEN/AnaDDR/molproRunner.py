@@ -13,12 +13,16 @@ if nInfo['method']=='ddr':
     from ddrFuncs import *
     dr = gInfo['firstgrid'][2]/100              #setting the dr dp as 1/100 times the stepsize
     dp = gInfo['secondgrid'][2]/100
+    parseNact = parseResult
+
 elif nInfo['method']=='analytical':
     from anaFuncs import *
     createEquiGeom = createGeometry
     dr = None
     dp = None
     # define dr and dp as none
+else :
+    sys.exit()
 
 state, nactPairs   = createTemplate(eInfo, nInfo,dr,dp)
 
@@ -59,10 +63,12 @@ print equiData.flatten()
 for phi in phi_grid:
 
     for rho in rho_grid[:1]:
-        shutil.copy('molpro.wfu',scrdir)
 
-        createAllGridGeom(atomNames, equiGeom,wilFM, vModes, rho, phi, dr, dp)
+        createGridGeom(atomNames, equiGeom,wilFM, vModes, rho, phi, dr, dp)
         msg = 'for Rho = {}, Phi = {}'.format(rho, phi)
+
+
+        shutil.copy('molpro.wfu',scrdir)
         exitcode = subprocess.call(['molpro',"-d", scrdir,'-W .','grid.com'])
         if exitcode==0:
             print 'Job successful  '+msg
@@ -70,10 +76,11 @@ for phi in phi_grid:
             print 'Job unsuccessful'+msg 
             continue
 
+
         enrData = parseResult('enr.res').flatten()
-        tauRho, tauPhi = np.stack((parseResult('ddrnact{}{}.res'.format(i,j)) for i,j in nactPairs)).T
-        print tauRho
-        print tauPhi
+        #fix parsenact for analytical and ddr
+        tauRho, tauPhi = np.stack((parseNact('ddrnact{}{}.res'.format(i,j)) for i,j in nactPairs)).T
+
 
         energyResult  = np.vstack((energyResult,  np.append([rho,phi],enrData)))
         nactRhoResult = np.vstack((nactRhoResult, np.append([rho,phi],tauRho)))
