@@ -16,7 +16,7 @@ equiGeom = equiGeom*0.529177
 rho_grid = np.arange(0.1,5.1, 0.1)
 phi_grid = np.arange(1,181, 2)
 
-# tmpWil = wilson
+
 nModes = wilFM.shape[2]
 nTau = len(nactPairs)
 

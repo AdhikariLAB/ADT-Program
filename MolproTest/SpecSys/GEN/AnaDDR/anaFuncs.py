@@ -103,7 +103,14 @@ def createTemplate(eInfo, nInfo):
 
 
 
-def createGeometry(atomNames, geomData, msg=''):
+def createGeometry(atomNames, equiGeom,wilFM,vModes, rho, phi):
+    nModes = wilFM.shape[2]
+    qCord  = np.zeros(nModes)
+    qCord[vModes[0]] = rho*np.cos(phi)
+    qCord[vModes[1]] = rho*np.sin(phi)
+
+    curGeom  = equiGeom+np.einsum('ijk,k->ij',wilFM, qCord)
+    
     nAtoms = len(atomNames)
     tmp = " {}\n".format(nAtoms)
     tmp+= "Geometry file created from ADT program. %s \n"%msg

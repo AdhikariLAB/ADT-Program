@@ -8,26 +8,30 @@ atomNames, equiGeom, wilFM = parseData('equiGeom.dat', 'freq.dat', 'wilson.dat')
 
 
 
-
 #check for type of nact
 if nInfo['method']=='ddr':
     from ddrFuncs import *
-    #define dr and dp
-else nInfo['method']=='ana'
+    dr = gInfo['firstgrid'][2]/100              #setting the dr dp as 1/100 times the stepsize
+    dp = gInfo['secondgrid'][2]/100
+elif nInfo['method']=='analytical':
     from anaFuncs import *
-    createEquiGeom = createGeom
+    createEquiGeom = createGeometry
     dr = None
     dp = None
     # define dr and dp as none
 
 state, nactPairs   = createTemplate(eInfo, nInfo,dr,dp)
 
+
 # equiGeom = equiGeom*0.529177
 #create this from config file
-rho_grid = np.arange(0.1,5.1,0.1)
-phi_grid = np.arange(1,181, 2)
+rho_grid = np.arange(*gInfo['firstgrid'])
+phi_grid = np.arange(*gInfo['secondgrid'])
 nModes = wilFM.shape[2]
 nTau = len(nactPairs)
+
+
+
 #assert atom number and mode relation
 energyResult  = np.array([], dtype=np.float64).reshape(0,state+2) 
 nactRhoResult = np.array([], dtype=np.float64).reshape(0,nTau+2)
@@ -37,7 +41,7 @@ nactPhiResult = np.array([], dtype=np.float64).reshape(0,nTau+2)
 
 
 
-# #################### Equilibrium step ################
+#################### Equilibrium step ################
 createEquiGeom(atomNames, equiGeom, 'For equilibrium')
 
 
@@ -50,16 +54,14 @@ print equiData.flatten()
 
 
 
-# dp must be in radian
-dp = np.deg2rad(dp)
+#### Warning !!!! Check for degree and radian confusion
 
-for phi in phi_grid[:1]:
-    phiRad = np.deg2rad(phi)
+for phi in phi_grid:
 
     for rho in rho_grid[:1]:
         shutil.copy('molpro.wfu',scrdir)
 
-        createAllGridGeom(atomNames, equiGeom,wilFM, vModes, rho, phiRad, dr, dp)
+        createAllGridGeom(atomNames, equiGeom,wilFM, vModes, rho, phi, dr, dp)
         msg = 'for Rho = {}, Phi = {}'.format(rho, phi)
         exitcode = subprocess.call(['molpro',"-d", scrdir,'-W .','grid.com'])
         if exitcode==0:
@@ -73,8 +75,8 @@ for phi in phi_grid[:1]:
         print tauRho
         print tauPhi
 
-        energyResult  = np.vstack((energyResult,  np.append([rho,phiRad],enrData)))
-        nactRhoResult = np.vstack((nactRhoResult, np.append([rho,phiRad],tauRho)))
-        nactPhiResult = np.vstack((nactPhiResult, np.append([rho,phiRad],tauPhi)))
+        energyResult  = np.vstack((energyResult,  np.append([rho,phi],enrData)))
+        nactRhoResult = np.vstack((nactRhoResult, np.append([rho,phi],tauRho)))
+        nactPhiResult = np.vstack((nactPhiResult, np.append([rho,phi],tauPhi)))
 
-# print energyResult, nactRhoResult, nactPhiResult
+print energyResult, nactRhoResult, nactPhiResult

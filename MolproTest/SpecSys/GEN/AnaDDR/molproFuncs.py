@@ -15,6 +15,8 @@ def parseConfig(conFigFile='molpro.config'):
     gInfo = dict(scf.items('gInfo'))
     mInfo = dict(scf.items('mInfo'))
     vModes = [int(i)-1 for i in mInfo['varying'].split(',')]
+    gInfo['firstgrid'] = map(float, gInfo['firstgrid'].split(','))
+    gInfo['secondgrid'] = map(float, gInfo['secondgrid'].split(','))
     return [eInfo, nInfo,vModes, gInfo]
 
 

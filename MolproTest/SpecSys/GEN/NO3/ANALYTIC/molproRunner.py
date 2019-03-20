@@ -12,12 +12,16 @@ atomNames, equiGeom, wilFM = parseData('equiGeom.dat', 'freq.dat', 'wilson.dat')
 
 equiGeom = equiGeom*0.529177
 
+rho_grid = np.arange(0.1,5.1, 0.1)
+phi_grid = np.arange(1,181, 2)
 
 
-# tmpWil = wilson
 nModes = wilFM.shape[2]
 nTau = len(nactPairs)
 
+energyResult  = np.array([], dtype=np.float64).reshape(0,state+2) 
+nactRhoResult = np.array([], dtype=np.float64).reshape(0,nTau+2)
+nactPhiResult = np.array([], dtype=np.float64).reshape(0,nTau+2)
 #assert atom number and mode relation
 
 
@@ -34,13 +38,8 @@ equiData = parseResult('equienr.res')
 print equiData.flatten()
 #####################################################
 
-rho_grid = np.arange(0.1,5.1, 0.1)
-phi_grid = np.arange(1,181, 2)
 
 
-energyResult  = np.array([], dtype=np.float64).reshape(0,state+2) 
-nactRhoResult = np.array([], dtype=np.float64).reshape(0,nTau+2)
-nactPhiResult = np.array([], dtype=np.float64).reshape(0,nTau+2)
 
 
 def parseNact(i,j,rho,phi):
@@ -64,7 +63,6 @@ for phi in phi_grid[:1]:
         qCord  = np.zeros(nModes)
         qCord[vModes[0]] = rho*np.cos(phiRad)
         qCord[vModes[1]] = rho*np.sin(phiRad)
-
 
         dsGeom  = np.einsum('ijk,k->ij',wilFM,qCord)
         curGeom = equiGeom+dsGeom
