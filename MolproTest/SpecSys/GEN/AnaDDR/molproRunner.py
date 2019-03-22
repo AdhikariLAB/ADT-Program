@@ -4,7 +4,7 @@ import subprocess,os,shutil
 scrdir = '/tmp/koushik'  #take it from config
 
 eInfo, nInfo, vModes, gInfo = parseConfig('molpro.config')
-atomNames, equiGeom, wilFM = parseData('equiGeom.dat', 'freq.dat', 'wilson.dat')
+atomNames, equiGeom, wilFM  = parseData('equiGeom.dat', 'freq.dat', 'wilson.dat')
 
 
 
@@ -45,7 +45,7 @@ nactPhiResult = np.array([], dtype=np.float64).reshape(0,nTau+2)
 
 
 
-#################### Equilibrium step ################
+################### Equilibrium step ################
 createEquiGeom(atomNames, equiGeom, 'For equilibrium')
 
 
@@ -54,11 +54,11 @@ if exitcode==1: sys.exit('Molpro failed in equilibrium step')
 
 equiData = parseResult('equienr.res')
 print equiData.flatten()
-#######################################################
+######################################################
 
 
 
-#### Warning !!!! Check for degree and radian confusion
+### Warning !!!! Check for degree and radian confusion
 
 for phi in phi_grid:
 

@@ -2,3 +2,5 @@
 *.xml*
 *.pyc
 *.so
+*.mod
+.vscode
