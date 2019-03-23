@@ -6,6 +6,7 @@ import subprocess
 import numpy as np
 import ConfigParser
 
+import math
 
 angtobohr = 1.8897259886
 hbar = 0.063508
@@ -14,9 +15,14 @@ cInvToTauInv = 0.001883651
 scrdir = '/tmp/adtprogram'
 
 
-#create template functions will most probably be same 
-# in both spec and scatter case
 
+#*create template functions will most probably be same 
+# *in both spec and scatter case
+
+
+def dotp(x,y):
+    """ dot product of two pairs """
+    return x[0]*y[0] + x[1]*y[1]
 
 def AreaTriangle(a,b,c):
     """ area of a tringle with sides a,b,c """
@@ -30,22 +36,24 @@ def AreaTriangle(a,b,c):
 
 
 
-def to_jacobi(rho,theta,phi):
+def to_jacobi(self,theta,phi):
+
     """ returns jacobi coordinates """
+    #!are theta phi taken in degree or radian
+    #! depending on that numpy cos/sin will be replaced by the ones defined in the class
+    m1, m2, m3 = self.atomMass
 
-    pi = math.pi
+    M = m1 + m2 + m3
+    mu = np.sqrt(m1*m2*m3/M)
+    d1 = np.sqrt(m1*(m2+m3)/(mu*M))
+    d2 = np.sqrt(m2*(m3+m1)/(mu*M))
+    d3 = np.sqrt(m3*(m1+m2)/(mu*M))
+    eps3 = 2 * np.atan(m2/mu)
+    eps2 = 2 * np.atan(m3/mu)
 
-    M = m1 + m2 + m3  #use global variables of m1,m2,m3
-    mu = math.sqrt(m1*m2*m3/M)
-    d1 = math.sqrt(m1*(m2+m3)/(mu*M))
-    d2 = math.sqrt(m2*(m3+m1)/(mu*M))
-    d3 = math.sqrt(m3*(m1+m2)/(mu*M))
-    eps3 = 2 * math.atan(m2/mu)
-    eps2 = 2 * math.atan(m3/mu)
-
-    R1 = (1.0/math.sqrt(2.0))*rho*d3*math.sqrt(1.0+math.sin(theta)*math.cos(phi+eps3)) # F-H2 distance
-    R2 = (1.0/math.sqrt(2.0))*rho*d1*math.sqrt(1.0+math.sin(theta)*math.cos(phi))      # H1-H2 distance
-    R3 = (1.0/math.sqrt(2.0))*rho*d2*math.sqrt(1.0+math.sin(theta)*math.cos(phi-eps2)) # F-H1 distance
+    R1 = (1.0/np.sqrt(2.0))*self.rho*d3*np.sqrt(1.0+np.sin(theta)*np.cos(phi+eps3)) # F-H2 distance
+    R2 = (1.0/np.sqrt(2.0))*self.rho*d1*np.sqrt(1.0+np.sin(theta)*np.cos(phi))      # H1-H2 distance
+    R3 = (1.0/np.sqrt(2.0))*self.rho*d2*np.sqrt(1.0+np.sin(theta)*np.cos(phi-eps2)) # F-H1 distance
 
     if R1 < 1e-10:
        R1 = 0.0
@@ -57,47 +65,53 @@ def to_jacobi(rho,theta,phi):
     area = AreaTriangle(R1,R2,R3)
     x = R2*R2 + R3*R3 - R1*R1
     y = 4.0*area
-    Ang123 = math.atan2(y,x)
+    Ang123 = np.atan2(y,x)
     x2 = (0.0,0.0)
     x3 = (R2,0.0)
-    x1 = (R3*math.cos(Ang123),R3*math.sin(Ang123))
+    x1 = (R3*np.cos(Ang123),R3*np.sin(Ang123))
     # these are non-mass scaled jacobi coords
     # r : (x3-x2)
     # R : x1 - com(x3,x2)
     # gamma : angle between r and R
     r = (R2,0.0)
-    R = (R3*math.cos(Ang123) - m3*R2/(m2+m3) , R3*math.sin(Ang123))
-    rs = math.sqrt(dotp(r,r))
-    rc = math.sqrt(dotp(R,R))
+    R = (R3*np.cos(Ang123) - m3*R2/(m2+m3) , R3*np.sin(Ang123))
+    rs = np.sqrt(dotp(r,r))
+    rc = np.sqrt(dotp(R,R))
     if rc < 1e-10:
        rc = 0.0
 
     rtil = (R2*m2/(m2+m3),0.0)
-    drtil = math.sqrt(dotp(rtil,rtil))
+    drtil = np.sqrt(dotp(rtil,rtil))
     Areasmall = AreaTriangle(drtil,R1,rc)
     y = 4.0 * Areasmall
     x = drtil*drtil + rc*rc - R1*R1
-    if math.fabs(x) < 1e-10:
+    if np.fabs(x) < 1e-10:
        x = 0.0
-    gamma = math.atan2(y,x)
+    gamma = np.atan2(y,x)
 
     # we assert that gamma is always less than 90 degree always - our grid does not produce this for H2F
-    # assert (gamma <= math.pi/2)
+    # assert (gamma <= np.pi/2)
 
     return (rs, rc, gamma)
 
-def hyperToCart(theta, phi):
-    return jacobixyz(*to_jacobi(self.rho, theta, phi))
 
 
-def jacobixyz(rs,rc,gamm):  # rs is jacobi 'r', rc is jacobi 'R' gamm is jacobi 'gamma'
-    # xyz coordinates generated from jacobi coordinates
-    # use global variables m1,m2,m3 to assign the masses of the atoms
-    p1 = m1,(rc*math.cos(gamm),rc*math.sin(gamm))
-    p2 = m2,( -rs/2.0 , 0.0 )
-    p3 = m3,( rs/2.0 , 0.0 )
-    return p1,p2,p3
+def hyperToCart(self, theta, phi):
+    rs, rc, gamma = to_jacobi(theta, phi)
+    #! this gamma is in radian, so numpy sin cos can be used.
+    p1 = [0, rc*math.cos(gamma),rc*math.sin(gamma)]
+    p2 = [0, -rs/2.0 , 0.0 ]
+    p3 = [0, rs/2.0  , 0.0 ]
+    return np.array([p1,p2,p3])
 
+
+# def jacobixyz(rs,rc,gamm):  # rs is jacobi 'r', rc is jacobi 'R' gamm is jacobi 'gamma'
+#     # xyz coordinates generated from jacobi coordinates
+#     # use global variables m1,m2,m3 to assign the masses of the atoms
+#     p1 = m1,(rc*math.cos(gamm),rc*math.sin(gamm))
+#     p2 = m2,( -rs/2.0 , 0.0 )
+#     p3 = m3,( rs/2.0 , 0.0 )
+#     return p1,p2,p3
 
 
 
@@ -131,7 +145,7 @@ class ScatterFuncs():
         #Include the end points ..............?
         self.theta_grid = np.arange(*gInfo['firstgrid'])
         self.phi_grid = np.arange(*gInfo['secondgrid'])
-        nTau = len(self.nactPairs)
+
 
         #read atom names and masses from the atom file
         atomData = np.loadtxt(atomFile, 
@@ -144,17 +158,20 @@ class ScatterFuncs():
         #crete template file appropriate for method
         if self.nInfo['method']=='cpmcscf':
             self.createAnaTemplate()
+            self.getTauThetaPhi = self.getTauThetaPhiAna
 
         elif self.nInfo['method']=='ddr':
+            self.dr = gInfo['df']
+            self.dp = gInfo['ds']
             self.createDDRTemplate()
             self.createGridGeom = self.createDdrGridGeom
-            self.parseNact      = self.parseDdrNact
+            self.getTauThetaPhi = self.getTauThetaPhiDdr
 
         else:
             sys.exit('%s Not a proper option'%self.nInfo['method'])
     
         #Run molpro here
-        #Is it good to put this inside the constructor ??????
+        #?Is it good to put this inside the constructor ??????
         self.runMolpro()
 
 
@@ -168,6 +185,8 @@ class ScatterFuncs():
         return np.cos(np.deg2rad(x))
 
 
+    #* both the template funtions will be moved to the global scope
+    #* so all the edits are being made only to the ones on spectroscopic class
     def createAnaTemplate(self):
         molproEquiTemplate=textwrap.dedent('''
             ***, Molpro template created from ADT program for "WhatEver"
@@ -189,7 +208,8 @@ class ScatterFuncs():
 
             ---
 
-            '''.format(method=self.eInfo['method'],
+            '''.format(memory = self.memory,
+                        method=self.eInfo['method'],
                         state=self.eInfo['state'],
                         wf =  self.eInfo['wf'],
                         cas = self.eInfo['cas']))
@@ -386,9 +406,10 @@ class ScatterFuncs():
             f.write(molproGridTemplate)
 
 
+
     def createGridGeom(self, theta, phi, outFile = 'geom.xyz'):
         
-        curGeom  = hyperToCart(self.rho, theta, phi)
+        curGeom  = hyperToCart(theta, phi)
         msg = 'for Rho = {}, Theta={}, Phi = {}'.format(self.rho, theta, phi)
         nAtoms = len(self.atomNames)
         tmp = " {}\n".format(nAtoms)
@@ -416,13 +437,37 @@ class ScatterFuncs():
 
 
     def parseNact(self, i,j,rho,phi):
-        pass 
-        #How to do this
+        file = 'ananac{}{}.res'.format(i,j)
+        grads = angtobohr*parseResult(file)
+
+        tauTheta = np.einsum('ij,ij', grads, grad_theta)
+        tauPhi   = np.einsum('ij,ij', grads, grad_phi)
+        return np.array([tauTheta, tauPhi])
 
 
-    def parseDdrNact(self,i,j,rho,phi):
-        #rho, phi is really not needed here
-        self.parseResult('ddrnact{}{}.res'.format(i,j))
+
+    def getTauThetaPhiAna(self, theta, phi):
+        # What will be this values
+        d_theta = 0.001
+        d_phi = 0.01
+
+        grad_theta_plus = hyperToCart(theta+d_theta, phi)
+        grad_theta_minus = hyperToCart(theta-d_theta, phi)
+        grad_theta      = (grad_theta_plus - grad_theta_minus)/2*d_theta
+
+        grad_phi_plus = hyperToCart(theta+d_theta, phi)
+        grad_phi_minus = hyperToCart(theta-d_theta, phi)
+        grad_phi      = (grad_phi_plus - grad_phi_minus)/2*d_phi 
+    
+        return np.stack((parseNact(i,j,rho,phi, grad_theta, grad_phi) 
+                                    for i,j in self.nactPairs)).T
+
+
+    def getTauThetaPhiDdr(self, *args):
+        return np.stack((self.parseResult('ddrnact{}{}.res'.format(i,j)) 
+                                    for i,j in self.nactPairs)).T
+
+
 
 
     def runMolpro(self):
@@ -431,8 +476,6 @@ class ScatterFuncs():
         energyResult  = np.array([], dtype=np.float64).reshape(0,self.state+2) 
         nactRhoResult = np.array([], dtype=np.float64).reshape(0,nTau+2)
         nactPhiResult = np.array([], dtype=np.float64).reshape(0,nTau+2)
-
-
 
 
         for phi in self.phi_grid[:1]:
@@ -450,12 +493,12 @@ class ScatterFuncs():
 
 
                 enrData = parseResult('enr.res').flatten()
-                tauRho, tauPhi = np.stack((parseNact(i,j,rho,phi) for i,j in self.nactPairs)).T
+                tauTheta, tauPhi = self.getTauThetaPhi(theta, phi)
 
 
-                energyResult  = np.vstack((energyResult,  np.append([rho,phi],enrData)))
-                nactThetaResult = np.vstack((nactThetaResult, np.append([rho,phi],tauRho)))
-                nactPhiResult = np.vstack((nactPhiResult, np.append([rho,phi],tauPhi)))
+                energyResult  = np.vstack((energyResult,  np.append([theta, phi],enrData)))
+                nactThetaResult = np.vstack((nactThetaResult, np.append([theta, phi],tauTheta)))
+                nactPhiResult = np.vstack((nactPhiResult, np.append([theta, phi],tauPhi)))
 
         self.writeFile('energy.dat', energyResult)
         self.writeFile('tau_theta.dat', nactThetaResult)
@@ -464,10 +507,10 @@ class ScatterFuncs():
 
     def writeFile(self, file, data):
         #along rho or along phi?
-        for tp in self.rho_grid:
+        for tp in self.theta_grid:
             np.savetxt( file, data[data[:,fc]==tp] ,delimiter="\t", fmt="%.8f")
             file.write("\n")
 
 
-if __name__ == "__main__":
-    ScatterFuncs()
+# if __name__ == "__main__":
+#     ScatterFuncs()

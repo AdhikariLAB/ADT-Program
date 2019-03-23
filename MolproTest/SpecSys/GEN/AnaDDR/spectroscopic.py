@@ -13,9 +13,10 @@ cInvToTauInv = 0.001883651
 
 scrdir = '/tmp/adtprogram'
 
-
-
-
+# take from user > memory, dr-dp, scrdir
+#...f,s in nact pairs
+#remove basis from template
+#save equi wfu and start from here
 
 class SpectroFuncs():
     """
@@ -31,6 +32,13 @@ class SpectroFuncs():
         #parse configuration for running molpro
         scf = ConfigParser.SafeConfigParser()
         scf.read(conFigFile)
+
+
+        molInfo =  dict(scf.items('molInfo'))
+        self.scrdir = molInfo['scrdir']
+        self.memory = molInfo['memory']
+
+
         self.eInfo = dict(scf.items('eInfo'))
         self.nInfo = dict(scf.items('nInfo'))
         mInfo = dict(scf.items('mInfo'))
@@ -41,13 +49,11 @@ class SpectroFuncs():
 
         self.state = int(self.eInfo['state'])
         self.nactPairs = [[i,j] for i in range(1,self.state+1) for j in range(i+1,self.state+1)]
-        self.dr = gInfo['firstgrid'][2]/100              #setting the dr dp as 1/100 times the stepsize
-        self.dp = gInfo['secondgrid'][2]/100
 
         #Include the end points ..............?
         self.rho_grid = np.arange(*gInfo['firstgrid'])
         self.phi_grid = np.arange(*gInfo['secondgrid'])
-        nTau = len(self.nactPairs)
+
 
 
 
@@ -56,10 +62,14 @@ class SpectroFuncs():
 
         #crete template file appropriate for method
         if self.nInfo['method']=='cpmcscf':
+            self.getTauThetaPhi = self.getTauThetaPhiAna
             self.createAnaTemplate()
 
         elif self.nInfo['method']=='ddr':
+            self.dr = gInfo['df']
+            self.dp = gInfo['ds']
             self.createDDRTemplate()
+            self.getTauThetaPhi = self.getTauThetaPhiDdr
             self.createGridGeom = self.createDdrGridGeom
             self.parseNact      = self.parseDdrNact
 
@@ -67,7 +77,7 @@ class SpectroFuncs():
             sys.exit('%s Not a proper option'%self.nInfo['method'])
     
         #Run molpro here
-        #Is it good to put this inside the constructor ??????
+        #?Is it good to put this inside the constructor ??????
         self.runMolpro()
 
 
@@ -104,7 +114,7 @@ class SpectroFuncs():
     def createAnaTemplate(self):
         molproEquiTemplate=textwrap.dedent('''
             ***, Molpro template created from ADT program for "WhatEver"
-            file,2,molpro.wfu,new;
+            file,2,molpro_equi.wfu,new;
 
             basis=6-31G**;
 
@@ -134,10 +144,10 @@ class SpectroFuncs():
 
         molproGridTemplate=textwrap.dedent('''
             ***, Molpro template created from ADT program for "WhatEver"
-            memory,100,m
+            memory,{memory}
             file,2,molpro.wfu;
 
-            basis=6-31G**;
+            basis={basis};
 
             symmetry,nosym
 
@@ -150,34 +160,36 @@ class SpectroFuncs():
             table, energy
             save,enr.res,new
             {{table,____; noprint,heading}}
-            '''.format(method=self.eInfo['method'],
+            '''.format(memory = self.memory,
+                        basis = self.eInfo['basis'],
+                        method=self.eInfo['method'],
                         state=self.eInfo['state'],
                         wf =  self.eInfo['wf'],
                         cas = self.eInfo['cas']))
 
 
-        nactTemp= "\n\nbasis={}\n".format(self.eInfo['basis'])
+        nactTemp= "\n\nbasis={}\n".format(self.nInfo['basis'])
 
         for ind in range(0,len(self.nactPairs),5):
             nactTemp += "\n{{{method};{cas}; wf,{wf};state,{state}; start,2140.2;\n".format(
-                                method=self.eInfo['method'],
+                                method=self.nInfo['method'],
                                 state=self.eInfo['state'],
                                 wf =  self.eInfo['wf'],
                                 cas = self.eInfo['cas'])
 
             pairChunk = self.nactPairs[ind:ind+5]
             forceTemp = ''
-            for i,j in pairChunk:
-                nactTemp += "{nmethod},nacm,{f}.1,{s}.1,record=51{f}{s}.1;\n".format(
+            for count,pair in enumerate(pairChunk):
+                nactTemp += "{nmethod},nacm,{f}.1,{s}.1,record=51{n:02}.1;\n".format(
                             nmethod = self.nInfo['method'],
-                            f=i,s=j)
+                            f=pair[0], s=pair[1], n=count)
                 forceTemp +=textwrap.dedent("""
-                force;nacm,51{f}{s}.1;varsav
+                force;nacm,51{n:02}.1;varsav
                 table,gradx,grady,gradz;
                 save,ananac{f}{s}.res,new;
                 {{table,____;  noprint,heading}}
 
-                """.format(f=i,s=j))
+                """.format(f=pair[0], s=pair[1]))
             nactTemp += "}\n" + forceTemp
 
 
@@ -192,10 +204,10 @@ class SpectroFuncs():
     def createDDRTemplate(self):
         molproEquiTemplate=textwrap.dedent('''
             ***, Molpro template created from ADT program for "WhatEver"
-            memory,500,m
-            file,2,molpro.wfu,new;
+            memory,{memory}
+            file,2,molpro_equi.wfu,new;
 
-            basis=6-31G**;
+            basis={basis};
 
             symmetry,nosym
 
@@ -212,7 +224,9 @@ class SpectroFuncs():
 
             ---
 
-            '''.format( state=self.eInfo['state'],
+            '''.format( memory = self.memory,
+                        basis = self.eInfo['basis'],
+                        state=self.eInfo['state'],
                         wf =  self.eInfo['wf'],
                         occ= self.eInfo['occ'],
                         closed = self.eInfo['closed'],
@@ -225,7 +239,7 @@ class SpectroFuncs():
 
         molproGridTemplate=textwrap.dedent('''
             ***, Molpro template created from ADT program for "WhatEver"
-            memory,500,m
+            memory,{memory}
             file,2,molpro.wfu;
 
             basis=6-31G**;
@@ -276,7 +290,8 @@ class SpectroFuncs():
             {{ci;trans,6000.2,6004.2;dm,8004.2}}
 
 
-            '''.format( state=self.eInfo['state'],
+            '''.format( memory = self.memory,
+                        state=self.eInfo['state'],
                         wf =  self.eInfo['wf'],
                         occ= self.eInfo['occ'],
                         closed = self.eInfo['closed'],
@@ -356,15 +371,22 @@ class SpectroFuncs():
     def parseNact(self, i,j,rho,phi):
         file = 'ananac{}{}.res'.format(i,j)
 
-        nacts = angtobohr*parseResult(file)
+        grads = angtobohr*parseResult(file)
         rotoMat = np.array([[self.cos(phi), self.sin(phi)], [-rho*self.sin(phi), rho*self.cos(phi)]])
-        tau = np.einsum('ijk,ij,lk->l',self.wilFM[...,self.vModes],self.nacts,self.rotoMat)
+        tau = np.einsum('ijk,ij,lk->l',self.wilFM[...,self.vModes], grads, rotoMat)
         return np.abs(tau)
 
 
-    def parseDdrNact(self,i,j,rho,phi):
-        #rho, phi is really not needed here
-        self.parseResult('ddrnact{}{}.res'.format(i,j))
+
+    def getTauThetaPhiAna(self, rho, phi):    
+        return np.stack((parseNact(i, j, rho, phi) 
+                                    for i,j in self.nactPairs)).T
+
+
+    def getTauThetaPhiDdr(self, *args):
+        return np.stack((self.parseResult('ddrnact{}{}.res'.format(i,j)) 
+                                    for i,j in self.nactPairs)).T
+
 
 
     def equiRun(self):
@@ -377,10 +399,10 @@ class SpectroFuncs():
 
         with open('geom.xyz',"w") as f:
             f.write(tmp)
-        exitcode = subprocess.call(['molpro',"-d", scrdir,'-W .','equi.com'])
+        exitcode = subprocess.call(['molpro',"-d", self.scrdir ,'-W .','equi.com'])
         if exitcode==1: sys.exit('Molpro failed in equilibrium step')
         equiData = parseResult('equienr.res').flatten()
-    
+
 
     def runMolpro(self):
 
@@ -394,12 +416,13 @@ class SpectroFuncs():
         self.equiRun()
 
         for phi in self.phi_grid[:1]:
+            shutil.copy('molpro_equi.wfu', 'molpro.wfu')   # copy the wave function from the equilibrium step
             for rho in self.rho_grid[:1]:
 
                 self.createGridGeom(rho, phi) 
-                shutil.copy('molpro.wfu',scrdir)
+                shutil.copy('molpro.wfu',self.scrdir )
 
-                exitcode = subprocess.call(['molpro',"-d", scrdir,'-W .','grid.com'])
+                exitcode = subprocess.call(['molpro',"-d", self.scrdir ,'-W .','grid.com'])
                 if exitcode==0:
                     print 'Job successful  '+msg
                 else : 
@@ -408,7 +431,7 @@ class SpectroFuncs():
 
 
                 enrData = parseResult('enr.res').flatten()
-                tauRho, tauPhi = np.stack((parseNact(i,j,rho,phi) for i,j in self.nactPairs)).T
+                tauRho, tauPhi = self.getTauThetaPhi(theta, phi)
 
 
                 energyResult  = np.vstack((energyResult,  np.append([rho,phi],enrData)))
