@@ -1,3 +1,0 @@
-molecule = no3, nstate =  5, jobtype = analytic, analyticjob = adt equation, numericjob = curl, coordinate = 2, grid = 10 10, integration = first second, compiler = gfortran
-
-
