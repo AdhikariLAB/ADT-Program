@@ -25,20 +25,17 @@ class Base():
         """ A sin function that directly takes degree as input unlike numpy"""
         return np.sin(np.deg2rad(x))
 
-
     def cos(self, x):
         """ A cos function that directly takes degree as input unlike numpy"""
         return np.cos(np.deg2rad(x))
 
-
-
-
     def createAnaTemplate(self):
         molproEquiTemplate=textwrap.dedent('''
             ***, Molpro template created from ADT program for "WhatEver"
+            memory,{memory};
             file,2,molpro_equi.wfu,new;
 
-            basis=6-31G**;
+            basis={basis};
 
             symmetry,nosym
 
@@ -54,7 +51,9 @@ class Base():
 
             ---
 
-            '''.format(method=self.eInfo['method'],
+            '''.format(memory = self.memory,
+                        basis = self.eInfo['basis'],
+                        method=self.eInfo['method'],
                         state=self.eInfo['state'],
                         wf =  self.eInfo['wf'],
                         cas = self.eInfo['cas']))
@@ -69,7 +68,7 @@ class Base():
             memory,{memory}
             file,2,molpro.wfu;
 
-            basis={basis};
+            basis=6-31G**;
 
             symmetry,nosym
 
@@ -83,7 +82,6 @@ class Base():
             save,enr.res,new
             {{table,____; noprint,heading}}
             '''.format(memory = self.memory,
-                        basis = self.eInfo['basis'],
                         method=self.eInfo['method'],
                         state=self.eInfo['state'],
                         wf =  self.eInfo['wf'],
@@ -102,16 +100,17 @@ class Base():
             pairChunk = self.nactPairs[ind:ind+5]
             forceTemp = ''
             for count,pair in enumerate(pairChunk):
+                f,s = pair
                 nactTemp += "{nmethod},nacm,{f}.1,{s}.1,record=51{n:02}.1;\n".format(
-                            nmethod = self.nInfo['method'],
-                            f=pair[0], s=pair[1], n=count)
+                            nmethod = self.nInfo['method'],f=f, s=s, n=count)
+
                 forceTemp +=textwrap.dedent("""
                 force;nacm,51{n:02}.1;varsav
                 table,gradx,grady,gradz;
                 save,ananac{f}{s}.res,new;
                 {{table,____;  noprint,heading}}
 
-                """.format(f=pair[0], s=pair[1]))
+                """.format(f=f, s=s))
             nactTemp += "}\n" + forceTemp
 
 
@@ -122,7 +121,7 @@ class Base():
         with open('grid.com','w') as f:
             f.write(molproGridTemplate)
 
-
+    #which basis for which nact ????
     def createDdrTemplate(self):
         molproEquiTemplate=textwrap.dedent('''
             ***, Molpro template created from ADT program for "WhatEver"
@@ -255,6 +254,33 @@ class Base():
         with open('grid.com','w') as f:
             f.write(molproGridTemplate)
 
+
+    def parseConfig(self, configFile = 'molpro.config'):
+        #parse configuration for running molpro
+        scf = ConfigParser.SafeConfigParser()
+        scf.read(conFigFile)
+
+
+        molInfo =  dict(scf.items('molInfo'))
+        self.scrdir = molInfo['scrdir']
+        self.memory = molInfo['memory']
+
+
+        self.eInfo = dict(scf.items('eInfo'))
+        self.nInfo = dict(scf.items('nInfo'))
+        mInfo = dict(scf.items('mInfo'))
+        self.vModes = [int(i)-1 for i in mInfo['varying'].split(',')]
+        gInfo = dict(scf.items('gInfo'))
+        gInfo['firstgrid'] = map(float, gInfo['firstgrid'].split(','))
+        gInfo['secondgrid'] = map(float, gInfo['secondgrid'].split(','))
+
+        self.state = int(self.eInfo['state'])
+        self.nactPairs = [[i,j] for i in range(1,self.state+1) for j in range(i+1,self.state+1)]
+
+        #Include the end points ..............?
+        #or should I just take as rho/theta/phi grid?
+        self.rho_grid = np.arange(*gInfo['firstgrid'])
+        self.phi_grid = np.arange(*gInfo['secondgrid'])
 
 
 
@@ -461,4 +487,172 @@ class Spectra(Base):
         for tp in self.rho_grid:
             np.savetxt( file, data[data[:,fc]==tp] ,delimiter="\t", fmt="%.8f")
             file.write("\n")
+
+
+
+
+class ScatterFuncs():
+    """
+        documentation
+    """
+    #provide atom mass and names in atomFile.dat
+    def __init__(self, 
+            conFigFile= 'molpro.config',
+            atomFile  = 'atomFile.dat'):
+
+        #parse configuration for running molpro
+        scf = ConfigParser.SafeConfigParser()
+        scf.read(conFigFile)
+        self.eInfo = dict(scf.items('eInfo'))
+        self.nInfo = dict(scf.items('nInfo'))
+
+
+        gInfo = dict(scf.items('gInfo'))
+        gInfo['firstgrid'] = map(float, gInfo['firstgrid'].split(','))
+        gInfo['secondgrid'] = map(float, gInfo['secondgrid'].split(','))
+
+        self.state = int(self.eInfo['state'])
+        self.nactPairs = [[i,j] for i in range(1,self.state+1) for j in range(i+1,self.state+1)]
+        self.dt = gInfo['firstgrid'][2]/100              #setting the dr dp as 1/100 times the stepsize
+        self.dp = gInfo['secondgrid'][2]/100
+
+        #Include the end points ..............?
+        self.theta_grid = np.arange(*gInfo['firstgrid'])
+        self.phi_grid = np.arange(*gInfo['secondgrid'])
+
+
+        #read atom names and masses from the atom file
+        #move this to the parse data function
+        atomData = np.loadtxt(atomFile, 
+            dtype={'names': ('names', 'mass'),'formats': ('S1', 'f8')})
+
+        self.atomNames = atomData['names']
+        self.atomMass  = atomData['mass']
+
+
+        #crete template file appropriate for method
+        if self.nInfo['method']=='cpmcscf':
+            self.createAnaTemplate()
+            self.getTauThetaPhi = self.getTauThetaPhiAna
+
+        elif self.nInfo['method']=='ddr':
+            self.dr = gInfo['df']
+            self.dp = gInfo['ds']
+            self.createDDRTemplate()
+            self.createGridGeom = self.createDdrGridGeom
+            self.getTauThetaPhi = self.getTauThetaPhiDdr
+
+        else:
+            sys.exit('%s Not a proper option'%self.nInfo['method'])
+    
+        #Run molpro here
+        #?Is it good to put this inside the constructor ??????
+        self.runMolpro()
+
+
+
+    def createGridGeom(self, theta, phi, outFile = 'geom.xyz'):
+        
+        curGeom  = hyperToCart(theta, phi)
+        msg = 'for Rho = {}, Theta={}, Phi = {}'.format(self.rho, theta, phi)
+        nAtoms = len(self.atomNames)
+        tmp = " {}\n".format(nAtoms)
+        tmp+= "Geometry file created from ADT program. %s \n"%msg
+        for i in range(nAtoms):
+            tmp += "{},{},{},{}\n".format(self.atomNames[i], *curGeom[i])
+
+        with open(outFile,"w") as f:
+            f.write(tmp)
+
+
+    def createDdrGridGeom(self, theta, phi):
+        createGridGeom(atomNames, theta,    phi,    'geom1.xyz')
+        createGridGeom(atomNames, theta+self.dt, phi,   'geom2.xyz')
+        createGridGeom(atomNames, theta-self.dt, phi,   'geom3.xyz')
+        createGridGeom(atomNames, theta,    phi+self.dp,'geom4.xyz')
+        createGridGeom(atomNames, theta,    phi-self.dp,'geom5.xyz')
+    
+
+    def parseResult(self, file):
+        with open(file,"r") as f:
+            dat = f.read().replace("D","E").strip().split("\n")[1:]
+        dat = [map(float,i.strip().split()) for i in dat]
+        return np.array(dat)
+
+
+    def parseNact(self, i,j,rho,phi):
+        file = 'ananac{}{}.res'.format(i,j)
+        grads = angtobohr*parseResult(file)
+
+        tauTheta = np.einsum('ij,ij', grads, grad_theta)
+        tauPhi   = np.einsum('ij,ij', grads, grad_phi)
+        return np.array([tauTheta, tauPhi])
+
+
+
+    def getTauThetaPhiAna(self, theta, phi):
+        # What will be this values
+        d_theta = 0.001
+        d_phi = 0.01
+
+        grad_theta_plus = hyperToCart(theta+d_theta, phi)
+        grad_theta_minus = hyperToCart(theta-d_theta, phi)
+        grad_theta      = (grad_theta_plus - grad_theta_minus)/2*d_theta
+
+        grad_phi_plus = hyperToCart(theta+d_theta, phi)
+        grad_phi_minus = hyperToCart(theta-d_theta, phi)
+        grad_phi      = (grad_phi_plus - grad_phi_minus)/2*d_phi 
+    
+        return np.stack((parseNact(i,j,rho,phi, grad_theta, grad_phi) 
+                                    for i,j in self.nactPairs)).T
+
+
+    def getTauThetaPhiDdr(self, *args):
+        return np.stack((self.parseResult('ddrnact{}{}.res'.format(i,j)) 
+                                    for i,j in self.nactPairs)).T
+
+    #include the theta =0 , phi = 0 step
+
+
+    def runMolpro(self):
+
+        #initialise blank arrays to store result
+        energyResult  = np.array([], dtype=np.float64).reshape(0,self.state+2) 
+        nactRhoResult = np.array([], dtype=np.float64).reshape(0,nTau+2)
+        nactPhiResult = np.array([], dtype=np.float64).reshape(0,nTau+2)
+
+
+        for phi in self.phi_grid[:1]:
+            for theta in self.theta_grid[:1]:
+
+                self.createGridGeom(theta, phi) 
+                shutil.copy('molpro.wfu',scrdir)
+
+                exitcode = subprocess.call(['molpro',"-d", scrdir,'-W .','grid.com'])
+                if exitcode==0:
+                    print 'Job successful  '+msg
+                else : 
+                    print 'Job unsuccessful'+msg 
+                    continue
+
+
+                enrData = parseResult('enr.res').flatten()
+                tauTheta, tauPhi = self.getTauThetaPhi(theta, phi)
+
+
+                energyResult  = np.vstack((energyResult,  np.append([theta, phi],enrData)))
+                nactThetaResult = np.vstack((nactThetaResult, np.append([theta, phi],tauTheta)))
+                nactPhiResult = np.vstack((nactPhiResult, np.append([theta, phi],tauPhi)))
+
+        self.writeFile('energy.dat', energyResult)
+        self.writeFile('tau_theta.dat', nactThetaResult)
+        self.writeFile('tau_phi.dat', nactPhiResult)
+
+
+    def writeFile(self, file, data):
+        #along rho or along phi?
+        for tp in self.theta_grid:
+            np.savetxt( file, data[data[:,fc]==tp] ,delimiter="\t", fmt="%.8f")
+            file.write("\n")
+
 
