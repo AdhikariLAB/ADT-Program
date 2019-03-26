@@ -4,3 +4,4 @@
 *.so
 *.mod
 .vscode
+test.py

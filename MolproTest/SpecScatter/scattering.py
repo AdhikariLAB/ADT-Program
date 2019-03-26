@@ -99,7 +99,7 @@ def to_jacobi(self,theta,phi):
 def hyperToCart(self, theta, phi):
     rs, rc, gamma = to_jacobi(theta, phi)
     #! this gamma is in radian, so numpy sin cos can be used.
-    p1 = [0, rc*math.cos(gamma),rc*math.sin(gamma)]
+    p1 = [0, rc*np.cos(gamma),rc*np.sin(gamma)]
     p2 = [0, -rs/2.0 , 0.0 ]
     p3 = [0, rs/2.0  , 0.0 ]
     return np.array([p1,p2,p3])
