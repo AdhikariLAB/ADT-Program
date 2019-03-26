@@ -16,11 +16,13 @@
 #    Satrajit Adhikari                                                                                                 #
 #                                                                                                                      #
 ########################################################################################################################
-
-import argparse,sys,logging
-from adt_numeric import *
-from adt_analytic import *
+import sys
+import logging
 import textwrap
+import argparse
+from adt.numeric.adt_numeric import *
+from adt.analytic.adt_analytic import *
+
 
 
 def make_logger(log_name):

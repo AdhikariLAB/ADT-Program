@@ -5,3 +5,5 @@
 *.mod
 .vscode
 test.py
+dist
+build

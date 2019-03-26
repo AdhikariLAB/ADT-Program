@@ -16,7 +16,7 @@
 
 import os
 import numpy as np 
-from adtp.adtmod import adt
+from adt.numeric.adtmod import adt
 from h5py import File
 from time import time
 
