@@ -222,10 +222,10 @@ class Base():
         for i,j in self.nactPairs:
             nactTemp+=textwrap.dedent(''' 
                 !for taur     
-                {{ddr,{dr},2140.2,2241.2,8001.2;state, {j}.1,{i}.1}}
+                {{ddr,{dt},2140.2,2241.2,8001.2;state, {j}.1,{i}.1}}
                 nacmepv=nacme
 
-                {{ddr,-{dr},2140.2,2242.2,8002.2;state, {j}.1,{i}.1}}
+                {{ddr,-{dt},2140.2,2242.2,8002.2;state, {j}.1,{i}.1}}
                 nacmemv=nacme
 
                 nacmr = 0.5*(nacmepv+ nacmemv)
@@ -243,7 +243,7 @@ class Base():
                 save,ddrnact{i}{j}.res,new;
 
                 
-                '''.format(dr=self.dr,dp=self.dp,i=i,j=j))
+                '''.format(dt=self.dt,dp=self.dp,i=i,j=j))
 
 
 
@@ -290,7 +290,8 @@ class Base():
 
 
         elif self.nInfo['method']=='ddr':
-            assert len(self.rhoList)==1, raise Exception('Give a fixed rho value for ddr calculation')
+            if len(self.rhoList) != 1:
+                raise Exception('Give a fixed rho value for ddr calculation')
             self.rho = self.rhoList[0]
             self.thetaGrid = self.makeGrid(self.thetaList)
             self.phiGrid = self.makeGrid(self.phiList)
@@ -498,11 +499,11 @@ class ScatterFuncs(Base):
         R3 = (1.0/np.sqrt(2.0))*self.rho*d2*np.sqrt(1.0+np.sin(theta)*np.cos(phi-eps2)) # F-H1 distance
 
         if R1 < 1e-10:
-        R1 = 0.0
+            R1 = 0.0
         if R2 < 1e-10:
-        R2 = 0.0
+            R2 = 0.0
         if R3 < 1e-10:
-        R3 = 0.0
+            R3 = 0.0
 
         area = self.AreaTriangle(R1,R2,R3)
         x = R2*R2 + R3*R3 - R1*R1
@@ -520,7 +521,7 @@ class ScatterFuncs(Base):
         rs = np.sqrt(np.dot(r,r))
         rc = np.sqrt(np.dot(R,R))
         if rc < 1e-10:
-        rc = 0.0
+            rc = 0.0
 
         rtil = (R2*m2/(m2+m3),0.0)
         drtil = np.sqrt(np.dot(rtil,rtil))
@@ -528,7 +529,7 @@ class ScatterFuncs(Base):
         y = 4.0 * Areasmall
         x = drtil*drtil + rc*rc - R1*R1
         if np.fabs(x) < 1e-10:
-        x = 0.0
+            x = 0.0
         gamma = np.atan2(y,x)
 
         # we assert that gamma is always less than 90 degree always - our grid does not produce this for H2F
@@ -664,4 +665,7 @@ class ScatterFuncs(Base):
             np.savetxt( file, data[data[:,fc]==tp] ,delimiter="\t", fmt="%.8f")
             file.write("\n")
 
+
+if __name__ == "__main__":
+    ScatterFuncs()
 
