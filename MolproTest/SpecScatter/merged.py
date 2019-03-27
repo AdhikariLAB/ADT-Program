@@ -114,7 +114,6 @@ class Base():
         with open('grid.com','w') as f:
             f.write(molproGridTemplate)
 
-    #which basis for which nact ????
     def createDdrTemplate(self):
         molproEquiTemplate=textwrap.dedent('''
             ***, Molpro template created from ADT program
@@ -244,12 +243,8 @@ class Base():
         with open('grid.com','w') as f:
             f.write(molproGridTemplate)
 
-
-
     def makeGrid(self, ll):
         return np.arange(ll[0], ll[1]+ll[2], ll[2])
-
-
 
     def parseConfig(self, conFigFile):
         #parse configuration for running molpro
@@ -298,7 +293,6 @@ class Base():
         else:
             sys.exit('%s Not a proper option'%self.nInfo['method'])
 
-
     def parseResult(self, file):
         with open(file,"r") as f:
             dat = f.read().replace("D","E").strip().split("\n")[1:]
@@ -307,7 +301,7 @@ class Base():
 
 
 
-class Spectra(Base):
+class Spectroscopic(Base):
 
     def __init__(self, 
             conFigFile= 'molpro.config', 
@@ -319,7 +313,6 @@ class Spectra(Base):
 
         self.parseData(geomFile, freqFile, wilsonFile)
         self.parseConfig(conFigFile)
-
 
     def parseData(self, geomFile, freqFile, wilsonFile):
         geomData = np.loadtxt(geomFile, 
@@ -339,8 +332,6 @@ class Spectra(Base):
         self.equiGeom = equiGeom
         self.wilFM    = wilFM
 
-
-
     def createGridGeom(self, rho, phi, outFile = 'geom.xyz'):
         
         nModes = self.wilFM.shape[2]
@@ -359,7 +350,6 @@ class Spectra(Base):
         with open(outFile,"w") as f:
             f.write(tmp)
 
-
     def createDdrGridGeom(self, rho, phi):
         createGridGeom(atomNames, rho,  phi,  'geom1.xyz')
         createGridGeom(atomNames, rho+self.dr, phi, 'geom2.xyz')
@@ -367,7 +357,6 @@ class Spectra(Base):
         createGridGeom(atomNames, rho, phi+self.dp,'geom4.xyz')
         createGridGeom(atomNames, rho, phi-self.dp,'geom5.xyz')
     
-
     def parseNact(self, i,j,rho,phi):
         file = 'ananac{}{}.res'.format(i,j)
 
@@ -376,18 +365,13 @@ class Spectra(Base):
         tau = np.einsum('ijk,ij,lk->l',self.wilFM[...,self.vModes], grads, rotoMat)
         return np.abs(tau)
 
-
-
     def getTauThetaPhiAna(self, rho, phi):    
         return np.stack((parseNact(i, j, rho, phi) 
                                     for i,j in self.nactPairs)).T
 
-
     def getTauThetaPhiDdr(self, *args):
         return np.stack((self.parseResult('ddrnact{}{}.res'.format(i,j)) 
                                     for i,j in self.nactPairs)).T
-
-
 
     def equiRun(self):
         # how to save this data??????
@@ -402,7 +386,6 @@ class Spectra(Base):
         exitcode = subprocess.call(['molpro',"-d", self.scrdir ,'-W .','equi.com'])
         if exitcode==1: sys.exit('Molpro failed in equilibrium step')
         equiData = parseResult('equienr.res').flatten()
-
 
     def runMolpro(self):
 
@@ -443,7 +426,6 @@ class Spectra(Base):
         self.writeFile('tau_rho.dat', nactRhoResult)
         self.writeFile('tau_phi.dat', nactPhiResult)
 
-
     def writeFile(self, file, data):
         #along rho or along phi?
         for tp in self.rho_grid:
@@ -452,16 +434,14 @@ class Spectra(Base):
 
 
 
-class ScatterFuncs(Base):
+class Scattering(Base):
 
-    #provide atom mass and names in atomFile.dat
     def __init__(self, 
             conFigFile= 'molpro.config',
             atomFile  = 'atomFile.dat'):
 
         self.parseData(atomFile)
         self.parseConfig(conFigFile)
-
 
     def AreaTriangle(self,a,b,c):
         """ area of a tringle with sides a,b,c """
@@ -472,8 +452,6 @@ class ScatterFuncs(Base):
             ar = 0.0
         ar = math.sqrt(ar)
         return ar
-
-
 
     def to_jacobi(self,theta,phi):
 
@@ -531,8 +509,6 @@ class ScatterFuncs(Base):
 
         return (rs, rc, gamma)
 
-
-
     def hyperToCart(self, theta, phi):
         rs, rc, gamma = to_jacobi(theta, phi)
         #! this gamma is in radian, so numpy sin cos can be used.
@@ -541,14 +517,12 @@ class ScatterFuncs(Base):
         p3 = [0, rs/2.0  , 0.0 ]
         return np.array([p1,p2,p3])
 
-
     def parseData(self, atomFile):
         atomData = np.loadtxt(atomFile, 
             dtype={'names': ('names', 'mass'),'formats': ('S1', 'f8')})
 
         self.atomNames = atomData['names']
         self.atomMass  = atomData['mass']
-
 
     def createGridGeom(self, theta, phi, outFile = 'geom.xyz'):
         curGeom  = hyperToCart(theta, phi)
@@ -562,7 +536,6 @@ class ScatterFuncs(Base):
         with open(outFile,"w") as f:
             f.write(tmp)
 
-
     def createDdrGridGeom(self, theta, phi):
         createGridGeom(atomNames, theta,    phi,    'geom1.xyz')
         createGridGeom(atomNames, theta+self.dt, phi,   'geom2.xyz')
@@ -570,7 +543,6 @@ class ScatterFuncs(Base):
         createGridGeom(atomNames, theta,    phi+self.dp,'geom4.xyz')
         createGridGeom(atomNames, theta,    phi-self.dp,'geom5.xyz')
     
-
     def parseNact(self, i,j,rho,phi, gradTheta, gradPhi):
         file = 'ananac{}{}.res'.format(i,j)
         grads = self.angtobohr*parseResult(file)
@@ -578,8 +550,6 @@ class ScatterFuncs(Base):
         tauTheta = np.einsum('ij,ij', grads, gradTheta)
         tauPhi   = np.einsum('ij,ij', grads, gradPhi)
         return np.array([tauTheta, tauPhi])
-
-
 
     def getTauThetaPhiAna(self, theta, phi):
         # What will be this values
@@ -597,13 +567,11 @@ class ScatterFuncs(Base):
         return np.stack((parseNact(i,j,rho,phi, gradTheta, gradPhi) 
                                     for i,j in self.nactPairs)).T
 
-
     def getTauThetaPhiDdr(self, *args):
         return np.stack((self.parseResult('ddrnact{}{}.res'.format(i,j)) 
                                     for i,j in self.nactPairs)).T
 
 
-    #include the theta =0 , phi = 0 step
     def equiRun(self):
         # run theta,phi 0,0 step as equilibrium step
         self.createGridGeom(self, 0.0, 0.0)
@@ -612,9 +580,6 @@ class ScatterFuncs(Base):
         if exitcode==1: sys.exit('Molpro failed in equilibrium step')
         equiData = parseResult('equienr.res').flatten()
         #what to do with this data?
-
-
-
 
     def runMolpro(self):
 
@@ -652,7 +617,6 @@ class ScatterFuncs(Base):
         self.writeFile('tau_theta.dat', nactThetaResult)
         self.writeFile('tau_phi.dat', nactPhiResult)
 
-
     def writeFile(self, file, data):
         #along rho or along phi?
         for tp in self.theta_grid:
@@ -661,5 +625,5 @@ class ScatterFuncs(Base):
 
 
 if __name__ == "__main__":
-    Spectra()
+    Scattering()
 

@@ -51,12 +51,13 @@ setup(
     description='A description',
     author='whoever',
     author_email='whoever',
+    license = "BSD",
     classifiers=[
-        'Development Status :: First Release',
-        'Intended Audience :: Theoretical Chemistry',
-        'Topic :: Software Development :: Build Tools',
-        'License ::  MIT License',
-        'Programming Language :: Python :: 2.7'
+        'Development Status :: 3 - Alpha',
+        'Intended Audience :: Science/Research',
+        'Topic :: Scientific/Engineering :: Chemistry',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: Implementation :: CPython'
     ],
     zip_safe=True,
     install_requires=['numpy >= 1.10', 'h5py', 'six'],
