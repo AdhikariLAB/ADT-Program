@@ -6,20 +6,12 @@ import subprocess
 import numpy as np
 import ConfigParser
 
-#move these inside the Base class
-angtobohr = 1.8897259886
-hbar = 0.063508
-cInvToTauInv = 0.001883651
-
-scrdir = '/tmp/adtprogram'
-
-# take from user > memory, dr-dp, scrdir
-#...f,s in nact pairs
-#remove basis from template
-#save equi wfu and start from here
 
 
 class Base():
+    angtobohr = 1.8897259886
+    hbar = 0.063508
+    cInvToTauInv = 0.001883651
 
     def sin(self, x):
         """ A sin function that directly takes degree as input unlike numpy"""
@@ -100,7 +92,7 @@ class Base():
 
             pairChunk = self.nactPairs[ind:ind+5]
             forceTemp = ''
-            for count,pair in enumerate(pairChunk):
+            for count,pair in enumerate(pairChunk, start=1):
                 f,s = pair
                 nactTemp += "{nmethod},nacm,{f}.1,{s}.1,record=51{n:02}.1;\n".format(
                             nmethod = self.nInfo['method'],f=f, s=s, n=count)
@@ -281,6 +273,8 @@ class Base():
         self.phiList = map(float, gInfo['phi'].split(','))
 
         if self.nInfo['method']=='cpmcscf':
+            if len(self.rhoList) == 1:
+                raise Exception('Provide a rho grid for analytic calculation')
             self.rhoGrid = self.makeGrid(self.rhoList)
             self.phiGrid = self.makeGrid(self.phiList)
             mInfo = dict(scf.items('mInfo'))
@@ -338,7 +332,7 @@ class Spectra(Base):
         wilson = np.loadtxt(wilsonFile)
 
         wilson = wilson.reshape(atomNames.shape[0], 3, freq.shape[0])
-        freqInv = np.sqrt(hbar/(freq*cInvToTauInv))
+        freqInv = np.sqrt(self.hbar/(freq*self.cInvToTauInv))
         massInv = np.sqrt(1/atomsMass)
         wilFM = np.einsum('ijk,k,i->ijk',wilson,freqInv,massInv)
         self.atomNames= atomNames
@@ -377,7 +371,7 @@ class Spectra(Base):
     def parseNact(self, i,j,rho,phi):
         file = 'ananac{}{}.res'.format(i,j)
 
-        grads = angtobohr*parseResult(file)
+        grads = self.angtobohr*parseResult(file)
         rotoMat = np.array([[self.cos(phi), self.sin(phi)], [-rho*self.sin(phi), rho*self.cos(phi)]])
         tau = np.einsum('ijk,ij,lk->l',self.wilFM[...,self.vModes], grads, rotoMat)
         return np.abs(tau)
@@ -579,7 +573,7 @@ class ScatterFuncs(Base):
 
     def parseNact(self, i,j,rho,phi, gradTheta, gradPhi):
         file = 'ananac{}{}.res'.format(i,j)
-        grads = angtobohr*parseResult(file)
+        grads = self.angtobohr*parseResult(file)
 
         tauTheta = np.einsum('ij,ij', grads, gradTheta)
         tauPhi   = np.einsum('ij,ij', grads, gradPhi)
@@ -667,5 +661,5 @@ class ScatterFuncs(Base):
 
 
 if __name__ == "__main__":
-    ScatterFuncs()
+    Spectra()
 
