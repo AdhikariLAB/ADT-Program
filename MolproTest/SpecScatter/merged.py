@@ -68,7 +68,7 @@ class Base():
             memory,{memory}
             file,2,molpro.wfu;
 
-            basis=6-31G**;
+            basis={basis};
 
             symmetry,nosym
 
@@ -82,6 +82,7 @@ class Base():
             save,enr.res,new
             {{table,____; noprint,heading}}
             '''.format(memory = self.memory,
+                        basis = self.eInfo['basis'],
                         method=self.eInfo['method'],
                         state=self.eInfo['state'],
                         wf =  self.eInfo['wf'],
@@ -161,7 +162,7 @@ class Base():
             memory,{memory}
             file,2,molpro.wfu;
 
-            basis=6-31G**;
+            basis={basis};
 
             symmetry,nosym
 
@@ -210,6 +211,7 @@ class Base():
 
 
             '''.format( memory = self.memory,
+                        basis = self.eInfo['basis'],
                         state=self.eInfo['state'],
                         wf =  self.eInfo['wf'],
                         cas = self.eInfo['cas']))
@@ -464,6 +466,85 @@ class ScatterFuncs(Base):
 
         self.parseData(atomFile)
         self.parseConfig(conFigFile)
+
+
+    def AreaTriangle(self,a,b,c):
+        """ area of a tringle with sides a,b,c """
+        ps = (a+b+c)/2.0
+        ar = ps*(ps-a)*(ps-b)*(ps-c)
+        # negative area due to round off errors set to zero
+        if ar < 0.0:
+            ar = 0.0
+        ar = math.sqrt(ar)
+        return ar
+
+
+
+    def to_jacobi(self,theta,phi):
+
+        """ returns jacobi coordinates """
+        m1, m2, m3 = self.atomMass
+
+        M = m1 + m2 + m3
+        mu = np.sqrt(m1*m2*m3/M)
+        d1 = np.sqrt(m1*(m2+m3)/(mu*M))
+        d2 = np.sqrt(m2*(m3+m1)/(mu*M))
+        d3 = np.sqrt(m3*(m1+m2)/(mu*M))
+        eps3 = 2 * np.atan(m2/mu)
+        eps2 = 2 * np.atan(m3/mu)
+
+        R1 = (1.0/np.sqrt(2.0))*self.rho*d3*np.sqrt(1.0+np.sin(theta)*np.cos(phi+eps3)) # F-H2 distance
+        R2 = (1.0/np.sqrt(2.0))*self.rho*d1*np.sqrt(1.0+np.sin(theta)*np.cos(phi))      # H1-H2 distance
+        R3 = (1.0/np.sqrt(2.0))*self.rho*d2*np.sqrt(1.0+np.sin(theta)*np.cos(phi-eps2)) # F-H1 distance
+
+        if R1 < 1e-10:
+        R1 = 0.0
+        if R2 < 1e-10:
+        R2 = 0.0
+        if R3 < 1e-10:
+        R3 = 0.0
+
+        area = self.AreaTriangle(R1,R2,R3)
+        x = R2*R2 + R3*R3 - R1*R1
+        y = 4.0*area
+        Ang123 = np.atan2(y,x)
+        x2 = (0.0,0.0)
+        x3 = (R2,0.0)
+        x1 = (R3*np.cos(Ang123),R3*np.sin(Ang123))
+        # these are non-mass scaled jacobi coords
+        # r : (x3-x2)
+        # R : x1 - com(x3,x2)
+        # gamma : angle between r and R
+        r = (R2,0.0)
+        R = (R3*np.cos(Ang123) - m3*R2/(m2+m3) , R3*np.sin(Ang123))
+        rs = np.sqrt(np.dot(r,r))
+        rc = np.sqrt(np.dot(R,R))
+        if rc < 1e-10:
+        rc = 0.0
+
+        rtil = (R2*m2/(m2+m3),0.0)
+        drtil = np.sqrt(np.dot(rtil,rtil))
+        Areasmall = self.AreaTriangle(drtil,R1,rc)
+        y = 4.0 * Areasmall
+        x = drtil*drtil + rc*rc - R1*R1
+        if np.fabs(x) < 1e-10:
+        x = 0.0
+        gamma = np.atan2(y,x)
+
+        # we assert that gamma is always less than 90 degree always - our grid does not produce this for H2F
+        # assert (gamma <= np.pi/2)
+
+        return (rs, rc, gamma)
+
+
+
+    def hyperToCart(self, theta, phi):
+        rs, rc, gamma = to_jacobi(theta, phi)
+        #! this gamma is in radian, so numpy sin cos can be used.
+        p1 = [0, rc*np.cos(gamma),rc*np.sin(gamma)]
+        p2 = [0, -rs/2.0 , 0.0 ]
+        p3 = [0, rs/2.0  , 0.0 ]
+        return np.array([p1,p2,p3])
 
 
     def parseData(self, atomFile):

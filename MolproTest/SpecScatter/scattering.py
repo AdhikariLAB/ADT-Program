@@ -20,11 +20,7 @@ scrdir = '/tmp/adtprogram'
 # *in both spec and scatter case
 
 
-def dotp(x,y):
-    """ dot product of two pairs """
-    return x[0]*y[0] + x[1]*y[1]
-
-def AreaTriangle(a,b,c):
+def AreaTriangle(self,a,b,c):
     """ area of a tringle with sides a,b,c """
     ps = (a+b+c)/2.0
     ar = ps*(ps-a)*(ps-b)*(ps-c)
@@ -62,7 +58,7 @@ def to_jacobi(self,theta,phi):
     if R3 < 1e-10:
        R3 = 0.0
 
-    area = AreaTriangle(R1,R2,R3)
+    area = self.AreaTriangle(R1,R2,R3)
     x = R2*R2 + R3*R3 - R1*R1
     y = 4.0*area
     Ang123 = np.atan2(y,x)
@@ -75,14 +71,14 @@ def to_jacobi(self,theta,phi):
     # gamma : angle between r and R
     r = (R2,0.0)
     R = (R3*np.cos(Ang123) - m3*R2/(m2+m3) , R3*np.sin(Ang123))
-    rs = np.sqrt(dotp(r,r))
-    rc = np.sqrt(dotp(R,R))
+    rs = np.sqrt(np.dot(r,r))
+    rc = np.sqrt(np.dot(R,R))
     if rc < 1e-10:
        rc = 0.0
 
     rtil = (R2*m2/(m2+m3),0.0)
-    drtil = np.sqrt(dotp(rtil,rtil))
-    Areasmall = AreaTriangle(drtil,R1,rc)
+    drtil = np.sqrt(np.dot(rtil,rtil))
+    Areasmall = self.AreaTriangle(drtil,R1,rc)
     y = 4.0 * Areasmall
     x = drtil*drtil + rc*rc - R1*R1
     if np.fabs(x) < 1e-10:
