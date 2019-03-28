@@ -1,21 +1,54 @@
 
 # ADT PROGRAM
-#### *a proper tagline*
-
-[![GPL License](https://img.shields.io/badge/License-GPLv3-brightgreen.svg)](https://gitlab.com/AdhikariLAB/adt-program/blob/master/LICENSE)
-
-### *Authors:*
+a brief introduction of the package
 
 
-Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari (corresponding author)
+## *Authors:*
+
+Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari (corresponding author)
+
+---
+
+## Requirements: 
+1. Fortran compiler (preferablly gnu or intel)
+2. Python 2.7  
+
+### Python dependencies required:
+1. numpy >= 1.10
+2. h5py (For using HDF5 file I/O)
+
+---
+
+## Installation:
+For installing the package with the default parameters just run  
+
+`python setup.py install`  
+
+This will install the package in the root of the system, so you may need to run this with admin privilages. Also you can install the package in the home of the local user site-packages folder for python by running  
+
+`python setup.py install --user`  
+
+On successfull installation of the package, a command line utility `adt` will be installed which will be used to run the package and do relevant calculation from terminal.  
+For a detailed help about installation and building distribution of the package run  
+
+`python setup.py -h`
+
+---
+
+## Usage:
+
+This package can be used using the command line utility `adt`. Detailed usage of the command can be seen by running 
+
+`adt -h`
+
+The main command `adt` has three subcommands for three different type of calculation namely  
+1. __Analytic__ : Calculate analytic expression for by passing the subcommand `ana` .... 
+2. __Numeric__  : Calculate different numeric `num` ....
+3. __Molpro__: Calculate ab-inition by running molpro and then `mol` ...
 
 
+### Analytic:
 
-### *System Requirements:* 
-
-1. linux operating system 
-2. ifort/gfortran compiler
-3. python interpreter
 
 
 

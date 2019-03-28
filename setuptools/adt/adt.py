@@ -83,28 +83,120 @@ def main():
     numeric_required = numeric.add_argument_group("Required arguments")
 
 
+    molpro = subparsers.add_parser('mol',
+        formatter_class=argparse.RawTextHelpFormatter,
+        description = textwrap.dedent('''
+    Hello World'''),
+        help= "Run molpro and calculate ADT angles and diabatic surfaces and couplings")
+    molpro_required = molpro.add_argument_group("Required arguments")
+
 
     #adding options for analytical jobs
-    analytical_required.add_argument("-nstate", type=int, help="Number of states", required=True)
-    analytical         .add_argument("-anajob", type=int, help="Specify the type of expression (default: %(default)s - completely substituted ADT equation) ", choices=range(1,9), metavar="[1-8]", default=5)
+    analytical_required.add_argument("-nstate", 
+                                    type=int, 
+                                    help="Number of states", required=True)
+    analytical         .add_argument("-anajob", 
+                                    type=int,
+                                    help="Specify the type of expression (default: %(default)s - completely substituted ADT equation) ", 
+                                    choices=range(1,9), 
+                                    metavar="[1-8]", 
+                                    default=5)
 
 
 
     #adding options for numerical jobs
-    numeric         .add_argument("-intpath", type=int, help="Specify the path for calculation (default: %(default)s).\n ", choices=range(1,9),metavar="[1-8]", default=1)
-    numeric         .add_argument("-efile",   type=str, help="Specify the Energy file for calculating the diabatic potential energy matrix elements.\n ", metavar="FILE")
-    numeric         .add_argument('-nstate',  type=int, help="Specify the number of states to do the calculation.\nBy default it includes all the data for calculation.\n  ")
-    numeric         .add_argument("-ofile",   type=str, help="Specify the output file name (w/o extension) (default: %(default)s).\n ", metavar="FILE", default="'ADT_numeric'")
-    numeric_required.add_argument("-nfile1",  type=str, help="Specify the NACT file along first coordinate.\n ", metavar="FILE", required=True)
-    numeric_required.add_argument("-nfile2",  type=str, help="Specify the NACT file along second coordinate.", metavar="FILE", required=True)
-    numeric.add_argument("-h5", action='store_true',    help="Write results in a HDF5 file (.h5). (default behaviour).\nFast IO, smaller file size and hierarchical filesystem-like data format, \npreferable for saving and sharing large datasets in an organised way.\n " )
-    numeric.add_argument("-nb", action='store_true',    help='Write results in Numpy binary file (.npy). \nPreferable when working with numpy for its much faster IO and easy portability.\n ')
-    numeric.add_argument("-txt" ,action="store_true",   help="Write results in a text file.")
+    numeric_required.add_argument("-nfile1",  
+                        type     = str,
+                        help     = "Specify the NACT file along first coordinate.\n ",
+                        metavar  = "FILE",
+                        required = True)
+    numeric_required.add_argument("-nfile2",  
+                        type     = str,
+                        help     = "Specify the NACT file along second coordinate.",
+                        metavar  = "FILE",
+                        required = True)
+    numeric.add_argument("-intpath", 
+                        type    = int,
+                        help    = "Specify the path for calculation (default: %(default)s).\n ",
+                        choices = range(1,9),
+                        metavar = "[1-8]",
+                        default = 1)
+    numeric.add_argument("-efile",   
+                        type    = str,
+                        help    = "Specify the Energy file for calculating the diabatic potential energy matrix elements.\n ",
+                        metavar = "FILE")
+    numeric.add_argument('-nstate',  
+                        type = int,
+                        help = "Specify the number of states to do the calculation.\nBy default it includes all the data for calculation.\n  ")
+    numeric.add_argument("-ofile",   
+                        type    = str,
+                        help    = "Specify the output file name (w/o extension) (default: %(default)s).\n ",
+                        metavar = "FILE",
+                        default = "'ADT_numeric'")
+    numeric.add_argument("-h5", 
+                        action = 'store_true',
+                        help   = "Write results in a HDF5 file (.h5). (default behaviour).\nFast IO, smaller file size and hierarchical filesystem-like data format,\npreferable for saving and sharing large datasets in an organised way.\n " )
+    numeric.add_argument("-nb", 
+                        action = 'store_true',
+                        help   = 'Write results in Numpy binary file (.npy). \nPreferable when working with numpy for its much faster IO and easy portability.\n ')
+    numeric.add_argument("-txt" ,
+                        action = "store_true",
+                        help   = "Write results in a text file.")
     numeric.set_defaults(h5=False,txt=False, nb = False)
 
 
 
-
+    molpro_required.add_argument('-sys',
+                        type    = str,
+                        metavar = "SYS",
+                        choices =['spectroscopic', 'scattering'],
+                        help    = 'Specify type of the system for running molpro \n ')
+    molpro.add_argument('-config',
+                        type    = str,
+                        metavar = "FILE",
+                        default = 'molpro.config',
+                        help    = 'Specify the molpro config file (default: %(default)s). \n ')
+    molpro.add_argument('-atomfile',
+                        type    = str,
+                        metavar = "FILE",
+                        default = 'atomfile.dat',
+                        help    = 'Specify the (default: %(default)s). \n ')
+    molpro.add_argument('-geomfile',
+                        type    = str,
+                        metavar = "FILE",
+                        default = 'geom.dat',
+                        help    = 'Specify the (default: %(default)s). (Igonred for scattering system). \n ' )
+    molpro.add_argument('-freqfile',
+                        type    = str,
+                        metavar = "FILE",
+                        default = 'frequency.dat',
+                        help    = 'Specify the (default: %(default)s). (Igonred for scattering system). \n ')
+    molpro.add_argument('-wilsonfile',
+                        type    = str,
+                        metavar = "FILE",
+                        default = 'wilson.dat',
+                        help    = 'Specify the (default: %(default)s). (Igonred for scattering system). \n ')
+    molpro.add_argument("-intpath", 
+                        type    = int,
+                        help    = "Specify the path for calculation (default: %(default)s).\n ",
+                        choices = range(1,9),
+                        metavar = "[1-8]",
+                        default = 1)
+    molpro.add_argument("-ofile",   
+                        type    = str,
+                        help    = "Specify the output file name (w/o extension) (default: %(default)s).\n ",
+                        metavar = "FILE",
+                        default = "'ADT_numeric'")
+    molpro.add_argument("-h5", 
+                        action = 'store_true',
+                        help   = "Write results in a HDF5 file (.h5). (default behaviour).\nFast IO, smaller file size and hierarchical filesystem-like data format,\npreferable for saving and sharing large datasets in an organised way.\n " )
+    molpro.add_argument("-nb", 
+                        action = 'store_true',
+                        help   = 'Write results in Numpy binary file (.npy). \nPreferable when working with numpy for its much faster IO and easy portability.\n ')
+    molpro.add_argument("-txt" ,
+                        action = "store_true",
+                        help   = "Write results in a text file.")
+    molpro.set_defaults(h5=False,txt=False, nb = False)
 
 
     #collecting arguments
@@ -113,8 +205,8 @@ def main():
 
     #generation of analytic expressions according to command line arguments
     if args.choice =="ana":
-        state = args.nstate 
-        path  = args.anajob
+        state  = args.nstate
+        path   = args.anajob
         logger = make_logger("ADT Analytical program")
         try:
             adt_analytical(state, path, logger)
@@ -127,15 +219,15 @@ def main():
 
     #calculation of ADT quantities according to command line arguments
     if args.choice == "num":
-        path = args.intpath 
-        enrf = args.efile 
-        nstate = args.nstate
-        rhof = args.nfile1 
-        phif = args.nfile2
+        path    = args.intpath
+        enrf    = args.efile
+        nstate  = args.nstate
+        rhof    = args.nfile1
+        phif    = args.nfile2
         outfile = args.ofile.strip("'")
-        h5 = args.h5
-        txt = args.txt
-        nb = args.nb
+        h5      = args.h5
+        txt     = args.txt
+        nb      = args.nb
         if (h5==False and txt== False and nb==False ) : h5=True 
 
         logger = make_logger("ADT Numerical Program")
@@ -146,4 +238,24 @@ def main():
             logger.error("Program failed\n"+"-"*121)
             print("Program failed. %s"%e)
 
+
+
+    if args.choice == 'mol':
+        configfile = args.config
+        atomfile   = args.atomfile
+        geomfile   = args.geomfile
+        freqfile   = args.freqfile
+        wilsonfile = args.wilsonfile
+        path       = args.intpath
+        outfile = args.ofile.strip("'")
+        h5      = args.h5
+        txt     = args.txt
+        nb      = args.nb
+        logger = make_logger("ADT Numerical Program")
+
+
+
     #######################################################################################################################
+
+if __name__ == "__main__":
+    main()

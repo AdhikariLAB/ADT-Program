@@ -246,6 +246,14 @@ class Base():
     def makeGrid(self, ll):
         return np.arange(ll[0], ll[1]+ll[2], ll[2])
 
+    def parseData(self, atomFile):
+        atomData = np.loadtxt(atomFile, 
+            dtype={'names': ('names', 'mass'),'formats': ('S1', 'f8')})
+
+        self.atomNames = atomData['names']
+        self.atomMass  = atomData['mass']
+
+
     def parseConfig(self, conFigFile):
         #parse configuration for running molpro
         scf = ConfigParser.SafeConfigParser()
@@ -303,34 +311,21 @@ class Base():
 
 class Spectroscopic(Base):
 
-    def __init__(self, 
-            conFigFile= 'molpro.config', 
-            geomFile  = 'equiGeom.dat', 
-            freqFile  = 'freq.dat', 
-            wilsonFile= 'wilson.dat' ):
+    def __init__(self, conFigFile ,atomFile, geomFile , freqFile , wilsonFile ):
 
-
-
-        self.parseData(geomFile, freqFile, wilsonFile)
+        self.parseData(atomFile)
+        self.parseSData(geomFile, freqFile, wilsonFile)
         self.parseConfig(conFigFile)
 
-    def parseData(self, geomFile, freqFile, wilsonFile):
-        geomData = np.loadtxt(geomFile, 
-            dtype={'names': ('names', 'mass', 'x','y','z'),'formats': ('S1', 'f8', 'f8','f8','f8')})
-        atomNames= geomData['names']
-        atomsMass= geomData['mass']
-        equiGeom = np.array([geomData[i] for i in ['x','y','z']]).T
-
+    def parseSData(self, geomFile, freqFile, wilsonFile):
+        self.equiGeom = np.loadtxt(geomFile)
         freq = np.loadtxt(freqFile)
         wilson = np.loadtxt(wilsonFile)
 
-        wilson = wilson.reshape(atomNames.shape[0], 3, freq.shape[0])
+        wilson = wilson.reshape(self.equiGeom.shape[0], 3, freq.shape[0])
         freqInv = np.sqrt(self.hbar/(freq*self.cInvToTauInv))
         massInv = np.sqrt(1/atomsMass)
-        wilFM = np.einsum('ijk,k,i->ijk',wilson,freqInv,massInv)
-        self.atomNames= atomNames
-        self.equiGeom = equiGeom
-        self.wilFM    = wilFM
+        self.wilFM = np.einsum('ijk,k,i->ijk',wilson,freqInv,massInv)
 
     def createGridGeom(self, rho, phi, outFile = 'geom.xyz'):
         
@@ -436,9 +431,7 @@ class Spectroscopic(Base):
 
 class Scattering(Base):
 
-    def __init__(self, 
-            conFigFile= 'molpro.config',
-            atomFile  = 'atomFile.dat'):
+    def __init__(self, conFigFile, atomFile ):
 
         self.parseData(atomFile)
         self.parseConfig(conFigFile)
@@ -453,7 +446,7 @@ class Scattering(Base):
         ar = math.sqrt(ar)
         return ar
 
-    def to_jacobi(self,theta,phi):
+    def toJacobi(self,theta,phi):
 
         """ returns jacobi coordinates """
         m1, m2, m3 = self.atomMass
@@ -510,19 +503,13 @@ class Scattering(Base):
         return (rs, rc, gamma)
 
     def hyperToCart(self, theta, phi):
-        rs, rc, gamma = to_jacobi(theta, phi)
+        rs, rc, gamma = toJacobi(theta, phi)
         #! this gamma is in radian, so numpy sin cos can be used.
         p1 = [0, rc*np.cos(gamma),rc*np.sin(gamma)]
         p2 = [0, -rs/2.0 , 0.0 ]
         p3 = [0, rs/2.0  , 0.0 ]
         return np.array([p1,p2,p3])
 
-    def parseData(self, atomFile):
-        atomData = np.loadtxt(atomFile, 
-            dtype={'names': ('names', 'mass'),'formats': ('S1', 'f8')})
-
-        self.atomNames = atomData['names']
-        self.atomMass  = atomData['mass']
 
     def createGridGeom(self, theta, phi, outFile = 'geom.xyz'):
         curGeom  = hyperToCart(theta, phi)
@@ -570,7 +557,6 @@ class Scattering(Base):
     def getTauThetaPhiDdr(self, *args):
         return np.stack((self.parseResult('ddrnact{}{}.res'.format(i,j)) 
                                     for i,j in self.nactPairs)).T
-
 
     def equiRun(self):
         # run theta,phi 0,0 step as equilibrium step

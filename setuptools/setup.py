@@ -19,7 +19,7 @@ from setuptools import find_packages
 #uncomment one of the following as your requirement
 
 #for default_fortran compiler(usually gfortran) without parallel
-# python setup.py config_fc --fcompiler=intelem  install
+# python setup.py install
 # fort_args = []
 # lib_links = []
 
@@ -39,7 +39,7 @@ lib_links = ['-lgomp']
 
 
 lib = Extension(name='adtmod', 
-            sources=['adt/numeric/nummod.f90']
+            sources=['adt/numeric/nummod.f90'],
             extra_f90_compile_args=fort_args,
             extra_link_args=lib_links)
 
