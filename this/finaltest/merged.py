@@ -8,6 +8,16 @@ import ConfigParser
 
 
 
+#TODOs::::::
+# 1. do the equi/init step inside the main loop
+# 1. modify grid.com to make equi.com
+
+
+
+
+
+
+
 class Base():
     angtobohr = 1.8897259886
     hbar = 0.063508
@@ -22,40 +32,8 @@ class Base():
         return np.cos(np.deg2rad(x))
 
     def createAnaTemplate(self):
-        molproEquiTemplate=textwrap.dedent('''
-            ***, Molpro template created from ADT program
-            memory,{memory};
-            file,2,molpro_equi.wfu,new;
 
-            basis={basis};
-
-            symmetry,nosym
-
-            geometry=geom.xyz
-
-            {{uhf;orbital,2200.2}}
-            {{{method};{cas}; wf,{wf};state,{state};orbital,2140.2;}}
-
-            show, energy
-            table, energy
-            save,equienr.res,new
-            {{table,____; noprint,heading}}
-
-            ---
-
-            '''.format(memory = self.memory,
-                        basis = self.eInfo['basis'],
-                        method=self.eInfo['method'],
-                        state=self.eInfo['state'],
-                        wf =  self.eInfo['wf'],
-                        cas = self.eInfo['cas']))
-
-        with open('equi.com' ,'w') as f:
-            f.write(molproEquiTemplate)
-
-
-
-        molproGridTemplate=textwrap.dedent('''
+        molproTemplate=textwrap.dedent('''
             ***, Molpro template created from ADT program
             memory,{memory}
             file,2,molpro.wfu;
@@ -66,7 +44,7 @@ class Base():
 
 
             geometry=geom.xyz
-
+            !replacebyuhf
             {{{method};{cas}; wf,{wf};state,{state};start,2140.2; orbital,2140.2;}}
 
             show, energy
@@ -84,8 +62,7 @@ class Base():
         nactTemp= "\n\nbasis={}\n".format(self.nInfo['basis'])
 
         for ind in range(0,len(self.nactPairs),5):
-            nactTemp += "\n{{{method};{cas}; wf,{wf};state,{state}; start,2140.2;\n".format(
-                                method=self.nInfo['method'],
+            nactTemp += "\n{{mcscf;{cas}; wf,{wf};state,{state}; start,2140.2;\n".format(
                                 state=self.eInfo['state'],
                                 wf =  self.eInfo['wf'],
                                 cas = self.eInfo['cas'])
@@ -94,8 +71,8 @@ class Base():
             forceTemp = ''
             for count,pair in enumerate(pairChunk, start=1):
                 f,s = pair
-                nactTemp += "{nmethod},nacm,{f}.1,{s}.1,record=51{n:02}.1;\n".format(
-                            nmethod = self.nInfo['method'],f=f, s=s, n=count)
+                nactTemp += "cpmcscf,nacm,{f}.1,{s}.1,record=51{n:02}.1;\n".format(
+                           f=f, s=s, n=count)
 
                 forceTemp +=textwrap.dedent("""
                 force;nacm,51{n:02}.1;varsav
@@ -109,46 +86,20 @@ class Base():
 
 
 
-        molproGridTemplate += nactTemp + '\n---\n'
+        molproTemplate += nactTemp + '\n---\n'
 
         with open('grid.com','w') as f:
-            f.write(molproGridTemplate)
+            f.write(molproTemplate)
+
+        molproInitTemplate = molproTemplate.replace('molpro.wfu', 'molpro_init.wfu')\
+                                            .replace('!replacebyuhf', '{uhf}')
+        with open('init.com', 'w') as f:
+            f.write(molproInitTemplate)
+
 
     def createDdrTemplate(self):
-        molproEquiTemplate=textwrap.dedent('''
-            ***, Molpro template created from ADT program
-            memory,{memory}
-            file,2,molpro_equi.wfu,new;
 
-            basis={basis};
-
-            symmetry,nosym
-
-
-            geometry=geom.xyz
-
-            {{uhf;orbital,2200.2}}
-            {{multi;{cas}; wf,{wf};state,{state};orbital,2140.2;}}
-            {{mrci; {cas}; wf,{wf};state,{state};save,6000.2;noexc}}
-            show,  energy
-            table, energy
-            save,equienr.res,new
-            {{table,____; noprint,heading}}
-
-            ---
-
-            '''.format( memory = self.memory,
-                        basis = self.eInfo['basis'],
-                        state=self.eInfo['state'],
-                        wf =  self.eInfo['wf'],
-                        cas = self.eInfo['cas']))
-
-        with open('equi.com' ,'w') as f:
-            f.write(molproEquiTemplate)
-
-
-
-        molproGridTemplate=textwrap.dedent('''
+        molproTemplate=textwrap.dedent('''
             ***, Molpro template created from ADT program for "WhatEver"
             memory,{memory}
             file,2,molpro.wfu;
@@ -159,7 +110,8 @@ class Base():
 
             geomtyp=xyz
             geometry=geom1.xyz
-
+            
+            !replacebyuhf
             {{multi;{cas}; wf,{wf};state,{state};orbital,2140.2;}}
             {{mrci; {cas}; wf,{wf};state,{state};save,6000.2;noexc}}
 
@@ -238,10 +190,16 @@ class Base():
 
 
 
-        molproGridTemplate += nactTemp + '\n---\n'
+        molproTemplate += nactTemp + '\n---\n'
 
         with open('grid.com','w') as f:
-            f.write(molproGridTemplate)
+            f.write(molproTemplate)
+
+        molproInitTemplate = molproTemplate.replace('molpro.wfu', 'molpro_init.wfu')\
+                                            .replace('!replacebyuhf', '{uhf}')
+        with open('init.com', 'w') as f:
+            f.write(molproInitTemplate)
+
 
     def makeGrid(self, ll):
         return np.arange(ll[0], ll[1]+ll[2], ll[2])
@@ -269,33 +227,41 @@ class Base():
 
         self.state = int(self.eInfo['state'])
         self.nactPairs = [[i,j] for i in range(1,self.state+1) for j in range(i+1,self.state+1)]
-
+        self.nTau = len(self.nactPairs)
         #or should I just take as rho/theta/phi grid?
         self.rhoList = map(float, gInfo['rho'].split(','))
         self.thetaList = map(float, gInfo['theta'].split(','))
         self.phiList = map(float, gInfo['phi'].split(','))
+        self.phiGrid = self.makeGrid(self.phiList)
 
-        if self.nInfo['method']=='cpmcscf':
-            if len(self.rhoList) == 1:
-                raise Exception('Provide a rho grid for analytic calculation')
-            self.rhoGrid = self.makeGrid(self.rhoList)
-            self.phiGrid = self.makeGrid(self.phiList)
+        if self.__class__.__name__=='Spectroscopic':
             mInfo = dict(scf.items('mInfo'))
             self.vModes = [int(i)-1 for i in mInfo['varying'].split(',')]
+            if len(self.rhoList) == 1:
+                raise Exception('Give a grid rho value for spectroscopic calculation')
+            self.rhoGrid = self.makeGrid(self.rhoList)
+
+
+        if self.__class__.__name__=='Scattering':
+            if len(self.rhoList) != 1:
+                raise Exception('Give a fixed rho value for scattering calculation')
+            self.rho = self.rhoList[0]
+            self.thetaGrid = self.makeGrid(self.thetaList)
+            
+
+
+
+        if self.nInfo['method']=='cpmcscf':
             self.createAnaTemplate()
             self.getTauThetaPhi = self.getTauThetaPhiAna
+            self.createGridGeom = self.createOneGeom
 
 
         elif self.nInfo['method']=='ddr':
-            if len(self.rhoList) != 1:
-                raise Exception('Give a fixed rho value for ddr calculation')
-            self.rho = self.rhoList[0]
-            self.thetaGrid = self.makeGrid(self.thetaList)
-            self.phiGrid = self.makeGrid(self.phiList)
-            self.dt = gInfo['dt']
-            self.dp = gInfo['dp']
+            self.dt = float(gInfo['dt'])
+            self.dp = float(gInfo['dp'])
             self.createDdrTemplate()
-            self.createGridGeom = self.createDdrGridGeom
+            self.createGridGeom = self.createAllGeom
             self.getTauThetaPhi = self.getTauThetaPhiDdr
 
         else:
@@ -324,17 +290,17 @@ class Spectroscopic(Base):
 
         wilson = wilson.reshape(self.equiGeom.shape[0], 3, freq.shape[0])
         freqInv = np.sqrt(self.hbar/(freq*self.cInvToTauInv))
-        massInv = np.sqrt(1/atomsMass)
+        massInv = np.sqrt(1/self.atomMass)
         self.wilFM = np.einsum('ijk,k,i->ijk',wilson,freqInv,massInv)
 
-    def createGridGeom(self, rho, phi, outFile = 'geom.xyz'):
+    def createOneGeom(self, rho, phi, outFile = 'geom.xyz'):
         
         nModes = self.wilFM.shape[2]
         qCord  = np.zeros(nModes)
         qCord[self.vModes[0]] = rho*self.cos(phi)
         qCord[self.vModes[1]] = rho*self.sin(phi)
 
-        curGeom  = self.equiGeom+np.einsum('ijk,k->ij',self.wilFM, self.qCord)
+        curGeom  = self.equiGeom+np.einsum('ijk,k->ij',self.wilFM, qCord)
         msg = 'for Rho = {}, Phi = {}'.format(rho, phi)
         nAtoms = len(self.atomNames)
         tmp = " {}\n".format(nAtoms)
@@ -345,12 +311,12 @@ class Spectroscopic(Base):
         with open(outFile,"w") as f:
             f.write(tmp)
 
-    def createDdrGridGeom(self, rho, phi):
-        createGridGeom(atomNames, rho,  phi,  'geom1.xyz')
-        createGridGeom(atomNames, rho+self.dr, phi, 'geom2.xyz')
-        createGridGeom(atomNames, rho-self.dr, phi, 'geom3.xyz')
-        createGridGeom(atomNames, rho, phi+self.dp,'geom4.xyz')
-        createGridGeom(atomNames, rho, phi-self.dp,'geom5.xyz')
+    def createAllGeom(self, rho, phi): #only used by ddr
+        self.createGridGeom(self.atomNames, rho,  phi,  'geom1.xyz')
+        self.createGridGeom(self.atomNames, rho+self.dr, phi, 'geom2.xyz')
+        self.createGridGeom(self.atomNames, rho-self.dr, phi, 'geom3.xyz')
+        self.createGridGeom(self.atomNames, rho, phi+self.dp,'geom4.xyz')
+        self.createGridGeom(self.atomNames, rho, phi-self.dp,'geom5.xyz')
     
     def parseNact(self, i,j,rho,phi):
         file = 'ananac{}{}.res'.format(i,j)
@@ -360,8 +326,8 @@ class Spectroscopic(Base):
         tau = np.einsum('ijk,ij,lk->l',self.wilFM[...,self.vModes], grads, rotoMat)
         return np.abs(tau)
 
-    def getTauThetaPhiAna(self, rho, phi):    
-        return np.stack((parseNact(i, j, rho, phi) 
+    def getTauThetaPhiAna(self, rho, phi):
+        return np.stack((self.parseNact(i, j, rho, phi) 
                                     for i,j in self.nactPairs)).T
 
     def getTauThetaPhiDdr(self, *args):
@@ -380,35 +346,43 @@ class Spectroscopic(Base):
             f.write(tmp)
         exitcode = subprocess.call(['molpro',"-d", self.scrdir ,'-W .','equi.com'])
         if exitcode==1: sys.exit('Molpro failed in equilibrium step')
-        equiData = parseResult('equienr.res').flatten()
+        equiData = self.parseResult('equienr.res').flatten()
 
     def runMolpro(self):
 
         #initialise blank arrays to store result
         energyResult  = np.array([], dtype=np.float64).reshape(0,self.state+2) 
-        nactRhoResult = np.array([], dtype=np.float64).reshape(0,nTau+2)
-        nactPhiResult = np.array([], dtype=np.float64).reshape(0,nTau+2)
+        nactRhoResult = np.array([], dtype=np.float64).reshape(0,self.nTau+2)
+        nactPhiResult = np.array([], dtype=np.float64).reshape(0,self.nTau+2)
 
+        #rho grid starts from?
+        for phi in self.phiGrid[:1]:
+            if (phi!=0):
+                shutil.copy('molpro_init.wfu', 'molpro.wfu')               # copy the wfu from the initial job
 
-        #run molpro for the equilibrium step
-        self.equiRun()
+            for rho in self.rhoGrid[:2]: 
+                print 'Running molpro job for Rho = {}, Phi = {}.......'.format(rho, phi),
+                sys.stdout.flush()
+                self.createGridGeom(rho, phi)
 
-        for phi in self.phi_grid[:1]:
-            shutil.copy('molpro_equi.wfu', 'molpro.wfu')   # copy the wave function from the equilibrium step
-            for rho in self.rho_grid[:1]:
+                if (rho==0) & (phi==0): # For the initial/equilibrium job i.e. rho = phi=0
+                    exitcode = subprocess.call(['molpro',"-d", self.scrdir,'-W .','init.com'])
+                    if exitcode==0:
+                        print 'Job successful  '
+                        shutil.copy('molpro_init.wfu', 'molpro.wfu')
+                    else : 
+                        print 'Job unsuccessful' 
+                        sys.exit('Exiting program')
+                elif (rho==0) & (phi!=0) : 
+                    continue # don't run the job for other rhos
 
-                self.createGridGeom(rho, phi) 
-                shutil.copy('molpro.wfu',self.scrdir )
+                else:
+                    shutil.copy('molpro.wfu',self.scrdir)
+                    exitcode = subprocess.call(['molpro',"-d", self.scrdir,'-W .','grid.com'])
 
-                exitcode = subprocess.call(['molpro',"-d", self.scrdir ,'-W .','grid.com'])
-                if exitcode==0:
-                    print 'Job successful  '+msg
-                else : 
-                    print 'Job unsuccessful'+msg 
-                    continue
+                    print 'Job ' + ('' if exitcode else 'un') +'successful'
 
-
-                enrData = parseResult('enr.res').flatten()
+                enrData = self.parseResult('enr.res').flatten()
                 tauRho, tauPhi = self.getTauThetaPhi(theta, phi)
 
 
@@ -436,6 +410,7 @@ class Scattering(Base):
         self.parseData(atomFile)
         self.parseConfig(conFigFile)
 
+
     def AreaTriangle(self,a,b,c):
         """ area of a tringle with sides a,b,c """
         ps = (a+b+c)/2.0
@@ -443,7 +418,7 @@ class Scattering(Base):
         # negative area due to round off errors set to zero
         if ar < 0.0:
             ar = 0.0
-        ar = math.sqrt(ar)
+        ar = np.sqrt(ar)
         return ar
 
     def toJacobi(self,theta,phi):
@@ -456,12 +431,12 @@ class Scattering(Base):
         d1 = np.sqrt(m1*(m2+m3)/(mu*M))
         d2 = np.sqrt(m2*(m3+m1)/(mu*M))
         d3 = np.sqrt(m3*(m1+m2)/(mu*M))
-        eps3 = 2 * np.atan(m2/mu)
-        eps2 = 2 * np.atan(m3/mu)
+        eps3 = 2 * np.arctan(m2/mu)
+        eps2 = 2 * np.arctan(m3/mu)
 
-        R1 = (1.0/np.sqrt(2.0))*self.rho*d3*np.sqrt(1.0+np.sin(theta)*np.cos(phi+eps3)) # F-H2 distance
-        R2 = (1.0/np.sqrt(2.0))*self.rho*d1*np.sqrt(1.0+np.sin(theta)*np.cos(phi))      # H1-H2 distance
-        R3 = (1.0/np.sqrt(2.0))*self.rho*d2*np.sqrt(1.0+np.sin(theta)*np.cos(phi-eps2)) # F-H1 distance
+        R1 = (1.0/np.sqrt(2.0))*self.rho*d3*np.sqrt(1.0+ self.sin(theta)*self.cos(phi+eps3)) # F-H2 distance
+        R2 = (1.0/np.sqrt(2.0))*self.rho*d1*np.sqrt(1.0+ self.sin(theta)*self.cos(phi))      # H1-H2 distance
+        R3 = (1.0/np.sqrt(2.0))*self.rho*d2*np.sqrt(1.0+ self.sin(theta)*self.cos(phi-eps2)) # F-H1 distance
 
         if R1 < 1e-10:
             R1 = 0.0
@@ -473,7 +448,7 @@ class Scattering(Base):
         area = self.AreaTriangle(R1,R2,R3)
         x = R2*R2 + R3*R3 - R1*R1
         y = 4.0*area
-        Ang123 = np.atan2(y,x)
+        Ang123 = np.arctan2(y,x)
         x2 = (0.0,0.0)
         x3 = (R2,0.0)
         x1 = (R3*np.cos(Ang123),R3*np.sin(Ang123))
@@ -495,7 +470,7 @@ class Scattering(Base):
         x = drtil*drtil + rc*rc - R1*R1
         if np.fabs(x) < 1e-10:
             x = 0.0
-        gamma = np.atan2(y,x)
+        gamma = np.arctan2(y,x)
 
         # we assert that gamma is always less than 90 degree always - our grid does not produce this for H2F
         # assert (gamma <= np.pi/2)
@@ -503,15 +478,14 @@ class Scattering(Base):
         return (rs, rc, gamma)
 
     def hyperToCart(self, theta, phi):
-        rs, rc, gamma = toJacobi(theta, phi)
-        #! this gamma is in radian, so numpy sin cos can be used.
+        rs, rc, gamma = self.toJacobi(theta, phi)
         p1 = [0, rc*np.cos(gamma),rc*np.sin(gamma)]
         p2 = [0, -rs/2.0 , 0.0 ]
         p3 = [0, rs/2.0  , 0.0 ]
         return np.array([p1,p2,p3])
 
-    def createGridGeom(self, theta, phi, outFile = 'geom.xyz'):
-        curGeom  = hyperToCart(theta, phi)
+    def createOneGeom(self, theta, phi, outFile='geom.xyz'):
+        curGeom  = self.hyperToCart(theta, phi)
         msg = 'for Rho = {}, Theta={}, Phi = {}'.format(self.rho, theta, phi)
         nAtoms = len(self.atomNames)
         tmp = " {}\n".format(nAtoms)
@@ -522,16 +496,16 @@ class Scattering(Base):
         with open(outFile,"w") as f:
             f.write(tmp)
 
-    def createDdrGridGeom(self, theta, phi):
-        createGridGeom(atomNames, theta,    phi,    'geom1.xyz')
-        createGridGeom(atomNames, theta+self.dt, phi,   'geom2.xyz')
-        createGridGeom(atomNames, theta-self.dt, phi,   'geom3.xyz')
-        createGridGeom(atomNames, theta,    phi+self.dp,'geom4.xyz')
-        createGridGeom(atomNames, theta,    phi-self.dp,'geom5.xyz')
+    def createAllGeom(self, theta, phi):
+        self.createOneGeom(theta,    phi,    'geom1.xyz')
+        self.createOneGeom(theta+self.dt, phi,   'geom2.xyz')
+        self.createOneGeom(theta-self.dt, phi,   'geom3.xyz')
+        self.createOneGeom(theta,    phi+self.dp,'geom4.xyz')
+        self.createOneGeom(theta,    phi-self.dp,'geom5.xyz')
 
-    def parseNact(self, i,j,rho,phi, gradTheta, gradPhi):
+    def parseNact(self, i,j,gradTheta, gradPhi):
         file = 'ananac{}{}.res'.format(i,j)
-        grads = self.angtobohr*parseResult(file)
+        grads = self.angtobohr*self.parseResult(file)
 
         tauTheta = np.einsum('ij,ij', grads, gradTheta)
         tauPhi   = np.einsum('ij,ij', grads, gradPhi)
@@ -542,55 +516,58 @@ class Scattering(Base):
         dTheta = self.thetaList[2]/100
         dPhi = self.phiList[2]/100
 
-        gradThetaPlus  = hyperToCart(theta+dTheta, phi)
-        gradThetaMinus = hyperToCart(theta-dTheta, phi)
+        gradThetaPlus  = self.hyperToCart(theta+dTheta, phi)
+        gradThetaMinus = self.hyperToCart(theta-dTheta, phi)
         gradTheta      = (gradThetaPlus - gradThetaMinus)/2*dTheta
 
-        gradPhiPlus  = hyperToCart(theta+dTheta, phi)
-        gradPhiMinus = hyperToCart(theta-dTheta, phi)
+        gradPhiPlus  = self.hyperToCart(theta+dTheta, phi)
+        gradPhiMinus = self.hyperToCart(theta-dTheta, phi)
         gradPhi      = (gradPhiPlus - gradPhiMinus)/2*dPhi 
     
-        return np.stack((parseNact(i,j,rho,phi, gradTheta, gradPhi) 
+        return np.vstack((self.parseNact(i,j,gradTheta, gradPhi) 
                                     for i,j in self.nactPairs)).T
 
     def getTauThetaPhiDdr(self, *args):
-        return np.stack((self.parseResult('ddrnact{}{}.res'.format(i,j)) 
+        return np.vstack((self.parseResult('ddrnact{}{}.res'.format(i,j)) 
                                     for i,j in self.nactPairs)).T
 
-    def equiRun(self):
-        # run theta,phi 0,0 step as equilibrium step
-        self.createGridGeom(self, 0.0, 0.0)
-
-        exitcode = subprocess.call(['molpro',"-d", self.scrdir ,'-W .','equi.com'])
-        if exitcode==1: sys.exit('Molpro failed in equilibrium step')
-        equiData = parseResult('equienr.res').flatten()
-        #what to do with this data?
 
     def runMolpro(self):
-
         #initialise blank arrays to store result
-        energyResult  = np.array([], dtype=np.float64).reshape(0,self.state+2) 
-        nactRhoResult = np.array([], dtype=np.float64).reshape(0,nTau+2)
-        nactPhiResult = np.array([], dtype=np.float64).reshape(0,nTau+2)
-
-        self.equiRun()
-
-        for phi in self.phi_grid[:1]:
-            shutil.copy('molpro_equi.wfu', 'molpro.wfu')
-            for theta in self.theta_grid[:1]:
-
-                self.createGridGeom(theta, phi) 
-                shutil.copy('molpro.wfu',scrdir)
-
-                exitcode = subprocess.call(['molpro',"-d", scrdir,'-W .','grid.com'])
-                if exitcode==0:
-                    print 'Job successful  '+msg
-                else : 
-                    print 'Job unsuccessful'+msg 
-                    continue
+        nTau = len(self.nactPairs)
+        energyResult    = np.array([], dtype=np.float64).reshape(0,self.state+2)
+        nactThetaResult = np.array([], dtype=np.float64).reshape(0,nTau+2)
+        nactPhiResult   = np.array([], dtype=np.float64).reshape(0,nTau+2)
 
 
-                enrData = parseResult('enr.res').flatten()
+
+        for phi in self.phiGrid[:1]:
+            if (phi!=0):
+                shutil.copy('molpro_init.wfu', 'molpro.wfu')               # copy the wfu from the initial job
+
+            for theta in self.thetaGrid[:2]: 
+                print 'Running molpro job for Rho = {}, Theta={}, Phi = {}.......'.format(self.rho, theta, phi),
+                sys.stdout.flush()
+                self.createGridGeom(theta, phi)
+
+                if (theta==0) & (phi==0): # For the initial job i.e. theta = phi=0
+                    exitcode = subprocess.call(['molpro',"-d", self.scrdir,'-W .','init.com'])
+                    if exitcode==0:
+                        print 'Job successful  '
+                        shutil.copy('molpro_init.wfu', 'molpro.wfu')
+                    else : 
+                        print 'Job unsuccessful' 
+                        sys.exit('Exiting program')
+                elif (theta==0) & (phi!=0) : 
+                    continue # don't run the job for other thetas
+
+                else:
+                    shutil.copy('molpro.wfu',self.scrdir)
+                    exitcode = subprocess.call(['molpro',"-d", self.scrdir,'-W .','grid.com'])
+
+                    print 'Job ' + ('' if exitcode else 'un') +'successful'
+
+                enrData = self.parseResult('enr.res').flatten()
                 tauTheta, tauPhi = self.getTauThetaPhi(theta, phi)
 
 
@@ -604,11 +581,23 @@ class Scattering(Base):
 
     def writeFile(self, file, data):
         #along rho or along phi?
-        for tp in self.theta_grid:
-            np.savetxt( file, data[data[:,fc]==tp] ,delimiter="\t", fmt="%.8f")
+        file = open(file,'wb')
+        for tp in self.thetaGrid:
+            np.savetxt( file, data[data[:,0]==tp] ,delimiter="\t", fmt="%.8f")
             file.write("\n")
 
 
 if __name__ == "__main__":
-    Scattering()
+    # s = Scattering('./scatterAna/molpro.config','./scatterAna/atomfile.dat')
 
+
+    # s = Scattering('./ScatterDdr/molpro.config','./ScatterDdr/atomfile.dat')
+
+
+    s = Spectroscopic('./specAan/molpro.config','./specAan/atomfile.dat', './specAan/geomfile.dat', './specAan/frequency.dat', './specAan/wilson.dat')
+
+
+    # s = Spectroscopic('./specDdr/molpro.config','./specDdr/atomfile.dat', './specDdr/geomfile.dat', './specDdr/frequency.dat', './specDdr/wilson.dat')
+
+
+    s.runMolpro()

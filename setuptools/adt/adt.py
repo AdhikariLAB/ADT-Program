@@ -149,8 +149,9 @@ def main():
     molpro_required.add_argument('-sys',
                         type    = str,
                         metavar = "SYS",
+                        required=True,
                         choices =['spectroscopic', 'scattering'],
-                        help    = 'Specify type of the system for running molpro \n ')
+                        help    = 'Specify type of the molecular process \n(molecular species for spectroscopic calculation or reactive moeities for scattering calculation) \n(Available options: spectroscopic or scattering)\n ')
     molpro.add_argument('-config',
                         type    = str,
                         metavar = "FILE",
@@ -164,7 +165,7 @@ def main():
     molpro.add_argument('-geomfile',
                         type    = str,
                         metavar = "FILE",
-                        default = 'geom.dat',
+                        default = 'geomfile.dat',
                         help    = 'Specify the (default: %(default)s). (Igonred for scattering system). \n ' )
     molpro.add_argument('-freqfile',
                         type    = str,

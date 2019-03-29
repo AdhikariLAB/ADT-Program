@@ -3,6 +3,8 @@
 *.pyc
 *.so
 *.mod
+*.out*
+*.xyz
 .vscode
 test.py
 dist
