@@ -22,7 +22,7 @@ import textwrap
 import argparse
 from numeric.adt_numeric import *
 from analytic.adt_analytic import *
-
+from molpro.adt_molpro import *
 
 
 def make_logger(log_name):
@@ -233,7 +233,7 @@ def main():
 
         logger = make_logger("ADT Numerical Program")
         try:
-            adt_numerical(enrf,nstate, rhof, phif, path, outfile, logger, h5, txt, nb)
+            adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger, h5, txt, nb)
             print("Log saved in 'ADT.log'.")
         except Exception as e:
             logger.error("Program failed\n"+"-"*121)
@@ -242,6 +242,7 @@ def main():
 
 
     if args.choice == 'mol':
+        sys = args.sys
         configfile = args.config
         atomfile   = args.atomfile
         geomfile   = args.geomfile
@@ -252,7 +253,24 @@ def main():
         h5      = args.h5
         txt     = args.txt
         nb      = args.nb
-        logger = make_logger("ADT Numerical Program")
+
+
+        logger = make_logger("ADT Molpro Program")
+
+        try:
+            if sys=='spectroscopic':
+                s = Spectroscopic(configfile, atomfile, geomFile, freqfile)
+                trFile = 'tau_rho.dat'
+            elif sys=='scattering':
+                s = Scattering(configfile, atomfile)
+                trFile = 'tau_theta.dat'
+            s.runMolpro()
+
+            #here insert the step to fill missing values and convert theta or phi to radian
+
+            adt_numerical('energy.dat', None, trFile, 'tau_phi.dat', path, outfile, logger, h5, txt, nb)
+        except:
+            logger.error("Program failed\n"+"-"*121)
 
 
 

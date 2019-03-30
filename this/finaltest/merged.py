@@ -5,12 +5,12 @@ import textwrap
 import subprocess
 import numpy as np
 import ConfigParser
-
+from glob import glob
 
 
 #TODOs::::::
-# 1. do the equi/init step inside the main loop
-# 1. modify grid.com to make equi.com
+# remove the print statement with a file 
+
 
 
 
@@ -212,6 +212,11 @@ class Base():
         self.atomMass  = atomData['mass']
 
 
+    def filterGrid(self, grid):
+        # pad the grid with a 0 in front, if not exist
+        if 0.0 not in grid: grid = np.append(0,grid)
+        return grid
+
     def parseConfig(self, conFigFile):
         #parse configuration for running molpro
         scf = ConfigParser.SafeConfigParser()
@@ -234,21 +239,20 @@ class Base():
         self.phiList = map(float, gInfo['phi'].split(','))
         self.phiGrid = self.makeGrid(self.phiList)
 
+
         if self.__class__.__name__=='Spectroscopic':
             mInfo = dict(scf.items('mInfo'))
             self.vModes = [int(i)-1 for i in mInfo['varying'].split(',')]
             if len(self.rhoList) == 1:
                 raise Exception('Give a grid rho value for spectroscopic calculation')
-            self.rhoGrid = self.makeGrid(self.rhoList)
+            self.rhoGrid = self.filterGrid(self.makeGrid(self.rhoList))
 
 
-        if self.__class__.__name__=='Scattering':
+        else:
             if len(self.rhoList) != 1:
                 raise Exception('Give a fixed rho value for scattering calculation')
             self.rho = self.rhoList[0]
-            self.thetaGrid = self.makeGrid(self.thetaList)
-            
-
+            self.thetaGrid = self.filterGrid(self.makeGrid(self.thetaList))
 
 
         if self.nInfo['method']=='cpmcscf':
@@ -258,7 +262,10 @@ class Base():
 
 
         elif self.nInfo['method']=='ddr':
-            self.dt = float(gInfo['dt'])
+            if spec:
+                self.dr = float(gInfo['dr'])
+            else:
+                self.dt = float(gInfo['dt'])
             self.dp = float(gInfo['dp'])
             self.createDdrTemplate()
             self.createGridGeom = self.createAllGeom
@@ -272,6 +279,20 @@ class Base():
             dat = f.read().replace("D","E").strip().split("\n")[1:]
         dat = [map(float,i.strip().split()) for i in dat]
         return np.array(dat)
+
+
+    def writeFile(self, file, data, grid):
+        #along rho or along phi?
+        file = open(file,'wb')
+        for tp in grid:
+            np.savetxt( file, data[data[:,0]==tp] ,delimiter="\t", fmt="%.8f")
+            file.write("\n")
+
+
+    def removeFiles(self):
+        files = glob('init.*') + glob('grid.*') + glob('*.res')
+        for file in files:
+            os.remove(file)
 
 
 
@@ -294,7 +315,7 @@ class Spectroscopic(Base):
         self.wilFM = np.einsum('ijk,k,i->ijk',wilson,freqInv,massInv)
 
     def createOneGeom(self, rho, phi, outFile = 'geom.xyz'):
-        
+
         nModes = self.wilFM.shape[2]
         qCord  = np.zeros(nModes)
         qCord[self.vModes[0]] = rho*self.cos(phi)
@@ -327,12 +348,12 @@ class Spectroscopic(Base):
         return np.abs(tau)
 
     def getTauThetaPhiAna(self, rho, phi):
-        return np.stack((self.parseNact(i, j, rho, phi) 
-                                    for i,j in self.nactPairs)).T
+        return np.stack([self.parseNact(i, j, rho, phi) 
+                                    for i,j in self.nactPairs]).T
 
     def getTauThetaPhiDdr(self, *args):
-        return np.stack((self.parseResult('ddrnact{}{}.res'.format(i,j)) 
-                                    for i,j in self.nactPairs)).T
+        return np.stack([self.parseResult('ddrnact{}{}.res'.format(i,j)) 
+                                    for i,j in self.nactPairs]).T
 
     def equiRun(self):
         # how to save this data??????
@@ -355,7 +376,6 @@ class Spectroscopic(Base):
         nactRhoResult = np.array([], dtype=np.float64).reshape(0,self.nTau+2)
         nactPhiResult = np.array([], dtype=np.float64).reshape(0,self.nTau+2)
 
-        #rho grid starts from?
         for phi in self.phiGrid[:1]:
             if (phi!=0):
                 shutil.copy('molpro_init.wfu', 'molpro.wfu')               # copy the wfu from the initial job
@@ -365,7 +385,7 @@ class Spectroscopic(Base):
                 sys.stdout.flush()
                 self.createGridGeom(rho, phi)
 
-                if (rho==0) & (phi==0): # For the initial/equilibrium job i.e. rho = phi=0
+                if (rho==0) & (phi==0): # rho 0 means the equilibrium step
                     exitcode = subprocess.call(['molpro',"-d", self.scrdir,'-W .','init.com'])
                     if exitcode==0:
                         print 'Job successful  '
@@ -379,8 +399,11 @@ class Spectroscopic(Base):
                 else:
                     shutil.copy('molpro.wfu',self.scrdir)
                     exitcode = subprocess.call(['molpro',"-d", self.scrdir,'-W .','grid.com'])
-
-                    print 'Job ' + ('' if exitcode else 'un') +'successful'
+                    if exitcode==0:
+                        print 'Job successful'
+                    else:
+                        print 'job unsuccessful'
+                        continue
 
                 enrData = self.parseResult('enr.res').flatten()
                 tauRho, tauPhi = self.getTauThetaPhi(theta, phi)
@@ -391,22 +414,16 @@ class Spectroscopic(Base):
                 nactPhiResult = np.vstack((nactPhiResult, np.append([rho,phi],tauPhi)))
 
         #or just save as npy format
-        self.writeFile('energy.dat', energyResult)
-        self.writeFile('tau_rho.dat', nactRhoResult)
-        self.writeFile('tau_phi.dat', nactPhiResult)
+        self.writeFile('energy.dat', energyResult  , self.rhoGrid)
+        self.writeFile('tau_rho.dat', nactRhoResult, self.rhoGrid)
+        self.writeFile('tau_phi.dat', nactPhiResult, self.rhoGrid)
 
-    def writeFile(self, file, data):
-        #along rho or along phi?
-        for tp in self.rho_grid:
-            np.savetxt( file, data[data[:,fc]==tp] ,delimiter="\t", fmt="%.8f")
-            file.write("\n")
 
 
 
 class Scattering(Base):
 
     def __init__(self, conFigFile, atomFile ):
-
         self.parseData(atomFile)
         self.parseConfig(conFigFile)
 
@@ -523,21 +540,24 @@ class Scattering(Base):
         gradPhiPlus  = self.hyperToCart(theta+dTheta, phi)
         gradPhiMinus = self.hyperToCart(theta-dTheta, phi)
         gradPhi      = (gradPhiPlus - gradPhiMinus)/2*dPhi 
-    
-        return np.vstack((self.parseNact(i,j,gradTheta, gradPhi) 
-                                    for i,j in self.nactPairs)).T
+        return np.vstack([self.parseNact(i,j,gradTheta, gradPhi) 
+                                    for i,j in self.nactPairs]).T
 
     def getTauThetaPhiDdr(self, *args):
-        return np.vstack((self.parseResult('ddrnact{}{}.res'.format(i,j)) 
-                                    for i,j in self.nactPairs)).T
+        dat  = parseResult('ddrnact{}{}.res'.format(1,2))
+        print dat
+        print type(dat)
+        return np.vstack([self.parseResult('ddrnact{}{}.res'.format(i,j)) 
+                                    for i,j in self.nactPairs]).T
 
 
     def runMolpro(self):
         #initialise blank arrays to store result
-        nTau = len(self.nactPairs)
+        
         energyResult    = np.array([], dtype=np.float64).reshape(0,self.state+2)
-        nactThetaResult = np.array([], dtype=np.float64).reshape(0,nTau+2)
-        nactPhiResult   = np.array([], dtype=np.float64).reshape(0,nTau+2)
+        nactThetaResult = np.array([], dtype=np.float64).reshape(0,self.nTau+2)
+        nactPhiResult   = np.array([], dtype=np.float64).reshape(0,self.nTau+2)
+
 
 
 
@@ -550,7 +570,7 @@ class Scattering(Base):
                 sys.stdout.flush()
                 self.createGridGeom(theta, phi)
 
-                if (theta==0) & (phi==0): # For the initial job i.e. theta = phi=0
+                if (theta==0) & (phi==0): # For the initial job 
                     exitcode = subprocess.call(['molpro',"-d", self.scrdir,'-W .','init.com'])
                     if exitcode==0:
                         print 'Job successful  '
@@ -559,13 +579,17 @@ class Scattering(Base):
                         print 'Job unsuccessful' 
                         sys.exit('Exiting program')
                 elif (theta==0) & (phi!=0) : 
-                    continue # don't run the job for other thetas
+                    continue # don't run the job for other phis
 
                 else:
                     shutil.copy('molpro.wfu',self.scrdir)
                     exitcode = subprocess.call(['molpro',"-d", self.scrdir,'-W .','grid.com'])
+                    if exitcode==0:
+                        print 'Job successful'
+                    else:
+                        print 'job unsuccessful'
+                        continue
 
-                    print 'Job ' + ('' if exitcode else 'un') +'successful'
 
                 enrData = self.parseResult('enr.res').flatten()
                 tauTheta, tauPhi = self.getTauThetaPhi(theta, phi)
@@ -575,26 +599,26 @@ class Scattering(Base):
                 nactThetaResult = np.vstack((nactThetaResult, np.append([theta, phi],tauTheta)))
                 nactPhiResult = np.vstack((nactPhiResult, np.append([theta, phi],tauPhi)))
 
-        self.writeFile('energy.dat', energyResult)
-        self.writeFile('tau_theta.dat', nactThetaResult)
-        self.writeFile('tau_phi.dat', nactPhiResult)
+        self.writeFile('energy.dat', energyResult, self.thetaGrid)
+        self.writeFile('tau_theta.dat', nactThetaResult, self.thetaGrid)
+        self.writeFile('tau_phi.dat', nactPhiResult, self.thetaGrid)
 
-    def writeFile(self, file, data):
-        #along rho or along phi?
-        file = open(file,'wb')
-        for tp in self.thetaGrid:
-            np.savetxt( file, data[data[:,0]==tp] ,delimiter="\t", fmt="%.8f")
-            file.write("\n")
+
+
+def interpolation(data, grid1, grid2, gr1Rad = False):
+    # have to be implemented
+    pass
+
 
 
 if __name__ == "__main__":
     # s = Scattering('./scatterAna/molpro.config','./scatterAna/atomfile.dat')
 
 
-    # s = Scattering('./ScatterDdr/molpro.config','./ScatterDdr/atomfile.dat')
+    s = Scattering('./ScatterDdr/molpro.config','./ScatterDdr/atomfile.dat')
 
 
-    s = Spectroscopic('./specAan/molpro.config','./specAan/atomfile.dat', './specAan/geomfile.dat', './specAan/frequency.dat', './specAan/wilson.dat')
+    # s = Spectroscopic('./specAan/molpro.config','./specAan/atomfile.dat', './specAan/geomfile.dat', './specAan/frequency.dat', './specAan/wilson.dat')
 
 
     # s = Spectroscopic('./specDdr/molpro.config','./specDdr/atomfile.dat', './specDdr/geomfile.dat', './specDdr/frequency.dat', './specDdr/wilson.dat')
