@@ -91,7 +91,7 @@ class Base():
         with open('grid.com','w') as f:
             f.write(molproTemplate)
 
-        molproInitTemplate = molproTemplate.replace('molpro.wfu', 'molpro_init.wfu')\
+        molproInitTemplate = molproTemplate.replace('molpro.wfu', 'molpro_init.wfu,new')\
                                             .replace('!replacebyuhf', '{uhf}')
         with open('init.com', 'w') as f:
             f.write(molproInitTemplate)
@@ -404,7 +404,7 @@ class Spectroscopic(Base):
                     else:
                         print 'job unsuccessful'
                         continue
-
+fsaf
                 enrData = self.parseResult('enr.res').flatten()
                 tauRho, tauPhi = self.getTauThetaPhi(theta, phi)
 
@@ -545,8 +545,6 @@ class Scattering(Base):
 
     def getTauThetaPhiDdr(self, *args):
         dat  = parseResult('ddrnact{}{}.res'.format(1,2))
-        print dat
-        print type(dat)
         return np.vstack([self.parseResult('ddrnact{}{}.res'.format(i,j)) 
                                     for i,j in self.nactPairs]).T
 
@@ -557,8 +555,6 @@ class Scattering(Base):
         energyResult    = np.array([], dtype=np.float64).reshape(0,self.state+2)
         nactThetaResult = np.array([], dtype=np.float64).reshape(0,self.nTau+2)
         nactPhiResult   = np.array([], dtype=np.float64).reshape(0,self.nTau+2)
-
-
 
 
         for phi in self.phiGrid[:1]:
