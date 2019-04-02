@@ -24,14 +24,13 @@ from numeric.adt_numeric import *
 from analytic.adt_analytic import *
 from molpro.adt_molpro import *
 
-
 def make_logger(log_name):
     #Create the logger
     logger = logging.getLogger(log_name)
     logger.setLevel(logging.DEBUG)
     fh = logging.FileHandler("ADT.log")
     fh.setLevel(logging.DEBUG)
-    formatter = logging.Formatter("[%(asctime)s] - %(name)22s - [%(levelname)6s] - %(message)s","%Y-%m-%d %I:%M:%S %p")
+    formatter = logging.Formatter("[%(asctime)s] - %(name)22s - [%(levelname)6s] - %(message)s","%d-%m-%Y %I:%M:%S %p")
     fh.setFormatter(formatter)
     logger.addHandler(fh)
 

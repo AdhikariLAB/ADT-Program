@@ -6,16 +6,7 @@ import subprocess
 import numpy as np
 import ConfigParser
 from glob import glob
-
-
-#TODOs::::::
-# remove the print statement with a file 
-
-
-
-
-
-
+from datetime import datetime
 
 
 class Base():
@@ -34,7 +25,7 @@ class Base():
     def createAnaTemplate(self):
 
         molproTemplate=textwrap.dedent('''
-            ***, Molpro template created from ADT program
+            ***, Molpro template created from ADT program for analytical job.
             memory,{memory}
             file,2,molpro.wfu;
 
@@ -44,7 +35,7 @@ class Base():
 
 
             geometry=geom.xyz
-            !replacebyuhf
+
             {{{method};{cas}; wf,{wf};state,{state};start,2140.2; orbital,2140.2;}}
 
             show, energy
@@ -91,8 +82,33 @@ class Base():
         with open('grid.com','w') as f:
             f.write(molproTemplate)
 
-        molproInitTemplate = molproTemplate.replace('molpro.wfu', 'molpro_init.wfu,new')\
-                                            .replace('!replacebyuhf', '{uhf}')
+
+
+        molproInitTemplate = textwrap.dedent('''
+            ***, Molpro template created from ADT program for analytical job
+            memory,{memory}
+            file,2,molpro_init.wfu,new;
+
+            basis={basis};
+
+            symmetry,nosym
+
+
+            geometry=geom.xyz
+            {{uhf}}
+            {{{method};{cas}; wf,{wf};state,{state};orbital,2140.2;}}
+
+            show, energy
+            table, energy
+            save,equienr.res,new
+            {{table,____; noprint,heading}}
+            '''.format(memory = self.memory,
+                        basis = self.eInfo['basis'],
+                        method=self.eInfo['method'],
+                        state=self.eInfo['state'],
+                        wf =  self.eInfo['wf'],
+                        cas = self.eInfo['cas']))
+
         with open('init.com', 'w') as f:
             f.write(molproInitTemplate)
 
@@ -100,7 +116,7 @@ class Base():
     def createDdrTemplate(self):
 
         molproTemplate=textwrap.dedent('''
-            ***, Molpro template created from ADT program for "WhatEver"
+            ***, Molpro template created from ADT program for analytical job for analytical job.
             memory,{memory}
             file,2,molpro.wfu;
 
@@ -110,7 +126,7 @@ class Base():
 
             geomtyp=xyz
             geometry=geom1.xyz
-            
+
             !replacebyuhf
             {{multi;{cas}; wf,{wf};state,{state};orbital,2140.2;}}
             {{mrci; {cas}; wf,{wf};state,{state};save,6000.2;noexc}}
@@ -195,8 +211,35 @@ class Base():
         with open('grid.com','w') as f:
             f.write(molproTemplate)
 
-        molproInitTemplate = molproTemplate.replace('molpro.wfu', 'molpro_init.wfu')\
-                                            .replace('!replacebyuhf', '{uhf}')
+        molproInitTemplate = textwrap.dedent('''
+            ***, Molpro template created from ADT program for analytical job.
+            memory,{memory}
+            file,2,molpro_init.wfu,new;
+
+            basis={basis};
+
+            symmetry,nosym
+
+            geomtyp=xyz
+            geometry=geom1.xyz
+
+            {{uhf}}
+            {{multi;{cas}; wf,{wf};state,{state};orbital,2140.2;}}
+            {{mrci; {cas}; wf,{wf};state,{state};save,6000.2;noexc}}
+
+            show, energy
+            table, energy
+            save,equienr.res,new
+            {{table,____; noprint,heading}}
+
+            '''.format( memory = self.memory,
+                        basis = self.eInfo['basis'],
+                        state=self.eInfo['state'],
+                        wf =  self.eInfo['wf'],
+                        cas = self.eInfo['cas']))
+
+
+
         with open('init.com', 'w') as f:
             f.write(molproInitTemplate)
 
@@ -211,11 +254,6 @@ class Base():
         self.atomNames = atomData['names']
         self.atomMass  = atomData['mass']
 
-
-    def filterGrid(self, grid):
-        # pad the grid with a 0 in front, if not exist
-        if 0.0 not in grid: grid = np.append(0,grid)
-        return grid
 
     def parseConfig(self, conFigFile):
         #parse configuration for running molpro
@@ -239,20 +277,20 @@ class Base():
         self.phiList = map(float, gInfo['phi'].split(','))
         self.phiGrid = self.makeGrid(self.phiList)
 
-
-        if self.__class__.__name__=='Spectroscopic':
+        spec = self.__class__.__name__=='Spectroscopic'
+        if spec:
             mInfo = dict(scf.items('mInfo'))
             self.vModes = [int(i)-1 for i in mInfo['varying'].split(',')]
             if len(self.rhoList) == 1:
                 raise Exception('Give a grid rho value for spectroscopic calculation')
-            self.rhoGrid = self.filterGrid(self.makeGrid(self.rhoList))
+            self.rhoGrid = self.makeGrid(self.rhoList)
 
 
         else:
             if len(self.rhoList) != 1:
                 raise Exception('Give a fixed rho value for scattering calculation')
             self.rho = self.rhoList[0]
-            self.thetaGrid = self.filterGrid(self.makeGrid(self.thetaList))
+            self.thetaGrid = self.makeGrid(self.thetaList)
 
 
         if self.nInfo['method']=='cpmcscf':
@@ -273,6 +311,8 @@ class Base():
 
         else:
             sys.exit('%s Not a proper option'%self.nInfo['method'])
+        self.logFile = open('adt_molpro.log', 'w', buffering=1)
+
 
     def parseResult(self, file):
         with open(file,"r") as f:
@@ -282,17 +322,117 @@ class Base():
 
 
     def writeFile(self, file, data, grid):
-        #along rho or along phi?
         file = open(file,'wb')
         for tp in grid:
             np.savetxt( file, data[data[:,0]==tp] ,delimiter="\t", fmt="%.8f")
             file.write("\n")
 
 
-    def removeFiles(self):
-        files = glob('init.*') + glob('grid.*') + glob('*.res')
-        for file in files:
+
+    def interpolate(self):
+        # isRho true means
+        spec = self.__class__.__name__=='Spectroscopic'
+        iFiles = ['energy.dat',None, 'tau_phi.dat' ]
+        oFiles = ['energy_mod.dat',None, 'tau_phi_mod.dat' ]
+        if spec: 
+            iFiles[1] = 'tau_rho.dat'
+            oFiles[1] = 'tau_rho_mod.dat'
+            grid1 = self.rhoGrid
+            grid1Rad = False
+        else :
+            iFiles[1] = 'tau_theta.dat'
+            oFiles[1] = 'tau_theta_mod.dat'
+            grid1 = self.thetaGrid
+            grid1Rad = True
+        
+        for i,o in zip(iFiles, oFiles):
+            dat = self.interp(i, grid1, grid1Rad)
+            self.writeFile(o, dat, grid1)
+        
+
+
+
+    def interp(file, grid1, grid1Rad ):
+        data = np.loadtxt(file)
+        grid2 = self.phiGrid
+        lim = data.shape[1]  # columns in data
+        res = np.array([], dtype=np.float64).reshape(0,lim)
+
+        for g1 in grid1:
+            g1Block = data[data[:,0] == g1]
+            res1 = np.column_stack([np.full(grid2.shape, g1), grid2])
+            gx = g1Block[:,1]
+            for col in range(2, lim+1):
+                gy = g1Block[:,col]
+                gny = np.interp(grid2, gx, gy)
+                res1 = np.column_stack([res1, gny])
+            res = np.vstack([res, res1])
+        
+        res[:,1] = np.deg2rad(res[:,1])
+        if grid1Rad: res[:,0] = np.deg2rad(res[:,0])
+        return res
+
+
+    def removeFiles(self, allOut = False):
+        # allOut True means include all the previous out files
+        # by default it just include the current out files
+        patterns = ['*.res', '*.xyz', '*.xml*', '*.out']
+        files = []
+        if allOut: patterns[3] = '*.out*'
+        for i in patterns : 
+            files.extend(glob(i))
+        for file in files : 
             os.remove(file)
+
+
+    def msg(self, m, cont=False):
+        if not cont : m= "{:<30}{}".format(datetime.now().strftime("[%d-%m-%Y %I:%M:%S %p]"), m)
+        self.logFile.write(m)
+
+
+    def runThisMolpro(self, grid1, gridn1, grid2, gridn2, filee, filen1, filen2):
+        #subprocess calls blocks system I/O buffer, so the I/Os (sometimes) have to be flushed out explicitely 
+        #open files to store result
+        filee  = open(filee, 'w', buffering=1)
+        filen1 = open(filen1,'w', buffering=1)
+        filen2 = open(filen2,'w', buffering=1)
+
+        self.equiRun()
+        self.removeFiles()
+        #grid1 is theta or rho
+        #grid2 is phi
+
+        done = False # why am I using this?
+        
+        for g2 in grid2:
+            shutil.copy('molpro_init.wfu', 'molpro.wfu')      # copy the wfu from the initial/equilibrium job
+            for g1 in grid1: 
+
+                #now if rho 0 is provided run the rho=0=phi step only once
+                if (g1==0) & (g2!=0) & (not done):
+                    continue # don't run the job for other rhos
+                else:
+                    done = True
+                
+                self.createGridGeom(g1, g2)
+                self.msg( 'Running molpro job for {} = {}, {} = {}.......'.format(gridn1, g1, gridn2, g2))
+                shutil.copy('molpro.wfu',self.scrdir)
+                exitcode = subprocess.call(['molpro',"-d", self.scrdir,'-W .','grid.com'])
+                if exitcode==0:
+                    self.msg( 'Job successful.', cont=True)
+                    self.removeFiles()
+                else:
+                    self.msg( 'Job failed.', cont=True)
+                    continue
+
+                enrData = self.parseResult('enr.res').flatten()
+                tau1, tau2 = self.getTauThetaPhi(g1, g2)
+                np.savetxt(filee,  np.append([g1,g2],enrData)[None], fmt='%.8f', delimiter='\t')
+                np.savetxt(filen1, np.append([g1,g2],tau1)[None],  fmt='%.8f', delimiter='\t')
+                np.savetxt(filen2, np.append([g1,g2],tau2)[None],  fmt='%.8f', delimiter='\t')
+            filee.write('\n')
+            filen1.write('\n')
+            filen2.write('\n')
 
 
 
@@ -315,7 +455,6 @@ class Spectroscopic(Base):
         self.wilFM = np.einsum('ijk,k,i->ijk',wilson,freqInv,massInv)
 
     def createOneGeom(self, rho, phi, outFile = 'geom.xyz'):
-
         nModes = self.wilFM.shape[2]
         qCord  = np.zeros(nModes)
         qCord[self.vModes[0]] = rho*self.cos(phi)
@@ -356,68 +495,36 @@ class Spectroscopic(Base):
                                     for i,j in self.nactPairs]).T
 
     def equiRun(self):
-        # how to save this data??????
         nAtoms = len(self.atomNames)
         tmp = " {}\n".format(nAtoms)
-        tmp+= "Geometry file created from ADT program. %s \n"
+        tmp+= "Geometry file created from ADT program for equilibrium geometry.\n"
         for i in range(nAtoms):
             tmp += "{},{},{},{}\n".format(self.atomNames[i], *self.equiGeom[i])
 
         with open('geom.xyz',"w") as f:
             f.write(tmp)
-        exitcode = subprocess.call(['molpro',"-d", self.scrdir ,'-W .','equi.com'])
-        if exitcode==1: sys.exit('Molpro failed in equilibrium step')
+        
+        self.msg( "Running molpro job for equilibrium point.......")
+        exitcode = subprocess.call(['molpro',"-d", self.scrdir ,'-W .','init.com'])
+        if exitcode==0: 
+            self.msg( 'Job successful', cont=True)
+        else:
+            self.msg( 'Job failed', cont=True)
+            sys.exit('Molpro failed in equilibrium step')
         equiData = self.parseResult('equienr.res').flatten()
+        np.savetxt('equienr.dat', equiData, fmt='%.8f')
+
+
 
     def runMolpro(self):
-
-        #initialise blank arrays to store result
-        energyResult  = np.array([], dtype=np.float64).reshape(0,self.state+2) 
-        nactRhoResult = np.array([], dtype=np.float64).reshape(0,self.nTau+2)
-        nactPhiResult = np.array([], dtype=np.float64).reshape(0,self.nTau+2)
-
-        for phi in self.phiGrid[:1]:
-            if (phi!=0):
-                shutil.copy('molpro_init.wfu', 'molpro.wfu')               # copy the wfu from the initial job
-
-            for rho in self.rhoGrid[:2]: 
-                print 'Running molpro job for Rho = {}, Phi = {}.......'.format(rho, phi),
-                sys.stdout.flush()
-                self.createGridGeom(rho, phi)
-
-                if (rho==0) & (phi==0): # rho 0 means the equilibrium step
-                    exitcode = subprocess.call(['molpro',"-d", self.scrdir,'-W .','init.com'])
-                    if exitcode==0:
-                        print 'Job successful  '
-                        shutil.copy('molpro_init.wfu', 'molpro.wfu')
-                    else : 
-                        print 'Job unsuccessful' 
-                        sys.exit('Exiting program')
-                elif (rho==0) & (phi!=0) : 
-                    continue # don't run the job for other rhos
-
-                else:
-                    shutil.copy('molpro.wfu',self.scrdir)
-                    exitcode = subprocess.call(['molpro',"-d", self.scrdir,'-W .','grid.com'])
-                    if exitcode==0:
-                        print 'Job successful'
-                    else:
-                        print 'job unsuccessful'
-                        continue
-fsaf
-                enrData = self.parseResult('enr.res').flatten()
-                tauRho, tauPhi = self.getTauThetaPhi(theta, phi)
-
-
-                energyResult  = np.vstack((energyResult,  np.append([rho,phi],enrData)))
-                nactRhoResult = np.vstack((nactRhoResult, np.append([rho,phi],tauRho)))
-                nactPhiResult = np.vstack((nactPhiResult, np.append([rho,phi],tauPhi)))
-
-        #or just save as npy format
-        self.writeFile('energy.dat', energyResult  , self.rhoGrid)
-        self.writeFile('tau_rho.dat', nactRhoResult, self.rhoGrid)
-        self.writeFile('tau_phi.dat', nactPhiResult, self.rhoGrid)
-
+        self.runThisMolpro(
+            self.rhoGrid, 
+            'Rho', 
+            self.phiGrid, 
+            'Phi', 
+            'energy.dat', 
+            'tau_rho.dat', 
+            'tau_phi.dat' )
 
 
 
@@ -426,7 +533,7 @@ class Scattering(Base):
     def __init__(self, conFigFile, atomFile ):
         self.parseData(atomFile)
         self.parseConfig(conFigFile)
-
+        self.logFile = 'adt_molpro.log'
 
     def AreaTriangle(self,a,b,c):
         """ area of a tringle with sides a,b,c """
@@ -544,66 +651,38 @@ class Scattering(Base):
                                     for i,j in self.nactPairs]).T
 
     def getTauThetaPhiDdr(self, *args):
-        dat  = parseResult('ddrnact{}{}.res'.format(1,2))
         return np.vstack([self.parseResult('ddrnact{}{}.res'.format(i,j)) 
                                     for i,j in self.nactPairs]).T
 
 
+    def equiRun(self):
+        self.createGridGeom(0, 0)
+        self.msg( "Running molpro job for initial point....." )
+        sys.stdout.flush()
+        exitcode = subprocess.call(['molpro',"-d", self.scrdir,'-W .','init.com'])
+        if exitcode==0: 
+            self.msg( 'Job successful', cont= True)
+        else:
+            self.msg( 'Job failed', cont= True)
+            sys.exit('Molpro failed in initital step')
+        equiData = self.parseResult('equienr.res').flatten()
+        np.savetxt('equienr.dat', equiData, fmt='%.8f')
+
+
+
     def runMolpro(self):
-        #initialise blank arrays to store result
-        
-        energyResult    = np.array([], dtype=np.float64).reshape(0,self.state+2)
-        nactThetaResult = np.array([], dtype=np.float64).reshape(0,self.nTau+2)
-        nactPhiResult   = np.array([], dtype=np.float64).reshape(0,self.nTau+2)
-
-
-        for phi in self.phiGrid[:1]:
-            if (phi!=0):
-                shutil.copy('molpro_init.wfu', 'molpro.wfu')               # copy the wfu from the initial job
-
-            for theta in self.thetaGrid[:2]: 
-                print 'Running molpro job for Rho = {}, Theta={}, Phi = {}.......'.format(self.rho, theta, phi),
-                sys.stdout.flush()
-                self.createGridGeom(theta, phi)
-
-                if (theta==0) & (phi==0): # For the initial job 
-                    exitcode = subprocess.call(['molpro',"-d", self.scrdir,'-W .','init.com'])
-                    if exitcode==0:
-                        print 'Job successful  '
-                        shutil.copy('molpro_init.wfu', 'molpro.wfu')
-                    else : 
-                        print 'Job unsuccessful' 
-                        sys.exit('Exiting program')
-                elif (theta==0) & (phi!=0) : 
-                    continue # don't run the job for other phis
-
-                else:
-                    shutil.copy('molpro.wfu',self.scrdir)
-                    exitcode = subprocess.call(['molpro',"-d", self.scrdir,'-W .','grid.com'])
-                    if exitcode==0:
-                        print 'Job successful'
-                    else:
-                        print 'job unsuccessful'
-                        continue
-
-
-                enrData = self.parseResult('enr.res').flatten()
-                tauTheta, tauPhi = self.getTauThetaPhi(theta, phi)
-
-
-                energyResult  = np.vstack((energyResult,  np.append([theta, phi],enrData)))
-                nactThetaResult = np.vstack((nactThetaResult, np.append([theta, phi],tauTheta)))
-                nactPhiResult = np.vstack((nactPhiResult, np.append([theta, phi],tauPhi)))
-
-        self.writeFile('energy.dat', energyResult, self.thetaGrid)
-        self.writeFile('tau_theta.dat', nactThetaResult, self.thetaGrid)
-        self.writeFile('tau_phi.dat', nactPhiResult, self.thetaGrid)
+        self.runThisMolpro(
+            self.thetaGrid, 
+            'Theta', 
+            self.phiGrid, 
+            'Phi', 
+            'energy.dat', 
+            'tau_theta.dat', 
+            'tau_phi.dat' )
 
 
 
-def interpolation(data, grid1, grid2, gr1Rad = False):
-    # have to be implemented
-    pass
+
 
 
 
