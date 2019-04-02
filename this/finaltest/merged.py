@@ -112,7 +112,6 @@ class Base():
         with open('init.com', 'w') as f:
             f.write(molproInitTemplate)
 
-
     def createDdrTemplate(self):
 
         molproTemplate=textwrap.dedent('''
@@ -243,7 +242,6 @@ class Base():
         with open('init.com', 'w') as f:
             f.write(molproInitTemplate)
 
-
     def makeGrid(self, ll):
         return np.arange(ll[0], ll[1]+ll[2], ll[2])
 
@@ -253,7 +251,6 @@ class Base():
 
         self.atomNames = atomData['names']
         self.atomMass  = atomData['mass']
-
 
     def parseConfig(self, conFigFile):
         #parse configuration for running molpro
@@ -313,13 +310,11 @@ class Base():
             sys.exit('%s Not a proper option'%self.nInfo['method'])
         self.logFile = open('adt_molpro.log', 'w', buffering=1)
 
-
     def parseResult(self, file):
         with open(file,"r") as f:
             dat = f.read().replace("D","E").strip().split("\n")[1:]
         dat = [map(float,i.strip().split()) for i in dat]
         return np.array(dat)
-
 
     def writeFile(self, file, data, grid):
         file = open(file,'wb')
@@ -327,30 +322,25 @@ class Base():
             np.savetxt( file, data[data[:,0]==tp] ,delimiter="\t", fmt="%.8f")
             file.write("\n")
 
-
-
-    def interpolate(self):
-        # isRho true means
-        spec = self.__class__.__name__=='Spectroscopic'
-        iFiles = ['energy.dat',None, 'tau_phi.dat' ]
-        oFiles = ['energy_mod.dat',None, 'tau_phi_mod.dat' ]
-        if spec: 
-            iFiles[1] = 'tau_rho.dat'
-            oFiles[1] = 'tau_rho_mod.dat'
-            grid1 = self.rhoGrid
-            grid1Rad = False
-        else :
-            iFiles[1] = 'tau_theta.dat'
-            oFiles[1] = 'tau_theta_mod.dat'
-            grid1 = self.thetaGrid
-            grid1Rad = True
+    # def interpolate(self):
+    #     # isRho true means
+    #     spec = self.__class__.__name__=='Spectroscopic'
+    #     iFiles = ['energy.dat',None, 'tau_phi.dat' ]
+    #     oFiles = ['energy_mod.dat',None, 'tau_phi_mod.dat' ]
+    #     if spec: 
+    #         iFiles[1] = 'tau_rho.dat'
+    #         oFiles[1] = 'tau_rho_mod.dat'
+    #         grid1 = self.rhoGrid
+    #         grid1Rad = False
+    #     else :
+    #         iFiles[1] = 'tau_theta.dat'
+    #         oFiles[1] = 'tau_theta_mod.dat'
+    #         grid1 = self.thetaGrid
+    #         grid1Rad = True
         
-        for i,o in zip(iFiles, oFiles):
-            dat = self.interp(i, grid1, grid1Rad)
-            self.writeFile(o, dat, grid1)
-        
-
-
+    #     for i,o in zip(iFiles, oFiles):
+    #         dat = self.interp(i, grid1, grid1Rad)
+    #         self.writeFile(o, dat, grid1)
 
     def interp(file, grid1, grid1Rad ):
         data = np.loadtxt(file)
@@ -369,9 +359,8 @@ class Base():
             res = np.vstack([res, res1])
         
         res[:,1] = np.deg2rad(res[:,1])
-        if grid1Rad: res[:,0] = np.deg2rad(res[:,0])
+        if grid1Rad: res[:,0] = np.deg2rad(res[:,0])  # for scattering also transform the column 0
         return res
-
 
     def removeFiles(self, allOut = False):
         # allOut True means include all the previous out files
@@ -384,18 +373,19 @@ class Base():
         for file in files : 
             os.remove(file)
 
-
     def msg(self, m, cont=False):
-        if not cont : m= "{:<30}{}".format(datetime.now().strftime("[%d-%m-%Y %I:%M:%S %p]"), m)
+        if not cont : 
+            m= "{:<30}{}".format(datetime.now().strftime("[%d-%m-%Y %I:%M:%S %p]"), m)
+        else:
+            m+='\n'
         self.logFile.write(m)
 
-
-    def runThisMolpro(self, grid1, gridn1, grid2, gridn2, filee, filen1, filen2):
+    def runThisMolpro(self, grid1, gridn1, grid2, gridn2, filEe, fileN1, fileN2):
         #subprocess calls blocks system I/O buffer, so the I/Os (sometimes) have to be flushed out explicitely 
         #open files to store result
-        filee  = open(filee, 'w', buffering=1)
-        filen1 = open(filen1,'w', buffering=1)
-        filen2 = open(filen2,'w', buffering=1)
+        filee  = open(filEe, 'w', buffering=1)
+        filen1 = open(fileN1,'w', buffering=1)
+        filen2 = open(fileN2,'w', buffering=1)
 
         self.equiRun()
         self.removeFiles()
@@ -433,6 +423,14 @@ class Base():
             filee.write('\n')
             filen1.write('\n')
             filen2.write('\n')
+
+        
+        scat = True if self.__class__.__name__=='Scattering' else False
+        #fill the missing values by 1D interpolation
+        for file in [filEe, fileN1, fileN2]:
+            dat = self.interp(file, grid1, scat)
+            out = file.replace('.dat', '_mod.dat')
+            self.writeFile(out, dat, grid1)
 
 
 

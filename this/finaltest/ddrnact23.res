@@ -1,5 +1,5 @@
 
 
-   NACMR  NACMP
-    -0.0   -0.0
+          NACMR     NACMP
+    4.04729327D-10    0.0
                                                   
