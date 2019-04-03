@@ -4,12 +4,15 @@ import shutil
 import textwrap
 import subprocess
 import numpy as np
-import ConfigParser
 from glob import glob
 from datetime import datetime
 
+PY_VAR = sys.version_info.major
+if PY_VAR >2:
+    import configparser as cfg 
+else :
+    import ConfigParser as cfg
 
-#DON'T forget to remove all `noexec` from the ddr template
 
 
 class Base():
@@ -127,6 +130,7 @@ class Base():
             geomtyp=xyz
             geometry=geom1.xyz
 
+            !replacebyuhf
             {{multi;{cas}; wf,{wf};state,{state};orbital,2140.2;}}
             {{mrci; {cas}; wf,{wf};state,{state};save,6000.2;noexc}}
 
@@ -247,14 +251,14 @@ class Base():
 
     def parseData(self, atomFile):
         atomData = np.loadtxt(atomFile, 
-            dtype={'names': ('names', 'mass'),'formats': ('S1', 'f8')})
-
+            dtype={'names': ('names', 'mass'),'formats': ('U1', 'f8')})
+        #using unicode for python3 compatability
         self.atomNames = atomData['names']
         self.atomMass  = atomData['mass']
 
     def parseConfig(self, conFigFile):
         #parse configuration for running molpro
-        scf = ConfigParser.SafeConfigParser()
+        scf = cfg.SafeConfigParser()
         scf.read(conFigFile)
 
         molInfo =  dict(scf.items('molInfo'))
@@ -269,9 +273,9 @@ class Base():
         self.nactPairs = [[i,j] for i in range(1,self.state+1) for j in range(i+1,self.state+1)]
         self.nTau = len(self.nactPairs)
         #or should I just take as rho/theta/phi grid?
-        self.rhoList = map(float, gInfo['rho'].split(','))
-        self.thetaList = map(float, gInfo['theta'].split(','))
-        self.phiList = map(float, gInfo['phi'].split(','))
+        self.rhoList = list(map(float, gInfo['rho'].split(',')))
+        self.thetaList = list(map(float, gInfo['theta'].split(',')))
+        self.phiList = list(map(float, gInfo['phi'].split(',')))
         self.phiGrid = self.makeGrid(self.phiList)
 
         spec = self.__class__.__name__=='Spectroscopic'
@@ -308,44 +312,58 @@ class Base():
 
         else:
             sys.exit('%s Not a proper option'%self.nInfo['method'])
-        self.logFile = open('adt_molpro.log', 'w', buffering=0)
+        self.logFile = open('adt_molpro.log', 'wb', buffering=0)
 
     def parseResult(self, file):
         with open(file,"r") as f:
             dat = f.read().replace("D","E").strip().split("\n")[1:]
-        dat = [map(float,i.strip().split()) for i in dat]
+        dat = [list(map(float,i.strip().split())) for i in dat]
         return np.array(dat)
 
-    def writeFile(self, file, data):
+    def writeFile(self, file, data, grid):
         file = open(file,'wb')
-        for tp in np.unique(data[:,0]):
+        for tp in grid:
             np.savetxt( file, data[data[:,0]==tp] ,delimiter="\t", fmt="%.8f")
             file.write("\n")
 
+    # def interpolate(self):
+    #     # isRho true means
+    #     spec = self.__class__.__name__=='Spectroscopic'
+    #     iFiles = ['energy.dat',None, 'tau_phi.dat' ]
+    #     oFiles = ['energy_mod.dat',None, 'tau_phi_mod.dat' ]
+    #     if spec: 
+    #         iFiles[1] = 'tau_rho.dat'
+    #         oFiles[1] = 'tau_rho_mod.dat'
+    #         grid1 = self.rhoGrid
+    #         grid1Rad = False
+    #     else :
+    #         iFiles[1] = 'tau_theta.dat'
+    #         oFiles[1] = 'tau_theta_mod.dat'
+    #         grid1 = self.thetaGrid
+    #         grid1Rad = True
+        
+    #     for i,o in zip(iFiles, oFiles):
+    #         dat = self.interp(i, grid1, grid1Rad)
+    #         self.writeFile(o, dat, grid1)
 
-    def interp(self, file ):
+    def interp(file, grid1, grid1Rad ):
         data = np.loadtxt(file)
-        # grid2 = self.phiGrid
-        grid1 = np.unique(data[:,0])   # numpy precision error
-        grid2 = np.unique(data[:,1])
-
+        grid2 = self.phiGrid
         lim = data.shape[1]  # columns in data
         res = np.array([], dtype=np.float64).reshape(0,lim)
 
         for g1 in grid1:
-
             g1Block = data[data[:,0] == g1]
-
             res1 = np.column_stack([np.full(grid2.shape, g1), grid2])
             gx = g1Block[:,1]
-            for col in range(2, lim):
+            for col in range(2, lim+1):
                 gy = g1Block[:,col]
                 gny = np.interp(grid2, gx, gy)
                 res1 = np.column_stack([res1, gny])
             res = np.vstack([res, res1])
-
-
-
+        
+        res[:,1] = np.deg2rad(res[:,1])
+        if grid1Rad: res[:,0] = np.deg2rad(res[:,0])  # for scattering also transform the column 0
         return res
 
     def removeFiles(self, allOut = False):
@@ -353,7 +371,7 @@ class Base():
         # by default it just include the current out files
         patterns = ['*.res', '*.xyz', '*.xml*', '*.out']
         files = []
-        if allOut: patterns += ['*.wfu', '*.com']
+        if allOut: patterns[3] = '*.out*'
         for i in patterns : 
             files.extend(glob(i))
         for file in files : 
@@ -364,11 +382,11 @@ class Base():
             m= "{:<30}{}".format(datetime.now().strftime("[%d-%m-%Y %I:%M:%S %p]"), m)
         else:
             m+='\n'
-        self.logFile.write(m)
+        self.logFile.write(m.encode())
 
     def runThisMolpro(self, grid1, gridn1, grid2, gridn2, filEe, fileN1, fileN2):
-        # subprocess calls blocks system I/O buffer, so the I/Os (sometimes) have to be flushed out explicitely 
-        # open files to store result
+        #subprocess calls blocks system I/O buffer, so the I/Os (sometimes) have to be flushed out explicitely 
+        #open files to store result
         filee  = open(filEe, 'w', buffering=1)
         filen1 = open(fileN1,'w', buffering=1)
         filen2 = open(fileN2,'w', buffering=1)
@@ -379,7 +397,7 @@ class Base():
         #grid2 is phi
 
         done = False # why am I using this?
-
+        
         for g2 in grid2:
             shutil.copy('molpro_init.wfu', 'molpro.wfu')      # copy the wfu from the initial/equilibrium job
             for g1 in grid1: 
@@ -409,23 +427,24 @@ class Base():
             filee.write('\n')
             filen1.write('\n')
             filen2.write('\n')
-        self.removeFiles(allOut=True)
 
-        scat = self.__class__.__name__=='Scattering'
+        
+        scat = True if self.__class__.__name__=='Scattering' else False
         #fill the missing values by 1D interpolation
-        # '_mod' suffix means files with filled data
         for file in [filEe, fileN1, fileN2]:
-            dat = self.interp(file)
-            dat[:,1] = np.deg2rad(dat[:,1])
-            if scat: dat[:,0] = np.deg2rad(dat[:,0])  # for scattering also transform the column 0
-            if file == filEe: dat[:,2:] -= np.loadtxt('equienr.dat')[0]
-            self.writeFile(file.replace('.dat', '_mod.dat'), dat)
+            dat = self.interp(file, grid1, scat)
+            if file == filEe:
+                minie = np.loadtxt('equienr.dat')[0]
+                dat[:,2:] -= minie
+            out = file.replace('.dat', '_mod.dat')
+            self.writeFile(out, dat, grid1)
 
 
 
 class Spectroscopic(Base):
 
     def __init__(self, conFigFile ,atomFile, geomFile , freqFile , wilsonFile ):
+
         self.parseData(atomFile)
         self.parseSData(geomFile, freqFile, wilsonFile)
         self.parseConfig(conFigFile)
@@ -489,7 +508,6 @@ class Spectroscopic(Base):
 
         with open('geom.xyz',"w") as f:
             f.write(tmp)
-
         self.msg( "Running molpro job for equilibrium point.......")
         exitcode = subprocess.call(['molpro',"-d", self.scrdir ,'-W .','init.com'])
         if exitcode==0: 
@@ -515,9 +533,11 @@ class Spectroscopic(Base):
 
 
 class Scattering(Base):
+
     def __init__(self, conFigFile, atomFile ):
         self.parseData(atomFile)
         self.parseConfig(conFigFile)
+        self.logFile = 'adt_molpro.log'
 
     def AreaTriangle(self,a,b,c):
         """ area of a tringle with sides a,b,c """
@@ -566,19 +586,23 @@ class Scattering(Base):
         # gamma : angle between r and R
         r = (R2,0.0)
         R = (R3*np.cos(Ang123) - m3*R2/(m2+m3) , R3*np.sin(Ang123))
-        rs = np.linalg.norm(r)
-        rc = np.linalg.norm(R)
+        rs = np.sqrt(np.dot(r,r))
+        rc = np.sqrt(np.dot(R,R))
         if rc < 1e-10:
             rc = 0.0
 
         rtil = (R2*m2/(m2+m3),0.0)
-        drtil = np.linalg.norm(rtil)
+        drtil = np.sqrt(np.dot(rtil,rtil))
         Areasmall = self.AreaTriangle(drtil,R1,rc)
         y = 4.0 * Areasmall
         x = drtil*drtil + rc*rc - R1*R1
         if np.fabs(x) < 1e-10:
             x = 0.0
         gamma = np.arctan2(y,x)
+
+        # we assert that gamma is always less than 90 degree always - our grid does not produce this for H2F
+        # assert (gamma <= np.pi/2)
+
         return (rs, rc, gamma)
 
     def hyperToCart(self, theta, phi):
@@ -596,6 +620,7 @@ class Scattering(Base):
         tmp+= "Geometry file created from ADT program. %s \n"%msg
         for i in range(nAtoms):
             tmp += "{},{},{},{}\n".format(self.atomNames[i], *curGeom[i])
+
         with open(outFile,"w") as f:
             f.write(tmp)
 
@@ -635,7 +660,7 @@ class Scattering(Base):
 
 
     def equiRun(self):
-        self.createOneGeom(0, 0)
+        self.createGridGeom(0, 0)
         self.msg( "Running molpro job for initial point....." )
         sys.stdout.flush()
         exitcode = subprocess.call(['molpro',"-d", self.scrdir,'-W .','init.com'])
@@ -669,13 +694,13 @@ if __name__ == "__main__":
     # s = Scattering('./scatterAna/molpro.config','./scatterAna/atomfile.dat')
 
 
-    s = Scattering('./ScatterDdr/molpro.config','./ScatterDdr/atomfile.dat')
+    # s = Scattering('./ScatterDdr/molpro.config','./ScatterDdr/atomfile.dat')
 
 
     # s = Spectroscopic('./specAan/molpro.config','./specAan/atomfile.dat', './specAan/geomfile.dat', './specAan/frequency.dat', './specAan/wilson.dat')
 
 
-    # s = Spectroscopic('./specDdr/molpro.config','./specDdr/atomfile.dat', './specDdr/geomfile.dat', './specDdr/frequency.dat', './specDdr/wilson.dat')
+    s = Spectroscopic('./specDdr/molpro.config','./specDdr/atomfile.dat', './specDdr/geomfile.dat', './specDdr/frequency.dat', './specDdr/wilson.dat')
 
 
     s.runMolpro()

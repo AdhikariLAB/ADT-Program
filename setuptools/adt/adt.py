@@ -259,15 +259,13 @@ def main():
         try:
             if sys=='spectroscopic':
                 s = Spectroscopic(configfile, atomfile, geomFile, freqfile)
-                trFile = 'tau_rho.dat'
+                trFile = 'tau_rho_mod.dat'
             elif sys=='scattering':
                 s = Scattering(configfile, atomfile)
-                trFile = 'tau_theta.dat'
+                trFile = 'tau_theta_mod.dat'
             s.runMolpro()
 
-            #here insert the step to fill missing values and convert theta or phi to radian
-
-            adt_numerical('energy.dat', None, trFile, 'tau_phi.dat', path, outfile, logger, h5, txt, nb)
+            adt_numerical('energy_mod.dat', None, trFile, 'tau_phi_mod.dat', path, outfile, logger, h5, txt, nb)
         except:
             logger.error("Program failed\n"+"-"*121)
 
