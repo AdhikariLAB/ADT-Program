@@ -13,6 +13,9 @@ from datetime import datetime
 
 
 class Base():
+    '''
+        A base class containing the common methods to be used in both cases of spectroscopic and scattering
+    '''
     angtobohr = 1.8897259886
     hbar = 0.063508
     cInvToTauInv = 0.001883651
@@ -26,7 +29,7 @@ class Base():
         return np.cos(np.deg2rad(x))
 
     def createAnaTemplate(self):
-
+        ''''Creates the molpro template files analytical job'''
         molproTemplate=textwrap.dedent('''
             ***, Molpro template created from ADT program for analytical job.
             memory,{memory}
@@ -114,7 +117,7 @@ class Base():
             f.write(molproInitTemplate)
 
     def createDdrTemplate(self):
-
+        ''''Creates the molpro template files ddr job'''
         molproTemplate=textwrap.dedent('''
             ***, Molpro template created from ADT program for analytical job for analytical job.
             memory,{memory}
@@ -246,14 +249,17 @@ class Base():
         return np.arange(ll[0], ll[1]+ll[2], ll[2])
 
     def parseData(self, atomFile):
+        ''' Parse atom names and masses from data file'''
         atomData = np.loadtxt(atomFile, 
             dtype={'names': ('names', 'mass'),'formats': ('S1', 'f8')})
-
         self.atomNames = atomData['names']
         self.atomMass  = atomData['mass']
 
     def parseConfig(self, conFigFile):
-        #parse configuration for running molpro
+        ''' 
+        Parses configuration for running molpro from the molpro config file provided
+        and sets up different methods and attributes relavant to the configuration 
+        '''
         scf = ConfigParser.SafeConfigParser()
         scf.read(conFigFile)
 
@@ -292,7 +298,7 @@ class Base():
 
         if self.nInfo['method']=='cpmcscf':
             self.createAnaTemplate()
-            self.getTauThetaPhi = self.getTauThetaPhiAna
+            self.getTau = self.getTauAna
             self.createGridGeom = self.createOneGeom
 
 
@@ -304,26 +310,28 @@ class Base():
             self.dp = float(gInfo['dp'])
             self.createDdrTemplate()
             self.createGridGeom = self.createAllGeom
-            self.getTauThetaPhi = self.getTauThetaPhiDdr
+            self.getTau = self.getTauDdr
 
         else:
             sys.exit('%s Not a proper option'%self.nInfo['method'])
         self.logFile = open('adt_molpro.log', 'w', buffering=0)
 
     def parseResult(self, file):
+        ''' Parses result from the ouptpu .res files'''
         with open(file,"r") as f:
             dat = f.read().replace("D","E").strip().split("\n")[1:]
         dat = [map(float,i.strip().split()) for i in dat]
         return np.array(dat)
 
     def writeFile(self, file, data):
+        ''' Writes output data in plain txt'''
         file = open(file,'wb')
         for tp in np.unique(data[:,0]):
             np.savetxt( file, data[data[:,0]==tp] ,delimiter="\t", fmt="%.8f")
             file.write("\n")
 
-
     def interp(self, file ):
+        ''' Fills the missing values in output file using a 1D interpolation '''
         data = np.loadtxt(file)
         # grid2 = self.phiGrid
         grid1 = np.unique(data[:,0])   # numpy precision error
@@ -349,6 +357,7 @@ class Base():
         return res
 
     def removeFiles(self, allOut = False):
+        ''' Removes unwanted files after each time running molpro'''
         # allOut True means include all the previous out files
         # by default it just include the current out files
         patterns = ['*.res', '*.xyz', '*.xml*', '*.out']
@@ -360,13 +369,27 @@ class Base():
             os.remove(file)
 
     def msg(self, m, cont=False):
+        ''' Writes info in the log files'''
         if not cont : 
             m= "{:<30}{}".format(datetime.now().strftime("[%d-%m-%Y %I:%M:%S %p]"), m)
         else:
             m+='\n'
         self.logFile.write(m)
 
+    def incompleteJobs(self, gridn1, g1, gridn2, g2):
+        '''Saves the gemoetry and out file in a different folder '''
+        # do this step previouslu
+        path = '{}_{}_{}_{}'.format(gridn1, g1, gridn2, g2)
+        path = os.path.join('IncompleteJobs', path)
+        os.mkdir(path)
+        files = glob('*.xyz')+ glob('*.out')
+        for file in files:
+            shutil.move(file, path)
+        for file in glob('*.xml'): os.remove(file)
+
+
     def runThisMolpro(self, grid1, gridn1, grid2, gridn2, filEe, fileN1, fileN2):
+        '''Runs the molpro for each gridpoints '''
         # subprocess calls blocks system I/O buffer, so the I/Os (sometimes) have to be flushed out explicitely 
         # open files to store result
         filee  = open(filEe, 'w', buffering=1)
@@ -377,6 +400,9 @@ class Base():
         self.removeFiles()
         #grid1 is theta or rho
         #grid2 is phi
+        #create folder for incomplete jobs , delete if already exists
+        if os.path.isdir('IncompleteJobs'): shutil.rmtree('IncompleteJobs')
+        os.mkdir('IncompleteJobs')
 
         done = False # why am I using this?
 
@@ -398,10 +424,11 @@ class Base():
                     self.msg( 'Job successful.', cont=True)
                 else:
                     self.msg( 'Job failed.', cont=True)
+                    self.incompleteJobs(gridn1, g1, gridn2, g2)
                     continue
 
                 enrData = self.parseResult('enr.res').flatten()
-                tau1, tau2 = self.getTauThetaPhi(g1, g2)
+                tau1, tau2 = self.getTau(g1, g2)
                 np.savetxt(filee,  np.append([g1,g2],enrData)[None], fmt='%.8f', delimiter='\t')
                 np.savetxt(filen1, np.append([g1,g2],tau1)[None],  fmt='%.8f', delimiter='\t')
                 np.savetxt(filen2, np.append([g1,g2],tau2)[None],  fmt='%.8f', delimiter='\t')
@@ -410,6 +437,7 @@ class Base():
             filen1.write('\n')
             filen2.write('\n')
         self.removeFiles(allOut=True)
+        self.msg('All molpro jobs done.')
 
         scat = self.__class__.__name__=='Scattering'
         #fill the missing values by 1D interpolation
@@ -424,13 +452,15 @@ class Base():
 
 
 class Spectroscopic(Base):
-
+    ''' Inherited from the Base class, this class containg necessary methods
+     for running molpro for a Spectroscopic system'''
     def __init__(self, conFigFile ,atomFile, geomFile , freqFile , wilsonFile ):
         self.parseData(atomFile)
         self.parseSData(geomFile, freqFile, wilsonFile)
         self.parseConfig(conFigFile)
 
     def parseSData(self, geomFile, freqFile, wilsonFile):
+        '''Parses equilibrium geometry, frequencies and the wilson matrix data for a sceptroscopic system'''
         self.equiGeom = np.loadtxt(geomFile)
         freq = np.loadtxt(freqFile)
         wilson = np.loadtxt(wilsonFile)
@@ -441,6 +471,7 @@ class Spectroscopic(Base):
         self.wilFM = np.einsum('ijk,k,i->ijk',wilson,freqInv,massInv)
 
     def createOneGeom(self, rho, phi, outFile = 'geom.xyz'):
+        ''' Creates geometry file, to be used in molpro for the given rho , phi'''
         nModes = self.wilFM.shape[2]
         qCord  = np.zeros(nModes)
         qCord[self.vModes[0]] = rho*self.cos(phi)
@@ -457,7 +488,8 @@ class Spectroscopic(Base):
         with open(outFile,"w") as f:
             f.write(tmp)
 
-    def createAllGeom(self, rho, phi): #only used by ddr
+    def createAllGeom(self, rho, phi):
+        ''' Creates 5 different geometry files for using in molpro ddr calculation '''
         self.createOneGeom(rho,  phi,  'geom1.xyz')
         self.createOneGeom(rho+self.dr, phi, 'geom2.xyz')
         self.createOneGeom(rho-self.dr, phi, 'geom3.xyz')
@@ -465,6 +497,7 @@ class Spectroscopic(Base):
         self.createOneGeom(rho, phi-self.dp,'geom5.xyz')
     
     def parseNact(self, i,j,rho,phi):
+        '''Calculates NACT Rho Phi from the output gradients '''
         file = 'ananac{}{}.res'.format(i,j)
 
         grads = self.angtobohr*self.parseResult(file)
@@ -472,15 +505,18 @@ class Spectroscopic(Base):
         tau = np.einsum('ijk,ij,lk->l',self.wilFM[...,self.vModes], grads, rotoMat)
         return np.abs(tau)
 
-    def getTauThetaPhiAna(self, rho, phi):
+    def getTauAna(self, rho, phi):
+        '''Used in Analytical NACT calculation'''
         return np.stack([self.parseNact(i, j, rho, phi) 
                                     for i,j in self.nactPairs]).T
 
-    def getTauThetaPhiDdr(self, *args):
+    def getTauDdr(self, *args):
+        '''Used in DDR NACT calculation'''
         return np.stack([self.parseResult('ddrnact{}{}.res'.format(i,j)) 
                                     for i,j in self.nactPairs]).T
 
     def equiRun(self):
+        '''Runs molpro for the equilibrium geometry'''
         nAtoms = len(self.atomNames)
         tmp = " {}\n".format(nAtoms)
         tmp+= "Geometry file created from ADT program for equilibrium geometry.\n"
@@ -499,6 +535,7 @@ class Spectroscopic(Base):
             sys.exit('Molpro failed in equilibrium step')
         equiData = self.parseResult('equienr.res').flatten()
         np.savetxt('equienr.dat', equiData, fmt='%.8f')
+        self.removeFiles()
 
 
 
@@ -515,6 +552,8 @@ class Spectroscopic(Base):
 
 
 class Scattering(Base):
+    ''' Inherited from the Base class, this class containg necessary methods
+     for running molpro for a Scattering system'''
     def __init__(self, conFigFile, atomFile ):
         self.parseData(atomFile)
         self.parseConfig(conFigFile)
@@ -589,6 +628,7 @@ class Scattering(Base):
         return np.array([p1,p2,p3])
 
     def createOneGeom(self, theta, phi, outFile='geom.xyz'):
+        ''' Creates geometry file, to be used in molpro for the given theta , phi'''
         curGeom  = self.hyperToCart(theta, phi)
         msg = 'for Rho = {}, Theta={}, Phi = {}'.format(self.rho, theta, phi)
         nAtoms = len(self.atomNames)
@@ -600,6 +640,7 @@ class Scattering(Base):
             f.write(tmp)
 
     def createAllGeom(self, theta, phi):
+        ''' Creates 5 different geometry files for using in molpro ddr calculation '''
         self.createOneGeom(theta,    phi,    'geom1.xyz')
         self.createOneGeom(theta+self.dt, phi,   'geom2.xyz')
         self.createOneGeom(theta-self.dt, phi,   'geom3.xyz')
@@ -607,6 +648,7 @@ class Scattering(Base):
         self.createOneGeom(theta,    phi-self.dp,'geom5.xyz')
 
     def parseNact(self, i,j,gradTheta, gradPhi):
+        '''Calculates NACT Rho Phi from the output gradients '''
         file = 'ananac{}{}.res'.format(i,j)
         grads = self.angtobohr*self.parseResult(file)
 
@@ -614,7 +656,8 @@ class Scattering(Base):
         tauPhi   = np.einsum('ij,ij', grads, gradPhi)
         return np.abs(np.array([tauTheta, tauPhi]))
 
-    def getTauThetaPhiAna(self, theta, phi):
+    def getTauAna(self, theta, phi):
+        '''Used in Analytical NACT calculation'''
         # What will be this values
         dTheta = self.thetaList[2]/100
         dPhi = self.phiList[2]/100
@@ -629,12 +672,14 @@ class Scattering(Base):
         return np.vstack([self.parseNact(i,j,gradTheta, gradPhi) 
                                     for i,j in self.nactPairs]).T
 
-    def getTauThetaPhiDdr(self, *args):
+    def getTauDdr(self, *args):
+        '''Used in DDR NACT calculation'''
         return np.vstack([self.parseResult('ddrnact{}{}.res'.format(i,j)) 
                                     for i,j in self.nactPairs]).T
 
 
     def equiRun(self):
+        '''Runs molpro for a initial geometry, i.e. theta=phi=0'''
         self.createOneGeom(0, 0)
         self.msg( "Running molpro job for initial point....." )
         sys.stdout.flush()
@@ -646,6 +691,7 @@ class Scattering(Base):
             sys.exit('Molpro failed in initital step')
         equiData = self.parseResult('equienr.res').flatten()
         np.savetxt('equienr.dat', equiData, fmt='%.8f')
+        self.removeFiles()
 
 
 
@@ -658,10 +704,6 @@ class Scattering(Base):
             'energy.dat', 
             'tau_theta.dat', 
             'tau_phi.dat' )
-
-
-
-
 
 
 

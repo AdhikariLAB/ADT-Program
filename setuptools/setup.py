@@ -1,22 +1,33 @@
+
+__doc__='''
+
+Build and Run or directly run with specified flags
+or run > python setup.py -h for details about the commands and flags
+
+By default this will install the package in root of the system and install an command line utility 'adtcli'
+if you dont have root privilage then install it with '--user' flag to install the package in a 
+local package folder for python(usuall ~/.local/lib/python2.7/site-packages/) and install the command line utility in
+respective folder (e.g /.local/bin/)
+Or you can just install this in a python virtualenv.
+
+'''
+
+__authors__  = '''
+Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari
+'''
+
 import setuptools  # "magic" import
 from numpy.distutils.core import setup, Extension
 from setuptools import find_packages
 
 
 
-# Build and Run or directly run with specified flags
-# or run > python setup.py -h for details about the commands and flags
-
-# By default this will install the package in root of the system and install an command line utility 'adtcli'
-# if you dont have root privilage then install it with '--user' flag to install the package in a 
-# local package folder for python(usuall ~/.local/lib/python2.7/site-packages/) and install the command line utility in
-# respective folder (e.g /.local/bin/)
-# Or you can just install this in a python virtualenv.
 
 
 
 
-#uncomment one of the following as your requirement
+
+#uncomment one of the following blocks as your requirement
 
 #for default_fortran compiler(usually gfortran) without parallel
 # python setup.py install
@@ -66,7 +77,7 @@ setup(
     ext_modules=[lib],
     entry_points={
         'console_scripts': [
-            'adtcli = adt.adt:main',
+            'adt = adt.adt:main',
         ],
     }
 )

@@ -1,25 +1,30 @@
 
-########################################################################################################################
-#                                                                                                                      #
-#    This python file contains a group of definitions required for successful compilation of adt_analytic.py. Those    #
-#    definitions are presented alphabetically.                                                                         #
-#                                                                                                                      #
-#    Written by Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit     #
-#    Adhikari                                                                                                          # 
-#                                                                                                                      #
-########################################################################################################################
+__doc__='''
+
+This python file contains a group of definitions required for successful compilation of adt_analytic.py. Those
+definitions are presented alphabetically.
+
+Written by Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit
+Adhikari
+
+'''
+
+__authors__  = '''
+Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari
+'''
+
 
 def adiabatic(N):
 
     '''This definition returns the adiabatic potential energy matrix.'''
 
     return [['U(%s)'%(i+1) if i==j else '0' for j in range(N)] for i in range(N)]
- 
-########################################################################################################################
+
+
 
 def diabatic(mat):
 
-    '''In this definition, the adiabatic potential energy matrix is similarity transformed to the diabatic 
+    '''In this definition, the adiabatic potential energy matrix is similarity transformed to the diabatic
        potential energy matrix. It accepts ADT matrix as input and returns the diabatic potential energy
        matrix.'''
 
@@ -33,7 +38,7 @@ def diabatic(mat):
 
     return diabatic
 
-########################################################################################################################
+
 
 def diff(elem,N):
 
@@ -56,34 +61,34 @@ def diff(elem,N):
           if k!=j:
             eld += "*" + llsub[k]
         final.append(eld)
-    final = '+'.join(final) 
+    final = '+'.join(final)
 
     return final
 
-########################################################################################################################
+
 
 def diffelem(trig,index):
 
-    '''This definition returns the derivative of a cosine or a sine function.'''    
+    '''This definition returns the derivative of a cosine or a sine function.'''
 
     if 's' in trig:
       difftrig = trig.replace('s','c')
     elif '-c' in trig:
       difftrig = trig.replace('-c','s')
     elif 'c' in trig:
-      difftrig = trig.replace('c','-s')  
+      difftrig = trig.replace('c','-s')
 
     difftrig += '*G(%s)' % index
     return difftrig
 
-########################################################################################################################
+
 
 def elemgradselect(mat):
 
-    '''Although implementation of ADT condition results into a differential matrix equation, we can obtain only 
-       ^{N}C_{2} number of independent equations (not N^{2}) by comparing the matrix elements. This routine 
-       gathers necessary matrix elements, takes their derivative using 'diff' definition and finally collects 
-       the outcome of the differentiation in a dictionary. That dictionary is returned at the end of such 
+    '''Although implementation of ADT condition results into a differential matrix equation, we can obtain only
+       ^{N}C_{2} number of independent equations (not N^{2}) by comparing the matrix elements. This routine
+       gathers necessary matrix elements, takes their derivative using 'diff' definition and finally collects
+       the outcome of the differentiation in a dictionary. That dictionary is returned at the end of such
        processes.'''
 
     ll = {}
@@ -97,25 +102,25 @@ def elemgradselect(mat):
       for j in range(N-2,i,-1):
         a = 'G(%r,%r)' % (i+1,j+1)
         ll[a] = diff(mat[j][i],N)
- 
+
     return ll
 
-########################################################################################################################
+
 
 def elemselect(mat):
- 
+
     '''This definition returns the list of lower triangle elements of any matrix (mat_{ij}, where i >= j).'''
- 
+
     N = len(mat)
 
     return [mat[i][j] for i in range(1,N) for j in range(i) ]
 
-########################################################################################################################
+
 
 def elemsum(elem1,elem2):
 
     '''This definition is designed to return the product of any two expressions.'''
-    
+
     if elem1 == '0' or elem2 == '0':
       return '0'
 
@@ -137,18 +142,18 @@ def elemsum(elem1,elem2):
 
     return elemfinal
 
-########################################################################################################################
+
 
 def elemtauselect(mat):
 
-    '''Although implementation of ADT condition results into a differential matrix equation, we can obtain 
-       only ^{N}C_{2} number of independent equations (not N^{2}) by comparing the matrix elements. This 
-       definition fetches necessary matrix elements (product matrix of negative NACM and ADT matrix) and 
+    '''Although implementation of ADT condition results into a differential matrix equation, we can obtain
+       only ^{N}C_{2} number of independent equations (not N^{2}) by comparing the matrix elements. This
+       definition fetches necessary matrix elements (product matrix of negative NACM and ADT matrix) and
        store them in a dictionary. At the end of these processes, that dictionary is returned.'''
 
     ll = {}
     N = len(mat)
- 
+
     for i in range(N-1):
       a = 'G(%r,%r)' % (i+1,N)
       ll[a] = mat[N-1][i]
@@ -157,16 +162,16 @@ def elemtauselect(mat):
       for j in range(N-2,i,-1):
         a = 'G(%r,%r)' % (i+1,j+1)
         ll[a] = mat[j][i]
- 
+
     return ll
 
-########################################################################################################################
+
 
 def equation_complete(lhs,rhs,N):
 
-    '''This definition is built to return the fully substituted forms of the ADT equations, but the major 
-       demerit of this definition is high memory requirements, while constructing ADT equations for higher 
-       dimensional sub-Hilbert spaces.'''   
+    '''This definition is built to return the fully substituted forms of the ADT equations, but the major
+       demerit of this definition is high memory requirements, while constructing ADT equations for higher
+       dimensional sub-Hilbert spaces.'''
 
     fl = open('ADT_EQUATIONS_COMPLETE.DAT','a')
 
@@ -189,21 +194,21 @@ def equation_complete(lhs,rhs,N):
         if ll:
           for b in ll:
             eqn = '(' + lldict[b] + ')'
-            sol = sol.replace(b,eqn)   
+            sol = sol.replace(b,eqn)
         txt = '\n GRAD_%s_%s = \n' % (i,j)
         txt += "\n".join(sol[i:i+140] for i in range(0,len(sol),140)) + "\n\n"
         fl.write(txt)
-        ll.append(a)  
+        ll.append(a)
         lldict[a] = sol
 
     fl.close()
 
-########################################################################################################################
+
 
 def equation_partial(lhs,rhs,N):
 
-    '''This definition also returns the ADT equations in partially substituted forms, where the gradients in 
-       the right hand side are not substituted by their expressions.'''   
+    '''This definition also returns the ADT equations in partially substituted forms, where the gradients in
+       the right hand side are not substituted by their expressions.'''
 
     fl = open('ADT_EQUATIONS_PARTIAL.DAT','a')
 
@@ -226,7 +231,7 @@ def equation_partial(lhs,rhs,N):
               left = '(-1)' + '*' + multi + '*' + k
               leqn.append(left)
         sol = '+'.join(leqn)
-   
+
         txt = '\n GRAD_%s_%s = \n' % (i,j)
         txt += "\n".join(sol[i:i+140] for i in range(0,len(sol),140)) + "\n\n"
         fl.write(txt)
@@ -234,7 +239,7 @@ def equation_partial(lhs,rhs,N):
         ll.append(a)
     fl.close()
 
-########################################################################################################################
+
 
 def extractgrad(eqn,N,gradrow):
 
@@ -259,7 +264,7 @@ def extractgrad(eqn,N,gradrow):
         fl.write(txt)
     fl.close()
 
-########################################################################################################################
+
 
 def extracttau(eqn,N,taurow):
 
@@ -278,22 +283,22 @@ def extracttau(eqn,N,taurow):
 
         coeff = '+'.join(el.replace('*'+a,'') for el in ll if a in el)
         if not coeff: coeff = '0'
-        
+
         txt = '\n TC_%s_%s = \n' % (taurow,taucolumn)
         txt += "\n".join(coeff[i:i+140] for i in range(0,len(coeff),140)) + "\n\n"
         fl.write(txt)
     fl.close()
 
-########################################################################################################################
+
 
 def indextostate(N):
 
-    '''Overall ADT matrix for any arbitrary number of coupled electronic states is generated by multiplying 
-       the elementary rotation matrices in a definite order. Their position in that multiplication order is 
-       clearly dictated by the electronic states involved in the corresponding mixing angle. As an example, 
-       for three electronic states, the order of multiplication is A_{12}.A_{13}.A_{23}. In order to 
-       correlate the order of appearance of the elementary ADT matrix and the involved electronic states, 
-       a dictionary is returned by this definition. [For A_{12}.A_{13}.A_{23}, the returned dictionary 
+    '''Overall ADT matrix for any arbitrary number of coupled electronic states is generated by multiplying
+       the elementary rotation matrices in a definite order. Their position in that multiplication order is
+       clearly dictated by the electronic states involved in the corresponding mixing angle. As an example,
+       for three electronic states, the order of multiplication is A_{12}.A_{13}.A_{23}. In order to
+       correlate the order of appearance of the elementary ADT matrix and the involved electronic states,
+       a dictionary is returned by this definition. [For A_{12}.A_{13}.A_{23}, the returned dictionary
        will be {1:1,2,  2:1,3,  3:2,3}]'''
 
     indict = {}
@@ -307,25 +312,25 @@ def indextostate(N):
 
     return indict
 
-########################################################################################################################
-                
+
+
 def inver(element,grad):
 
-    '''This definition acquires an expression (grad), replaces a trigonometric function (element) with its 
+    '''This definition acquires an expression (grad), replaces a trigonometric function (element) with its
        inverse and finally, returns the modified version of 'grad'.'''
 
     ll = element.split('+')
-    
+
     for i in ll:        #not sure if this approach is correct
       if grad in i:
           return i.replace('c','ic')\
                   .replace('s','is')\
                   .replace(grad,'')\
                   .strip("*")
-                                                                                             
-########################################################################################################################
 
-def matelem(row,col):                   #argument changed 
+
+
+def matelem(row,col):                   #argument changed
 
     '''This definition returns a particular element of a product matrix between two matrices.'''
 
@@ -337,13 +342,13 @@ def matelem(row,col):                   #argument changed
     else:
       elemnew = '+'.join(elem)
 
-    return elemnew   
+    return elemnew
 
-########################################################################################################################
+
 
 def matman(N):
 
-    '''This produces the multiplied form of ADT matrix for any arbitrary number of coupled electronic 
+    '''This produces the multiplied form of ADT matrix for any arbitrary number of coupled electronic
        states.'''
 
     counter = 0
@@ -351,28 +356,28 @@ def matman(N):
     for i in range(2,N+1):
       for j in range(1,i):
         counter += 1
-        mat2 = matrix(j,i,N,counter) 
+        mat2 = matrix(j,i,N,counter)
         lmat = multiply(mat1,mat2)
         mat1 = lmat
-   
+
     return lmat
 
-########################################################################################################################
-  
+
+
 def matrix(first,second,N,counter):
 
     '''This definition generates elementary rotation matrices, which are multiplied to construct the overall
        ADT matrix.'''
-     
+
 
     mat = []
     for i in range(1,N+1):
       row = []
       for j in range(1,N+1):
         if (i==j==first) or (i==j==second):
-          a = '(c(%s))' % counter  
+          a = '(c(%s))' % counter
         elif i == first and j == second:
-          a = '(s(%s))' % counter 
+          a = '(s(%s))' % counter
         elif i == second and j == first:
           a = '(-s(%s))' % counter
         elif i == j:
@@ -382,18 +387,18 @@ def matrix(first,second,N,counter):
         row.append(a)
       mat.append(row)
     return mat
- 
-########################################################################################################################
- 
-def multiply(mat1,mat2): 
+
+
+
+def multiply(mat1,mat2):
 
     '''This definition returns the product of two matrices.'''
 
     return [[matelem(i,j) for j in zip(*mat2)] for i in mat1]
 
-########################################################################################################################
 
-def nacm(N):                                                
+
+def nacm(N):
 
     '''This definition returns NACM.'''
 
@@ -412,15 +417,15 @@ def nacm(N):
 
     return ll
 
-########################################################################################################################
-  
+
+
 def negative(mat):
 
     '''This definition returns negative of a matrix.'''
 
     return [[elemsum('(-1)',j) for j in i] for i in mat]
 
-########################################################################################################################
+
 
 def transpose(mat):
 
@@ -428,7 +433,7 @@ def transpose(mat):
 
     return zip(*mat)
 
-########################################################################################################################
+
 
 def unitmat(N):
 
@@ -436,4 +441,4 @@ def unitmat(N):
 
     return [['1' if i==j else '0' for j in range(N)] for i in range(N)]
 
-########################################################################################################################
+

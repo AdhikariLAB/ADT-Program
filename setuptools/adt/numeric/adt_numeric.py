@@ -1,21 +1,26 @@
 
-########################################################################################################################
-#                                                                                                                      #
-#    This python script is developed to compute various adiabatic to diabatic transformation (ADT) quantities, like    #
-#    ADT angles, ADT matrices, diabatic potential energy matrices and residue of ADT angles. It uses the python module #
-#    file, 'adt_module.so' while evaluating ADT angles and ADT matrices. User can opt any one of eight integration     #
-#    paths, but the resulting diabatic potential energy matrcies are orthogonally related with each other and          #
-#    therefore, dynamical observables will be independent of integration paths. For numerical calculations, user can   #
-#    choose either 'HDF5' or 'text' formatted output, though the first one is fast and efficient due to low memory     #
-#    requirement.                                                                                                      #
-#                                                                                                                      #
-#    Written by Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit     #
-#    Adhikari                                                                                                          #
-#                                                                                                                      #
-########################################################################################################################
+__doc__='''
+
+This python script is developed to compute various adiabatic to diabatic transformation (ADT) quantities, like
+ADT angles, ADT matrices, diabatic potential energy matrices and residue of ADT angles. It uses the python module
+file, 'adt_module.so' while evaluating ADT angles and ADT matrices. User can opt any one of eight integration
+paths, but the resulting diabatic potential energy matrcies are orthogonally related with each other and
+therefore, dynamical observables will be independent of integration paths. For numerical calculations, user can
+choose either 'HDF5' or 'text' formatted output, though the first one is fast and efficient due to low memory
+requirement.
+
+Written by Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit
+Adhikari
+
+'''
+
+__authors__  = '''
+Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari
+'''
+
 
 import os
-import numpy as np 
+import numpy as np
 from adtmod import adt
 from h5py import File
 from time import time
@@ -64,10 +69,10 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger,h5, txt, nb):
             adt.nstate = enr.shape[1] -2
             assert adt.nstate*(adt.nstate-1)/2==adt.ntau, "Mismatch in number of states and nacts"
         else :
-        # trying automatic state calculation, not sure, checks required 
+        # trying automatic state calculation, not sure, checks required
             # Using explicit solution of the quadratic equation
             # r = np.roots([1,-1,-2*adt.ntau])
-            # r = r.real[abs(r.imag)<1e-6]    # 
+            # r = r.real[abs(r.imag)<1e-6]    #
             # adt.nstate = r[(r>1) & (r==r.astype(int))][0].astype(int)
             # Using a lazy loop to check for the number of states
             i= 1
@@ -76,7 +81,7 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger,h5, txt, nb):
                 x=i*(i-1)/2
                 assert x<= adt.ntau, 'Bad number of NACTs'
                 if x==adt.ntau: break
-            adt.nstate = i 
+            adt.nstate = i
             # print adt.nstate
     # evaluating number of grid points, number of electronic states and number of couplings
 
@@ -88,7 +93,7 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger,h5, txt, nb):
     adt.gridp  = np.unique(rdat[:,1])
     adt.ngridr = adt.gridr.shape[0]
     adt.ngridp = adt.gridp.shape[0]
-    
+
 
     # reshaping the nonadiabatic coupling terms (NACTs) according to the number of grid points
     adt.taur  = rdat[:,2:].reshape(adt.ngridr, adt.ngridp, adt.ntau)
@@ -116,7 +121,7 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger,h5, txt, nb):
 
     if enrf != None:
         # calculation of diabatic potential energy matrix elements
-        enr    = enr[:,2:adt.nstate+2] 
+        enr    = enr[:,2:adt.nstate+2]
         logger.info("Calculating Diabatic matrix elements")
         db = np.einsum("ijk,ij,ijl->ikl",amat,enr,amat)
 
@@ -124,7 +129,7 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger,h5, txt, nb):
 
     # Writing of numerical output in a '.h5' file
     if h5:
-        file =outfile+ "_%s.h5"%path 
+        file =outfile+ "_%s.h5"%path
         logger.info("Opening HDF5 file '%s' for writing results"%file)
         file = File(file,'w')
 
@@ -157,7 +162,7 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger,h5, txt, nb):
         logger.info("Writing ADT Angles in 'Angle_residues.dat'")
         np.savetxt('Angle_residues.dat', residue ,delimiter="\t", fmt="%.8f")
 
-        
+
         for i in range(adt.nstate):
             file =  "Matrix_Row_%s.dat"%(i+1)
             logger.info("Writing ADT Matrix elements in '%s'"%(file))
@@ -181,7 +186,7 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger,h5, txt, nb):
         logger.info("Writing ADT Angles in 'Angle_residues.npy'")
         np.save('Angle_residues', residue)
 
-        
+
         for i in range(adt.nstate):
             file =  "Matrix_Row_%s"%(i+1)
             logger.info("Writing ADT Matrix elements in '%s.npy'"%(file))
@@ -199,7 +204,7 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger,h5, txt, nb):
 
 
 # This definition is used to write the output data
- 
+
 def file_write(file, data, col):
     file = open(file, "w")
     for r in col:
