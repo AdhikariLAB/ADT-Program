@@ -27,6 +27,15 @@ from numeric.adt_numeric import adt_numerical
 from analytic.adt_analytic import adt_analytical
 from molpro.adt_molpro import Scattering, Spectroscopic
 
+
+class CustomParser(argparse.ArgumentParser):
+    def error(self, message):
+        sys.stderr.write('error: %s\n' % message)
+        self.print_help()
+        sys.exit(2)
+
+
+
 def make_logger(log_name):
     #Create the logger
     logger = logging.getLogger(log_name)
@@ -46,7 +55,7 @@ def make_logger(log_name):
 
 def main():
     #main parser
-    parser = argparse.ArgumentParser(
+    parser = CustomParser(
         prog="adt",
         formatter_class=argparse.RawTextHelpFormatter,
         description = textwrap.dedent('''
@@ -203,7 +212,6 @@ def main():
     molpro.set_defaults(h5=False,txt=False, nb = False)
 
 
-    #collecting arguments
     args = parser.parse_args()
 
 
@@ -245,7 +253,7 @@ def main():
 
 
     if args.choice == 'mol':
-        sys = args.sys
+        systm = args.sys
         configfile = args.config
         atomfile   = args.atomfile
         geomfile   = args.geomfile
@@ -261,10 +269,10 @@ def main():
         logger = make_logger("ADT Molpro Program")
 
         try:
-            if sys=='spectroscopic':
+            if systm=='spectroscopic':
                 s = Spectroscopic(configfile, atomfile, geomFile, freqfile, wilsonFile)
                 trFile = 'tau_rho_mod.dat'
-            elif sys=='scattering':
+            elif systm=='scattering':
                 s = Scattering(configfile, atomfile)
                 trFile = 'tau_theta_mod.dat'
             logger.info("Starting molpro jobs. Check 'adt_molpro.log' for progress")
