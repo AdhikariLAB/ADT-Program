@@ -30,7 +30,7 @@ from molpro.adt_molpro import Scattering, Spectroscopic
 
 class CustomParser(argparse.ArgumentParser):
     def error(self, message):
-        sys.stderr.write('error: %s\n' % message)
+        sys.stderr.write('\033[91mError: %s\n\033[0m' % message)
         self.print_help()
         sys.exit(2)
 
