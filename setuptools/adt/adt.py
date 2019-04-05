@@ -23,9 +23,9 @@ import sys
 import logging
 import textwrap
 import argparse
-# from numeric.adt_numeric import adt_numerical
-# from analytic.adt_analytic import adt_analytical
-# from molpro.adt_molpro import Scattering, Spectroscopic
+from numeric.adt_numeric import adt_numerical
+from analytic.adt_analytic import adt_analytical
+from molpro.adt_molpro import Scattering, Spectroscopic
 
 
 class CustomParser(argparse.ArgumentParser):
