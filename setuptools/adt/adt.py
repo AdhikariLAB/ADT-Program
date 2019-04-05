@@ -23,9 +23,9 @@ import sys
 import logging
 import textwrap
 import argparse
-from numeric.adt_numeric import adt_numerical
-from analytic.adt_analytic import adt_analytical
-from molpro.adt_molpro import Scattering, Spectroscopic
+# from numeric.adt_numeric import adt_numerical
+# from analytic.adt_analytic import adt_analytical
+# from molpro.adt_molpro import Scattering, Spectroscopic
 
 
 class CustomParser(argparse.ArgumentParser):
@@ -220,11 +220,17 @@ def main():
         state  = args.nstate
         path   = args.anajob
         logger = make_logger("ADT Analytical program")
+
+        logger.info('''Starting Analytical program.
+
+        Number of states   : {}
+        Integration path   : {}
+        '''.format(state, path))
         try:
             adt_analytical(state, path, logger)
             print("Log saved in 'ADT.log'.")
         except Exception as e:
-            logger.error("Program failed\n"+"-"*121)
+            logger.error("Program failed. %s\n"%e+"-"*121)
             print("Program failed. %s"%e)
 
 
@@ -242,14 +248,35 @@ def main():
         nb      = args.nb
         if (h5==False and txt== False and nb==False ) : h5=True
 
+        ffrmt = []
+        if h5: ffrmt.append('HDF5')
+        if txt: ffrmt.append('Plain txt')
+        if nb: ffrmt.append('Numpy Binary format')
+        ffrmt = ', '.join(ffrmt)
+
+        if not enrf : nstatet = None
+        if enrf and not nstate : nstatet = 'All'
+        else :nstatet = nstate
+
         logger = make_logger("ADT Numerical Program")
+        logger.info('''Starting Numerical program. 
+
+        Energy File          : {}
+        NACT 1 File          : {}
+        NACT 2 File          : {}
+        Number of states     : {}
+        Integration path     : {}
+        Output file/folder   : {}
+        Output file format   : {}
+
+        '''.format(enrf, rhof, phif, nstatet, path, outfile, ffrmt))
+
         try:
             adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger, h5, txt, nb)
             print("Log saved in 'ADT.log'.")
         except Exception as e:
-            logger.error("Program failed\n"+"-"*121)
+            logger.error("Program failed. %s\n"%e+"-"*121)
             print("Program failed. %s"%e)
-
 
 
     if args.choice == 'mol':
@@ -268,6 +295,28 @@ def main():
 
         logger = make_logger("ADT Molpro Program")
 
+        ffrmt = []
+        if h5: ffrmt.append('HDF5')
+        if txt: ffrmt.append('Plain txt')
+        if nb: ffrmt.append('Numpy Binary format')
+        ffrmt = ', '.join(ffrmt)
+
+        if systm=='scattering':
+            geomfile = freqfile = wilsonfile = 'Not required'
+
+
+        logger = make_logger("ADT Numerical Program")
+        logger.info('''Starting molpro jobs. Check 'adt_molpro.log' for progress. 
+
+        System type               : {}
+        Molpro Config file        : {}
+        Atom Info file            : {}
+        Equilibrium Geometry file : {}
+        Frequency Info file       : {}
+        Wilson Matrix file        : {}
+
+        '''.format(systm, configfile, atomfile, geomfile, freqfile, wilsonfile))
+
         try:
             if systm=='spectroscopic':
                 s = Spectroscopic(configfile, atomfile, geomFile, freqfile, wilsonFile)
@@ -277,13 +326,24 @@ def main():
                 trFile = 'tau_theta_mod.dat'
             logger.info("Starting molpro jobs. Check 'adt_molpro.log' for progress")
             s.runMolpro()
-            logger.info('Molpro jobs completed.')
-        except:
-            logger.error("Program failed in molpro job\n"+"-"*121)
+            logger.info(''''Molpro jobs completed. Data saved in following files:
+            Energy File : energy_mod.dat
+            NACT 1 File : {}
+            NACT 2 File : tau_phi_mod.dat'''.format(trFile))
+        except Exception as e:
+            logger.error("Program failed in molpro job. %s\n"%e+"-"*121)
+            sys.exit(1)
+
+
         try:
+            logger.info('''Starting Numerical calculation
+            Integration Path   : {}
+            Output file/folder : {}
+            Output file format : {}
+            '''.format(path, outfile, ffrmt))
             adt_numerical('energy_mod.dat', None, trFile, 'tau_phi_mod.dat', path, outfile, logger, h5, txt, nb)
-        except:
-            logger.error("Program failed in numerical calculation.\n"+"-"*121)
+        except Exception as e:
+            logger.error("Program failed in numerical calculation. %s\n"%e+"-"*121)
 
     #######################################################################################################################
 

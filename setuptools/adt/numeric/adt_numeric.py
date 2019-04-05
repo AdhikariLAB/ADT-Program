@@ -29,8 +29,7 @@ from time import time
 #  This definition evaluates ADT angles, ADT matrix elements, diabatic potential energy matrix elements and residue of ADT angles
 
 def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger,h5, txt, nb):
-
-    logger.info("Starting program")
+    
     start = time()
     logger.info("Reading data from files")
 

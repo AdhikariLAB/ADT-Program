@@ -28,7 +28,6 @@ from time import time
 
 def adt_analytical(N,p, logger):
     start = time()
-    logger.info("Starting program")
 
     {1: adt1, 2: adt2, 3: adt3, 4: adt4,
      5: adt5, 6: adt6, 7: adt7, 8: adt8
