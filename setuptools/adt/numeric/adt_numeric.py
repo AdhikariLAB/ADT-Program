@@ -35,14 +35,27 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger,h5, txt, nb):
 
     # a fumction to check if the file is in numpy binary  format
     is_bin = lambda file: os.path.splitext(file)[1] in ['.npy', '.npz']
+    is_h5  = lambda file: os.path.splitext(file)[1]=='.h5'
 
     # reading data from input files
+    #NOTE: for simplicity in providing the input data using HDF5 file format,
+    # input files are restricted to have just one dataset with the same name as of the file.
+
     if is_bin(rhof):
         rdat = np.load(rhof)
+    elif is_h5(rhof):
+        with File(rhof, 'r') as f:
+            dset = rhof.replace('.h5', '')
+            rdat = f[dset][()]
     else:
         rdat = np.loadtxt(rhof)
+
     if is_bin(phif):
         pdat = np.load(phif)
+    elif is_h5(phif):
+        with File(phif, 'r') as f:
+            dset = phif.replace('.h5', '')
+            pdat = f[dset][()]
     else:
         pdat = np.loadtxt(phif)
     assert rdat.shape==pdat.shape , "Mismatch in nact data"
@@ -50,6 +63,10 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger,h5, txt, nb):
     if enrf != None:
         if is_bin(enrf):
             enr  = np.load(enrf)
+        elif is_h5(enrf):
+            with File(enrf, 'r') as f:
+                dset = enrf.replace('.h5', '')
+                enr = f[dset][()]
         else:
             enr  = np.loadtxt(enrf)
 

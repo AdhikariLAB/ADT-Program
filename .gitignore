@@ -9,6 +9,4 @@
 test.py
 dist
 build
-ADT*
 test
-*.npy
