@@ -58,11 +58,11 @@ lib = Extension(name='adtmod',
 
 setup(
     name='ADT_Program_Package',
-    version='0.0.0',
-    description='A description',
-    author='whoever',
-    author_email='whoever',
-    license = "BSD",
+    version='1.0.0',
+    description='Installer for the ADT_Program_Package.',
+    author='Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari',
+    author_email='pcsa@iacs.res.in',
+    license = "GNU GPLv2",
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Science/Research',
@@ -70,8 +70,11 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: Implementation :: CPython'
     ],
+    keywords='Quantum chemistry, PES, NACT',
+    project_urls={'https://gitlab.com/AdhikariLAB/adt-program'},
     zip_safe=True,
     install_requires=['numpy >= 1.10', 'h5py', 'six'],
+    setup_requires=['numpy >= 1.10', 'six']
     python_requires='>=2.7, <3',
     packages=find_packages(),
     ext_modules=[lib],

@@ -2,7 +2,7 @@
 __authors__  = '''
 Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari
 '''
-
+import re
 import os
 import sys
 import shutil
@@ -35,6 +35,29 @@ class Base():
 
     def createAnaTemplate(self):
         ''''Creates the molpro template files analytical job'''
+        cas = self.eInfo['cas']
+
+        #remove core from the cas
+        try:
+            core = re.search( '[0-9a-zA-Z,;](core,\d+;*)', cas).group(1)
+            cas = cas.replace(core, '').strip(';')
+        except:
+            pass
+
+
+        energyLine ='{{mcscf;{cas}; wf,{wf};state,{state};start,2140.2; orbital,2140.2;}}'.format(
+                        state=self.eInfo['state'],
+                        wf =  self.eInfo['wf'],
+                        cas = cas)
+
+        if self.eInfo['method'] == 'mrci':
+            energyLine+='''
+            {{mrci;{cas}; wf,{wf};state,{state};}}
+            '''.format(state=self.eInfo['state'],
+                        wf =  self.eInfo['wf'],
+                        cas = self.eInfo['cas'],
+                        )
+
         molproTemplate=textwrap.dedent('''
             ***, Molpro template created from ADT program for analytical job.
             memory,{memory}
@@ -46,8 +69,7 @@ class Base():
 
 
             geometry=geom.xyz
-
-            {{{method};{cas}; wf,{wf};state,{state};start,2140.2; orbital,2140.2;}}
+            {enrl}
 
             show, energy
             table, energy
@@ -55,10 +77,7 @@ class Base():
             {{table,____; noprint,heading}}
             '''.format(memory = self.memory,
                         basis = self.eInfo['basis'],
-                        method=self.eInfo['method'],
-                        state=self.eInfo['state'],
-                        wf =  self.eInfo['wf'],
-                        cas = self.eInfo['cas']))
+                        enrl = energyLine))
 
 
         nactTemp= "\n\nbasis={}\n".format(self.nInfo['basis'])
@@ -67,7 +86,7 @@ class Base():
             nactTemp += "\n{{mcscf;{cas}; wf,{wf};state,{state}; start,2140.2;\n".format(
                                 state=self.eInfo['state'],
                                 wf =  self.eInfo['wf'],
-                                cas = self.eInfo['cas'])
+                                cas = cas)
 
             pairChunk = self.nactPairs[ind:ind+5]
             forceTemp = ''
@@ -105,24 +124,58 @@ class Base():
 
             geometry=geom.xyz
             {{uhf}}
-            {{{method};{cas}; wf,{wf};state,{state};orbital,2140.2;}}
+            {enrl}
 
             show, energy
             table, energy
             save,equienr.res,new
             {{table,____; noprint,heading}}
+
+            ---
+
             '''.format(memory = self.memory,
                         basis = self.eInfo['basis'],
-                        method=self.eInfo['method'],
-                        state=self.eInfo['state'],
-                        wf =  self.eInfo['wf'],
-                        cas = self.eInfo['cas']))
+                        enrl = energyLine))
 
         with open('init.com', 'w') as f:
             f.write(molproInitTemplate)
 
     def createDdrTemplate(self):
         ''''Creates the molpro template files ddr job'''
+
+        cas = self.eInfo['cas']
+
+        #remove core from the cas
+        try:
+            core = re.search( '[0-9a-zA-Z,;](core,\d+;*)', cas).group(1)
+            cas = cas.replace(core, '').strip(';')
+        except:
+            pass
+
+        # energyLine ='{{mcscf;{cas}; wf,{wf};state,{state};start,2140.2; orbital,2140.2;}}'.format(
+        #                 state=self.eInfo['state'],
+        #                 wf =  self.eInfo['wf'],
+        #                 cas = cas)
+
+        # if self.eInfo['method'] == 'mrci':
+        #     energyLine+='''
+        #     {{mrci;{cas}; wf,{wf};state,{state};}}
+        #     '''.format(state=self.eInfo['state'],
+        #                 wf =  self.eInfo['wf'],
+        #                 cas = self.eInfo['cas'],
+        #                 )
+
+        #mrci has to be done for ddr for using the ddr wf in ddr nact calculation
+        energyLine = """
+            {{mcscf;{cas1}; wf,{wf};state,{state};start,2140.2; orbital,2140.2;}}
+            {{mrci; {cas}; wf,{wf};state,{state};save,6000.2}}
+            """.format(state=self.eInfo['state'],
+                        wf   = self.eInfo['wf'],
+                        cas  = self.eInfo['cas'],
+                        cas1 = cas
+                        )
+
+
         molproTemplate=textwrap.dedent('''
             ***, Molpro template created from ADT program for analytical job for analytical job.
             memory,{memory}
@@ -135,8 +188,7 @@ class Base():
             geomtyp=xyz
             geometry=geom1.xyz
 
-            {{multi;{cas}; wf,{wf};state,{state};orbital,2140.2;}}
-            {{mrci; {cas}; wf,{wf};state,{state};save,6000.2;noexc}}
+            {enrl}
 
             show, energy
             table, energy
@@ -146,16 +198,16 @@ class Base():
             !for +dr
             symmetry,nosym
             geometry=geom2.xyz
-            {{multi;{cas} ;wf,{wf};state,{state};start,2140.2;orbital,2241.2;}}
-            {{mrci; {cas}; wf,{wf};state,{state};save,6001.2;noexc}}
+            {{multi;{cas1} ;wf,{wf};state,{state};start,2140.2;orbital,2241.2;}}
+            {{mrci; {cas}; wf,{wf};state,{state};save,6001.2}}
             {{ci;trans,6000.2,6001.2;dm,8001.2}}
 
 
             !for -dr
             symmetry,nosym
             geometry=geom3.xyz
-            {{multi;{cas}; wf,{wf};state,{state};start,2140.2;orbital,2242.2;}}
-            {{mrci; {cas}; wf,{wf};state,{state};save,6002.2;noexc}}
+            {{multi;{cas1}; wf,{wf};state,{state};start,2140.2;orbital,2242.2;}}
+            {{mrci; {cas}; wf,{wf};state,{state};save,6002.2}}
             {{ci;trans,6000.2,6002.2;dm,8002.2}}
 
 
@@ -163,24 +215,26 @@ class Base():
             !for +dp
             symmetry,nosym
             geometry=geom4.xyz
-            {{multi;{cas}; wf,{wf};state,{state};start,2140.2;orbital,2243.2;}}
-            {{mrci; {cas}; wf,{wf};state,{state};save,6003.2;noexc}}
+            {{multi;{cas1}; wf,{wf};state,{state};start,2140.2;orbital,2243.2;}}
+            {{mrci; {cas}; wf,{wf};state,{state};save,6003.2}}
             {{ci;trans,6000.2,6003.2;dm,8003.2}}
 
 
             !for -dp
             symmetry,nosym
             geometry=geom5.xyz
-            {{multi;{cas}; wf,{wf};state,{state};start,2140.2;orbital,2244.2;}}
-            {{mrci; {cas}; wf,{wf};state,{state};save,6004.2;noexc}}
+            {{multi;{cas1}; wf,{wf};state,{state};start,2140.2;orbital,2244.2;}}
+            {{mrci; {cas}; wf,{wf};state,{state};save,6004.2}}
             {{ci;trans,6000.2,6004.2;dm,8004.2}}
 
 
             '''.format( memory = self.memory,
                         basis = self.eInfo['basis'],
+                        enrl=energyLine,
                         state=self.eInfo['state'],
                         wf =  self.eInfo['wf'],
-                        cas = self.eInfo['cas']))
+                        cas = self.eInfo['cas'],
+                        cas1 = cas))
 
 
         nactTemp= ''
@@ -219,7 +273,7 @@ class Base():
             f.write(molproTemplate)
 
         molproInitTemplate = textwrap.dedent('''
-            ***, Molpro template created from ADT program for analytical job.
+            ***, Molpro template created from ADT program for ddr job.
             memory,{memory}
             file,2,molpro_init.wfu,new;
 
@@ -231,8 +285,7 @@ class Base():
             geometry=geom.xyz
 
             {{uhf}}
-            {{multi;{cas}; wf,{wf};state,{state};orbital,2140.2;}}
-            {{mrci; {cas}; wf,{wf};state,{state};save,6000.2;noexc}}
+            {enrl}
 
             show, energy
             table, energy
@@ -241,9 +294,7 @@ class Base():
 
             '''.format( memory = self.memory,
                         basis = self.eInfo['basis'],
-                        state=self.eInfo['state'],
-                        wf =  self.eInfo['wf'],
-                        cas = self.eInfo['cas']))
+                        enrl=energyLine))
 
 
 
@@ -281,7 +332,6 @@ class Base():
         self.nTau = len(self.nactPairs)
         #or should I just take as rho/theta/phi grid?
         self.rhoList = map(float, gInfo['rho'].split(','))
-        self.thetaList = map(float, gInfo['theta'].split(','))
         self.phiList = map(float, gInfo['phi'].split(','))
         self.phiGrid = self.makeGrid(self.phiList)
 
@@ -298,6 +348,7 @@ class Base():
             if len(self.rhoList) != 1:
                 raise Exception('Give a fixed rho value for scattering calculation')
             self.rho = self.rhoList[0]
+            self.thetaList = map(float, gInfo['theta'].split(','))
             self.thetaGrid = self.makeGrid(self.thetaList)
 
 
@@ -356,9 +407,6 @@ class Base():
                 gny = np.interp(grid2, gx, gy)
                 res1 = np.column_stack([res1, gny])
             res = np.vstack([res, res1])
-
-
-
         return res
 
     def removeFiles(self, allOut = False):
@@ -709,3 +757,8 @@ class Scattering(Base):
             'energy.dat', 
             'tau_theta.dat', 
             'tau_phi.dat' )
+
+
+if __name__ == "__main__":
+    s = Spectroscopic('./molpro.config', './atomfile.dat', './geomfile.dat', './frequency.dat', './wilson.dat')
+    s.runMolpro()
