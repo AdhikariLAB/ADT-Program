@@ -322,6 +322,7 @@ class Base():
         molInfo =  dict(scf.items('molInfo'))
         self.scrdir = molInfo['scrdir']
         self.memory = molInfo['memory']
+        self.proc   = molInfo['processor']
 
         self.eInfo = dict(scf.items('eInfo'))
         self.nInfo = dict(scf.items('nInfo'))
@@ -472,7 +473,7 @@ class Base():
                 self.createGridGeom(g1, g2)
                 self.msg( 'Running molpro job for {} = {}, {} = {}.......'.format(gridn1, g1, gridn2, g2))
                 shutil.copy('molpro.wfu',self.scrdir)
-                exitcode = subprocess.call(['molpro',"-d", self.scrdir,'-W .','grid.com'])
+                exitcode = subprocess.call(['molpro','-n', self.proc,"-d", self.scrdir,'-W .','grid.com'])
                 if exitcode==0:
                     self.msg( 'Job successful.', cont=True)
                 else:
@@ -580,7 +581,7 @@ class Spectroscopic(Base):
             f.write(tmp)
 
         self.msg( "Running molpro job for equilibrium point.......")
-        exitcode = subprocess.call(['molpro',"-d", self.scrdir ,'-W .','init.com'])
+        exitcode = subprocess.call(['molpro','-n', self.proc,"-d", self.scrdir ,'-W .','init.com'])
         if exitcode==0: 
             self.msg( 'Job successful', cont=True)
         else:
@@ -736,7 +737,7 @@ class Scattering(Base):
         self.createOneGeom(0, 0)
         self.msg( "Running molpro job for initial point....." )
         sys.stdout.flush()
-        exitcode = subprocess.call(['molpro',"-d", self.scrdir,'-W .','init.com'])
+        exitcode = subprocess.call(['molpro','-n', self.proc,"-d", self.scrdir,'-W .','init.com'])
         if exitcode==0: 
             self.msg( 'Job successful', cont= True)
         else:
@@ -760,5 +761,5 @@ class Scattering(Base):
 
 
 if __name__ == "__main__":
-    s = Spectroscopic('./molpro.config', './atomfile.dat', './geomfile.dat', './frequency.dat', './wilson.dat')
+    s = Scattering('./molpro.config', './atomfile.dat')
     s.runMolpro()
