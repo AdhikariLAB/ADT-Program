@@ -74,7 +74,7 @@ setup(
     project_urls={'https://gitlab.com/AdhikariLAB/adt-program'},
     zip_safe=True,
     install_requires=['numpy >= 1.10', 'h5py', 'six'],
-    setup_requires=['numpy >= 1.10', 'six']
+    setup_requires=['numpy >= 1.10', 'six'],
     python_requires='>=2.7, <3',
     packages=find_packages(),
     ext_modules=[lib],

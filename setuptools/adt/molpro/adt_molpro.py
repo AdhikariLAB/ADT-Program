@@ -432,14 +432,26 @@ class Base():
 
     def incompleteJobs(self, gridn1, g1, gridn2, g2):
         '''Saves the gemoetry and out file in a different folder '''
-        # do this step previouslu
         path = '{}_{}_{}_{}'.format(gridn1, g1, gridn2, g2)
         path = os.path.join('IncompleteJobs', path)
         os.mkdir(path)
-        files = glob('*.xyz')+ glob('*.out')
+        files = glob('*.xyz') + glob('*.out') + glob('*.res')
         for file in files:
             shutil.move(file, path)
-        for file in glob('*.xml'): os.remove(file)
+        for file in glob('*.xml'):
+            os.remove(file)
+
+    def completeJobs(self, gridn1, g1, gridn2, g2):
+        ''' Saves the geometry out and results file in a specific directory'''
+        path = '{}_{}_{}_{}'.format(gridn1, g1, gridn2, g2)
+        path = os.path.join('CompletedJobs', path)
+        os.mkdir(path)
+        files = glob('*.xyz') + glob('*.out') + glob('*.res')
+        for file in files:
+            shutil.move(file, path)
+        for file in glob('*.xml'):
+            os.remove(file)
+
 
 
     def runThisMolpro(self, grid1, gridn1, grid2, gridn2, filEe, fileN1, fileN2):
@@ -450,13 +462,23 @@ class Base():
         filen1 = open(fileN1,'w', buffering=1)
         filen2 = open(fileN2,'w', buffering=1)
 
-        self.equiRun()
-        self.removeFiles()
+
         #grid1 is theta or rho
         #grid2 is phi
         #create folder for incomplete jobs , delete if already exists
-        if os.path.isdir('IncompleteJobs'): shutil.rmtree('IncompleteJobs')
+        if os.path.isdir('IncompleteJobs'):
+            shutil.rmtree('IncompleteJobs')
         os.mkdir('IncompleteJobs')
+
+        if os.path.isdir('CompletedJobs'):
+            shutil.rmtree('CompletedJobs')
+        os.mkdir('CompletedJobs')
+
+        self.equiRun()
+        if self.__class__.__name__ == 'Spectroscopic':
+            self.completeJobs('Job', 'for', 'Equilibrium', 'point')
+        else:
+            self.completeJobs('Job', 'for', 'Initial', 'point')
 
         done = False # why am I using this?
 
@@ -486,11 +508,11 @@ class Base():
                 np.savetxt(filee,  np.append([g1,g2],enrData)[None], fmt='%.8f', delimiter='\t')
                 np.savetxt(filen1, np.append([g1,g2],tau1)[None],  fmt='%.8f', delimiter='\t')
                 np.savetxt(filen2, np.append([g1,g2],tau2)[None],  fmt='%.8f', delimiter='\t')
-                self.removeFiles()
+                self.completeJobs(gridn1, g1, gridn2, g2)
             filee.write('\n')
             filen1.write('\n')
             filen2.write('\n')
-        self.removeFiles(allOut=True)
+        # self.removeFiles(allOut=True)
         self.msg('All molpro jobs done.')
 
         scat = self.__class__.__name__=='Scattering'
@@ -531,7 +553,7 @@ class Spectroscopic(Base):
         qCord[self.vModes[0]] = rho*self.cos(phi)
         qCord[self.vModes[1]] = rho*self.sin(phi)
 
-        curGeom  = self.equiGeom+np.einsum('ijk,k->ij',self.wilFM, qCord)
+        curGeom  = self.equiGeom + np.einsum('ijk,k->ij',self.wilFM, qCord)
         msg = 'for Rho = {}, Phi = {}'.format(rho, phi)
         nAtoms = len(self.atomNames)
         tmp = " {}\n".format(nAtoms)
@@ -589,7 +611,7 @@ class Spectroscopic(Base):
             sys.exit('Molpro failed in equilibrium step')
         equiData = self.parseResult('equienr.res').flatten()
         np.savetxt('equienr.dat', equiData, fmt='%.8f')
-        self.removeFiles()
+
 
 
 
@@ -676,10 +698,10 @@ class Scattering(Base):
 
     def hyperToCart(self, theta, phi):
         rs, rc, gamma = self.toJacobi(theta, phi)
-        p1 = [0, rc*np.cos(gamma),rc*np.sin(gamma)]
-        p2 = [0, -rs/2.0 , 0.0 ]
-        p3 = [0, rs/2.0  , 0.0 ]
-        return np.array([p1,p2,p3])
+        p1 = [0, rc*np.sin(gamma), rc*np.cos(gamma)]
+        p2 = [0,0.0, -rs/2.0]
+        p3 = [0,0.0 ,rs/2.0 ]
+        return np.array([p1, p2, p3])*0.529177209 # return in angstrom
 
     def createOneGeom(self, theta, phi, outFile='geom.xyz'):
         ''' Creates geometry file, to be used in molpro for the given theta , phi'''
@@ -745,7 +767,7 @@ class Scattering(Base):
             sys.exit('Molpro failed in initital step')
         equiData = self.parseResult('equienr.res').flatten()
         np.savetxt('equienr.dat', equiData, fmt='%.8f')
-        self.removeFiles()
+
 
 
 
@@ -761,5 +783,6 @@ class Scattering(Base):
 
 
 if __name__ == "__main__":
-    s = Scattering('./molpro.config', './atomfile.dat')
+    # s = Scattering('./molpro.config', './atomfile.dat')
+    s = Spectroscopic('./molpro.config', './atomfile.dat', 'geomfile.dat','frequency.dat', 'wilson.dat')
     s.runMolpro()
