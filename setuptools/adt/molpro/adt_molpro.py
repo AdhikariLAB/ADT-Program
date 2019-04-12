@@ -175,7 +175,6 @@ class Base():
                         cas1 = cas
                         )
 
-
         molproTemplate=textwrap.dedent('''
             ***, Molpro template created from ADT program for analytical job for analytical job.
             memory,{memory}
