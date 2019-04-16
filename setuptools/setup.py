@@ -31,8 +31,8 @@ from setuptools import find_packages
 
 #for default_fortran compiler(usually gfortran) without parallel
 # python setup.py install
-# fort_args = []
-# lib_links = []
+fort_args = []
+lib_links = []
 
 
 # for ifort with openmp parallel flags
@@ -44,8 +44,8 @@ from setuptools import find_packages
 
 #for gfortran with openmp parallel flags
 # python setup.py config_fc --fcompiler=gnu95  install
-fort_args = ['-fopenmp']
-lib_links = ['-lgomp']
+# fort_args = ['-fopenmp']
+# lib_links = ['-lgomp']
 
 
 
@@ -64,8 +64,10 @@ setup(
     author_email='pcsa@iacs.res.in',
     license = "GNU GPLv2",
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 5 - Production/Stable',
+        'Environment :: Console',
         'Intended Audience :: Science/Research',
+        'Natural Language :: English',
         'Topic :: Scientific/Engineering :: Chemistry',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: Implementation :: CPython'

@@ -45,18 +45,19 @@ class Base():
             pass
 
 
-        energyLine ='{{mcscf;{cas}; wf,{wf};state,{state};start,2140.2; orbital,2140.2;}}'.format(
+        energyLine ='{{mcscf;{cas}; wf,{wf};state,{state};start,2140.2; orbital,2140.2;{extra}}}'.format(
                         state=self.eInfo['state'],
                         wf =  self.eInfo['wf'],
-                        cas = cas)
+                        cas=cas,
+                        extra= self.eInfo['multi_extra'])
 
         if self.eInfo['method'] == 'mrci':
             energyLine+='''
-            {{mrci;{cas}; wf,{wf};state,{state};}}
+            {{mrci;{cas}; wf,{wf};state,{state};{extra}}}
             '''.format(state=self.eInfo['state'],
                         wf =  self.eInfo['wf'],
-                        cas = self.eInfo['cas'],
-                        )
+                        cas=self.eInfo['cas'],
+                        extra = self.eInfo['mrci_extra'])
 
         molproTemplate=textwrap.dedent('''
             ***, Molpro template created from ADT program for analytical job.
@@ -83,10 +84,11 @@ class Base():
         nactTemp= "\n\nbasis={}\n".format(self.nInfo['basis'])
 
         for ind in range(0,len(self.nactPairs),5):
-            nactTemp += "\n{{mcscf;{cas}; wf,{wf};state,{state}; start,2140.2;\n".format(
+            nactTemp += "\n{{mcscf;{cas}; wf,{wf};state,{state}; start,2140.2;{extra};\n".format(
                                 state=self.eInfo['state'],
                                 wf =  self.eInfo['wf'],
-                                cas = cas)
+                                cas=cas,
+                                extra= self.nInfo['nact_extra'])
 
             pairChunk = self.nactPairs[ind:ind+5]
             forceTemp = ''
@@ -123,7 +125,7 @@ class Base():
 
 
             geometry=geom.xyz
-            {{uhf}}
+            {{uhf;{extra}}}
             {enrl}
 
             show, energy
@@ -135,7 +137,8 @@ class Base():
 
             '''.format(memory = self.memory,
                         basis = self.eInfo['basis'],
-                        enrl = energyLine))
+                        enrl=energyLine,
+                        extra = self.eInfo['uhf_extra']))
 
         with open('init.com', 'w') as f:
             f.write(molproInitTemplate)
@@ -167,13 +170,15 @@ class Base():
 
         #mrci has to be done for ddr for using the ddr wf in ddr nact calculation
         energyLine = """
-            {{mcscf;{cas1}; wf,{wf};state,{state};start,2140.2; orbital,2140.2;}}
-            {{mrci; {cas}; wf,{wf};state,{state};save,6000.2}}
-            """.format(state=self.eInfo['state'],
-                        wf   = self.eInfo['wf'],
-                        cas  = self.eInfo['cas'],
-                        cas1 = cas
-                        )
+            {{mcscf;{cas1}; wf,{wf};state,{state};start,2140.2; orbital,2140.2;{extra1}}}
+            {{mrci; {cas}; wf,{wf};state,{state};save,6000.2;{extra2}}}
+            """.format(state   =self.eInfo['state'],
+                        wf     = self.eInfo['wf'],
+                        cas    = self.eInfo['cas'],
+                        cas1   = cas,
+                        extra1 = self.eInfo['multi_extra'],
+                        extra2 = self.eInfo['mrci_extra'])
+            
 
         molproTemplate=textwrap.dedent('''
             ***, Molpro template created from ADT program for analytical job for analytical job.
@@ -197,43 +202,46 @@ class Base():
             !for +dr
             symmetry,nosym
             geometry=geom2.xyz
-            {{multi;{cas1} ;wf,{wf};state,{state};start,2140.2;orbital,2241.2;}}
-            {{mrci; {cas}; wf,{wf};state,{state};save,6001.2}}
-            {{ci;trans,6000.2,6001.2;dm,8001.2}}
+            {{multi;{cas1} ;wf,{wf};state,{state};start,2140.2;orbital,2241.2;{extra1}}}
+            {{mrci; {cas}; wf,{wf};state,{state};save,6001.2;{extra2}}}
+            {{ci;trans,6000.2,6001.2;dm,8001.2;{extra3}}}
 
 
             !for -dr
             symmetry,nosym
             geometry=geom3.xyz
-            {{multi;{cas1}; wf,{wf};state,{state};start,2140.2;orbital,2242.2;}}
-            {{mrci; {cas}; wf,{wf};state,{state};save,6002.2}}
-            {{ci;trans,6000.2,6002.2;dm,8002.2}}
+            {{multi;{cas1}; wf,{wf};state,{state};start,2140.2;orbital,2242.2;{extra1}}}
+            {{mrci; {cas}; wf,{wf};state,{state};save,6002.2;{extra2}}}
+            {{ci;trans,6000.2,6002.2;dm,8002.2;{extra3}}}
 
 
 
             !for +dp
             symmetry,nosym
             geometry=geom4.xyz
-            {{multi;{cas1}; wf,{wf};state,{state};start,2140.2;orbital,2243.2;}}
-            {{mrci; {cas}; wf,{wf};state,{state};save,6003.2}}
-            {{ci;trans,6000.2,6003.2;dm,8003.2}}
+            {{multi;{cas1}; wf,{wf};state,{state};start,2140.2;orbital,2243.2;{extra1}}}
+            {{mrci; {cas}; wf,{wf};state,{state};save,6003.2;{extra2}}}
+            {{ci;trans,6000.2,6003.2;dm,8003.2;{extra3}}}
 
 
             !for -dp
             symmetry,nosym
             geometry=geom5.xyz
-            {{multi;{cas1}; wf,{wf};state,{state};start,2140.2;orbital,2244.2;}}
-            {{mrci; {cas}; wf,{wf};state,{state};save,6004.2}}
-            {{ci;trans,6000.2,6004.2;dm,8004.2}}
+            {{multi;{cas1}; wf,{wf};state,{state};start,2140.2;orbital,2244.2;{extra1}}}
+            {{mrci; {cas}; wf,{wf};state,{state};save,6004.2;{extra2}}}
+            {{ci;trans,6000.2,6004.2;dm,8004.2;{extra3}}}
 
 
             '''.format( memory = self.memory,
-                        basis = self.eInfo['basis'],
-                        enrl=energyLine,
-                        state=self.eInfo['state'],
-                        wf =  self.eInfo['wf'],
-                        cas = self.eInfo['cas'],
-                        cas1 = cas))
+                        basis  = self.eInfo['basis'],
+                        enrl   = energyLine,
+                        state  = self.eInfo['state'],
+                        wf     = self.eInfo['wf'],
+                        cas    = self.eInfo['cas'],
+                        cas1   = cas,
+                        extra1 = self.eInfo['multi_extra'],
+                        extra2 = self.eInfo['mrci_extra'],
+                        extra3 = self.nInfo['nact_extra']))
 
 
         nactTemp= ''
@@ -283,7 +291,7 @@ class Base():
             geomtyp=xyz
             geometry=geom.xyz
 
-            {{uhf}}
+            {{uhf;{extra}}}
             {enrl}
 
             show, energy
@@ -293,7 +301,8 @@ class Base():
 
             '''.format( memory = self.memory,
                         basis = self.eInfo['basis'],
-                        enrl=energyLine))
+                        enrl=energyLine,
+                        extra = self.eInfo['uhf_extra']))
 
 
 
@@ -325,6 +334,20 @@ class Base():
 
         self.eInfo = dict(scf.items('eInfo'))
         self.nInfo = dict(scf.items('nInfo'))
+
+        #check if extra argument is present, if not put a blank string for consistency
+
+        if not 'multi_extra' in self.eInfo.keys():
+            self.eInfo['multi_extra'] = ''
+        if not 'mrci_extra' in self.eInfo.keys():
+            self.eInfo['mrci_extra'] = ''
+        if not 'uhf_extra' in self.eInfo.keys():
+            self.eInfo['uhf_extra'] = ''
+        if not 'nact_extra' in self.nInfo.keys():
+            self.eInfo['nact_extra'] = ''
+
+
+
         gInfo = dict(scf.items('gInfo'))
 
         self.state = int(self.eInfo['state'])
