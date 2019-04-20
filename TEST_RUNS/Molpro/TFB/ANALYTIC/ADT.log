@@ -1,0 +1,32 @@
+[19-04-2019 05:07:43 PM] -  ADT Numerical Program - [  INFO] - Starting Numerical program. 
+
+        Energy File          : energy.dat
+        NACT 1 File          : tau_rho.dat
+        NACT 2 File          : tau_phi.dat
+        Number of states     : All
+        Integration path     : 5
+        Output file/folder   : ADT_numeric
+        Output file format   : Plain txt
+
+        
+[19-04-2019 05:07:43 PM] -  ADT Numerical Program - [  INFO] - Reading data from files
+[19-04-2019 05:07:43 PM] -  ADT Numerical Program - [  INFO] - Processing data
+[19-04-2019 05:07:43 PM] -  ADT Numerical Program - [  INFO] - Calculating ADT Angles on path 5
+[19-04-2019 05:07:43 PM] -  ADT Numerical Program - [  INFO] - Calculating ADT matrix elements
+[19-04-2019 05:07:43 PM] -  ADT Numerical Program - [  INFO] - Calculating Diabatic matrix elements
+[19-04-2019 05:07:43 PM] -  ADT Numerical Program - [  INFO] - Writing ADT Angles in 'Angles.dat'
+[19-04-2019 05:07:43 PM] -  ADT Numerical Program - [  INFO] - Writing ADT Angles in 'Angle_residues.dat'
+[19-04-2019 05:07:43 PM] -  ADT Numerical Program - [  INFO] - Writing ADT Matrix elements in 'Matrix_Row_1.dat'
+[19-04-2019 05:07:43 PM] -  ADT Numerical Program - [  INFO] - Writing ADT Matrix elements in 'Matrix_Row_2.dat'
+[19-04-2019 05:07:43 PM] -  ADT Numerical Program - [  INFO] - Writing ADT Matrix elements in 'Matrix_Row_3.dat'
+[19-04-2019 05:07:43 PM] -  ADT Numerical Program - [  INFO] - Writing ADT Matrix elements in 'Matrix_Row_4.dat'
+[19-04-2019 05:07:43 PM] -  ADT Numerical Program - [  INFO] - Writing ADT Matrix elements in 'Matrix_Row_5.dat'
+[19-04-2019 05:07:43 PM] -  ADT Numerical Program - [  INFO] - Writing ADT Matrix elements in 'Matrix_Row_6.dat'
+[19-04-2019 05:07:43 PM] -  ADT Numerical Program - [  INFO] - Writing Diabatic Matrix elements in 'Diabatic_Row_1.dat'
+[19-04-2019 05:07:43 PM] -  ADT Numerical Program - [  INFO] - Writing Diabatic Matrix elements in 'Diabatic_Row_2.dat'
+[19-04-2019 05:07:43 PM] -  ADT Numerical Program - [  INFO] - Writing Diabatic Matrix elements in 'Diabatic_Row_3.dat'
+[19-04-2019 05:07:43 PM] -  ADT Numerical Program - [  INFO] - Writing Diabatic Matrix elements in 'Diabatic_Row_4.dat'
+[19-04-2019 05:07:43 PM] -  ADT Numerical Program - [  INFO] - Writing Diabatic Matrix elements in 'Diabatic_Row_5.dat'
+[19-04-2019 05:07:43 PM] -  ADT Numerical Program - [  INFO] - Writing Diabatic Matrix elements in 'Diabatic_Row_6.dat'
+[19-04-2019 05:07:43 PM] -  ADT Numerical Program - [  INFO] - Program completed successfully in 0.07990 seconds
+-------------------------------------------------------------------------------------------------------------------------

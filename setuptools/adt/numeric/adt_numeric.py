@@ -19,17 +19,19 @@ Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar S
 '''
 
 
-import os
+import os,sys
 import numpy as np
 from adtmod import adt
-from h5py import File
 from time import time
-
+try:
+    from h5py import File
+    h5NotAvail  = False
+except ImportError:
+    h5NotAvail = True
 
 #  This definition evaluates ADT angles, ADT matrix elements, diabatic potential energy matrix elements and residue of ADT angles
 
-def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger,h5, txt, nb):
-    
+def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger, h5, txt, nb):
     start = time()
     logger.info("Reading data from files")
 
@@ -37,6 +39,9 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger,h5, txt, nb):
     is_bin = lambda file: os.path.splitext(file)[1] in ['.npy', '.npz']
     is_h5  = lambda file: os.path.splitext(file)[1]=='.h5'
 
+    if h5 & h5NotAvail:
+        logger.error('h5py not available. Install h5py properly first.')
+        sys.exit(1)
     # reading data from input files
     #NOTE: for simplicity in providing the input data using HDF5 file format,
     # input files are restricted to have just one dataset with the same name as of the file.
@@ -44,6 +49,9 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger,h5, txt, nb):
     if is_bin(rhof):
         rdat = np.load(rhof)
     elif is_h5(rhof):
+        if h5NotAvail:
+            logger.error('h5py not available. Install h5py properly first.')
+            sys.exit(1)
         with File(rhof, 'r') as f:
             dset = rhof.replace('.h5', '')
             rdat = f[dset][()]
@@ -85,12 +93,6 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger,h5, txt, nb):
             adt.nstate = enr.shape[1] -2
             assert adt.nstate*(adt.nstate-1)/2==adt.ntau, "Mismatch in number of states and nacts"
         else :
-        # trying automatic state calculation, not sure, checks required
-            # Using explicit solution of the quadratic equation
-            # r = np.roots([1,-1,-2*adt.ntau])
-            # r = r.real[abs(r.imag)<1e-6]    #
-            # adt.nstate = r[(r>1) & (r==r.astype(int))][0].astype(int)
-            # Using a lazy loop to check for the number of states
             i= 1
             while True:
                 i+=1

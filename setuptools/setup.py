@@ -1,5 +1,5 @@
-
 __doc__='''
+Script to install the 'ADT' package. 
 
 Build and Run or directly run with specified flags
 or run > python setup.py -h for details about the commands and flags
@@ -15,11 +15,9 @@ Or you can just install this in a python virtualenv.
 __authors__  = '''
 Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari
 '''
-
-import setuptools  # "magic" import
+import setuptools
 from numpy.distutils.core import setup, Extension
 from setuptools import find_packages
-
 
 
 
@@ -31,8 +29,8 @@ from setuptools import find_packages
 
 #for default_fortran compiler(usually gfortran) without parallel
 # python setup.py install
-fort_args = []
-lib_links = []
+# fort_args = []
+# lib_links = []
 
 
 # for ifort with openmp parallel flags
@@ -44,8 +42,8 @@ lib_links = []
 
 #for gfortran with openmp parallel flags
 # python setup.py config_fc --fcompiler=gnu95  install
-# fort_args = ['-fopenmp']
-# lib_links = ['-lgomp']
+fort_args = ['-fopenmp']
+lib_links = ['-lgomp']
 
 
 
@@ -57,7 +55,7 @@ lib = Extension(name='adtmod',
 
 
 setup(
-    name='ADT_Program_Package',
+    name='adt',
     version='1.0.0',
     description='Installer for the ADT_Program_Package.',
     author='Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari',
@@ -73,10 +71,13 @@ setup(
         'Programming Language :: Python :: Implementation :: CPython'
     ],
     keywords='Quantum chemistry, PES, NACT',
-    project_urls={'https://gitlab.com/AdhikariLAB/adt-program'},
+    project_urls={'Source Code':'https://gitlab.com/AdhikariLAB/adt-program'},
     zip_safe=True,
-    install_requires=['numpy >= 1.10', 'h5py', 'six'],
-    setup_requires=['numpy >= 1.10', 'six'],
+    setup_requires=['numpy >= 1.10'],
+    install_requires=['numpy >= 1.10'],
+    extras_require={
+        'h5':  ["h5py"]
+    },
     python_requires='>=2.7, <3',
     packages=find_packages(),
     ext_modules=[lib],

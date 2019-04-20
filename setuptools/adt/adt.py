@@ -23,7 +23,6 @@ import sys
 import logging
 import textwrap
 import argparse
-from numeric.adt_numeric import adt_numerical
 from analytic.adt_analytic import adt_analytical
 from molpro.adt_molpro import Scattering, Spectroscopic
 
@@ -144,7 +143,11 @@ def main():
                         type    = str,
                         help    = "Specify the output file name (w/o extension) (default: %(default)s).\n ",
                         metavar = "FILE",
-                        default = "'ADT_numeric'")
+                        default="'ADT_numeric'")
+    numeric.add_argument("-n",
+                        type    =str,
+                        help="Specify number of OpenMP threads to use for parallel calculation. \nApplicable only when installed using OpenMP support.\n(default: Maximum avilable threads)\n ",
+                        default= False)
     numeric.add_argument("-h5",
                         action = 'store_true',
                         help   = "Write results in a HDF5 file (.h5). (default behaviour).\nFast IO, smaller file size and hierarchical filesystem-like data format,\npreferable for saving and sharing large datasets in an organised way.\n " )
@@ -168,27 +171,27 @@ def main():
                         type    = str,
                         metavar = "FILE",
                         default = 'molpro.config',
-                        help    = 'Specify the molpro config file (default: %(default)s). \n ')
+                        help='Specify the molpro configuration file containing\nthe necessary keywords of MOLPRO software.\n (default: %(default)s). \n ')
     molpro.add_argument('-atomfile',
                         type    = str,
                         metavar = "FILE",
                         default = 'atomfile.dat',
-                        help    = 'Specify the (default: %(default)s). \n ')
+                        help='Specify the information file constituting atomic\nsymbols and atomic masses\n(default: %(default)s). \n ')
     molpro.add_argument('-geomfile',
                         type    = str,
                         metavar = "FILE",
-                        default = 'geomfile.dat',
-                        help    = 'Specify the (default: %(default)s). (Igonred for scattering system). \n ' )
+                        default='geomfile.dat',
+                        help='Specify the geometry file containing the initial\ngrid point in "xyz" format (in Angstrom)\n(default: %(default)s). \n(Igonred for scattering system). \n ')
     molpro.add_argument('-freqfile',
                         type    = str,
                         metavar = "FILE",
                         default = 'frequency.dat',
-                        help    = 'Specify the (default: %(default)s). (Igonred for scattering system). \n ')
+                        help='Specify the frequency information file, where\nfrequencies of normal modes are written in cm-1\n(default: %(default)s). \n(Igonred for scattering system). \n ')
     molpro.add_argument('-wilsonfile',
                         type    = str,
                         metavar = "FILE",
                         default = 'wilson.dat',
-                        help    = 'Specify the (default: %(default)s). (Igonred for scattering system). \n ')
+                        help='Specify the filename containing the Wilson matrix\nof a molecular species (default: wilson.dat).\n(default: %(default)s).\n(Igonred for scattering system). \n ')
     molpro.add_argument("-intpath",
                         type    = int,
                         help    = "Specify the path for calculation (default: %(default)s).\n ",
@@ -245,7 +248,9 @@ def main():
         outfile = args.ofile.strip("'")
         h5      = args.h5
         txt     = args.txt
-        nb      = args.nb
+        nb = args.nb
+        threads = args.n
+
         if (h5==False and txt== False and nb==False ) : h5=True
 
         ffrmt = []
@@ -259,7 +264,7 @@ def main():
         else :nstatet = nstate
 
         logger = make_logger("ADT Numerical Program")
-        logger.info('''Starting Numerical program. 
+        txt = '''Starting Numerical program. 
 
         Energy File          : {}
         NACT 1 File          : {}
@@ -268,8 +273,15 @@ def main():
         Integration path     : {}
         Output file/folder   : {}
         Output file format   : {}
-
-        '''.format(enrf, rhof, phif, nstatet, path, outfile, ffrmt))
+        '''.format(enrf, rhof, phif, nstatet, path, outfile, ffrmt)
+        if threads:
+            txt += 'OpenMP threads       : {}'.format(threads)
+            # set opnemp environment variable to spwan threads
+            os.environ['OMP_NUM_THREADS'] = threads
+        logger.info(txt)
+        
+        # importing it here, just the `OMP_NUM_THREADS` can take effect
+        from numeric.adt_numeric import adt_numerical
 
         try:
             adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger, h5, txt, nb)
