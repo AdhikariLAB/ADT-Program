@@ -47,7 +47,7 @@ On the other hand if you have installed the adt package directly using the setup
 now the 'files.txt' will keep the list of all the files added during the installation. Now delete all the listed files there to remove the package properly.
 
 
-* your system has to have numpy to use this package, though the installer script will try to install numpy from internet, but if you don't have internet connection, the installer will fail. In that case you are requested to install numpy from source(https://docs.scipy.org/doc/numpy/user/building.html) or using other method before trying to install the package.
+* your system has to have numpy ( >=1.13.0) to use this package, though the installer script will try to install numpy from internet, but if you don't have internet connection, the installer will fail. In that case you are requested to install numpy from source(https://docs.scipy.org/doc/numpy/user/building.html) or using other method before trying to install the package.
 
 * Installing h5py including the hdf5 api can be preety complicated and is not straightforward all the time, thats why h5py installation is optional during the package installation. If you want to use HDF5 I/O you have to install h5py seperately by yourself. Best and most easiest way to install, if you have inetrnet connection, is using any package manager like pip `pip install h5py`. Otherwise build it from source http://docs.h5py.org/en/latest/build.html 
 

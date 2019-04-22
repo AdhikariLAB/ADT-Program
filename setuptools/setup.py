@@ -73,8 +73,8 @@ setup(
     keywords='Quantum chemistry, PES, NACT',
     project_urls={'Source Code':'https://gitlab.com/AdhikariLAB/adt-program'},
     zip_safe=True,
-    setup_requires=['numpy >= 1.10'],
-    install_requires=['numpy >= 1.10'],
+    setup_requires=['numpy >=1.13.0'],
+    install_requires=['numpy >=1.13.0'],
     extras_require={
         'h5':  ["h5py"]
     },
