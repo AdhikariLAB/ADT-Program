@@ -202,7 +202,11 @@ def main():
                         type    = str,
                         help    = "Specify the output file name (w/o extension) (default: %(default)s).\n ",
                         metavar = "FILE",
-                        default = "'ADT_numeric'")
+                        default="'ADT_numeric'")
+    molpro.add_argument("-n",
+                         type=str,
+                         help="Specify number of OpenMP threads to use for parallel calculation. \nApplicable only when installed using OpenMP support.\n(default: Maximum avilable threads)\n ",
+                         default=False)
     molpro.add_argument("-h5",
                         action = 'store_true',
                         help   = "Write results in a HDF5 file (.h5). (default behaviour).\nFast IO, smaller file size and hierarchical filesystem-like data format,\npreferable for saving and sharing large datasets in an organised way.\n " )
@@ -264,7 +268,7 @@ def main():
         else :nstatet = nstate
 
         logger = make_logger("ADT Numerical Program")
-        txt = '''Starting Numerical program. 
+        tmpLog = '''Starting Numerical program. 
 
         Energy File          : {}
         NACT 1 File          : {}
@@ -275,10 +279,10 @@ def main():
         Output file format   : {}
         '''.format(enrf, rhof, phif, nstatet, path, outfile, ffrmt)
         if threads:
-            txt += 'OpenMP threads       : {}'.format(threads)
+            tmpLog += 'OpenMP threads       : {}'.format(threads)
             # set opnemp environment variable to spwan threads
             os.environ['OMP_NUM_THREADS'] = threads
-        logger.info(txt)
+        logger.info(tmpLog)
         
         # importing it here, just the `OMP_NUM_THREADS` can take effect
         from numeric.adt_numeric import adt_numerical
