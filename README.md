@@ -84,12 +84,9 @@ ADT/
 
 ## Usage:
 
-All the operation of the package can be done using the command line utility `adt`. Detailed usage of the command can be seen by running 
-`adt -h`
-
-The main command `adt` has three subcommands for three different type of calculation namely  
+All the operation of the package can be done using the command line utility `adt`. The main command `adt` has three subcommands for three different type of calculation namely  
 1. __ana__ : Calculate different [analytic expressions](#analytic) for by passing the subcommand `ana`.
-2. __num__ : Subcommand `num` can be used to calculate different [numerical quantities](numerical).
+2. __num__ : Subcommand `num` can be used to calculate different [numerical quantities](#numerical).
 3. __mol__ : Use subcommand 'mol' to calculate _ab-initio_ PESs and NACTs for a molecular species using [MOLPRO](#molpro) and subsequently calculate the numerical quantities.
 
 Description for each of the segments are given in the following and can be be found in detail in the user manual. At any step of using this package user can see the help menu by passing the help flag `-h` or `--help`. During the runtime of any of the section the, all the relavant information and progress is saved in a logfile named 'ADT.log'.
@@ -126,8 +123,7 @@ The required argument `-nstate` takes the number of electronic states to derive 
 
 
 ### Numerical: 
-This segment takes the adiabatic potential energy values and non adiabatic coupling matrix elements and  calculates the ADT angles, ADT matrices, diabatic potential energy matrices and ADT angle residues at any number of grid points and for N-dimensional sub-Hilbert space 
-(N is arbitrary) in the interested domain of nuclear configuration space (CS).
+This segment takes the adiabatic potential energy values and non adiabatic coupling matrix elements and  calculates the ADT angles, ADT matrices, diabatic potential energy matrices and ADT angle residues at any number of grid points and for N-dimensional sub-Hilbert space (N is arbitrary) in the interested domain of nuclear configuration space (CS).
 
 Following is the help menu for the numerical section,
 ```
