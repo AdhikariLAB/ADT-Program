@@ -42,7 +42,7 @@ On successfull installation of the package, a command line utility `adt` will be
 A quick help about the installation can be found by running 
 `python setup.py -h`
 To know more about installation and building distribution please refer to the user manual of the package.   
-### Installing with parallelization support:
+#### Installing with parallelization support:
 By default the package will be installed using the default fortran compiler and without any parallelization support. OpenMP parallelization is implemented in this package and to take benifit of it user has to pass proper compiler flag during the installation.
 
 To install with parallelization uing gfortran user has to run  
@@ -257,7 +257,7 @@ Most of the options namely `intpath`,`-ofile`,`-n`,`-nb`,`-txt` are exactly like
 
 ## Test Runs:
 Some examples  for each of the three section are included in the 'Test_Runs' folder to easily understand the workflow of the package. 
-### Files and folder structure for the example 'Test_Runs' folder:
+#### Files and folder structure for the example 'Test_Runs' folder:
 ```
 
 ```
