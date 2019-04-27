@@ -89,16 +89,17 @@ def main():
     numeric = subparsers.add_parser("num",
         formatter_class=argparse.RawTextHelpFormatter,
         description = textwrap.dedent('''
-    Calculate numerical results for a given number of electronic states along a specific path'''),
-        help= "Calculate numerical results")
+    Calculate ADT angle and diabatic potential energy matrix for a given number of electronic states along a specific path'''),
+        help= "Calculate ADT angle and diabatic potential energy matrix")
     numeric_required = numeric.add_argument_group("Required arguments")
 
 
     molpro = subparsers.add_parser('mol',
         formatter_class=argparse.RawTextHelpFormatter,
         description = textwrap.dedent('''
-    Hello World'''),
-        help= "Run molpro and calculate ADT angles and diabatic surfaces and couplings")
+    Calculate the Adiabatic potential energy surfaces(PESs) and noadiabatic coupling matrix(NACM)
+    and subsequently calculate the Numerical quantities using the numerical section.'''),
+        help= "Run MOLPRO and calculate ADT angles and diabatic surfaces and couplings")
     molpro_required = molpro.add_argument_group("Required arguments")
 
 
@@ -141,7 +142,7 @@ def main():
                         help = "Specify the number of states to do the calculation.\nBy default it includes all the data for calculation.\n  ")
     numeric.add_argument("-ofile",
                         type    = str,
-                        help    = "Specify the output file name (w/o extension) (default: %(default)s).\n ",
+                        help    = "Specify the output folder/file name (w/o extension) (default: %(default)s).\n ",
                         metavar = "FILE",
                         default="'ADT_numeric'")
     numeric.add_argument("-n",
@@ -150,13 +151,13 @@ def main():
                         default= False)
     numeric.add_argument("-h5",
                         action = 'store_true',
-                        help   = "Write results in a HDF5 file (.h5). (default behaviour).\nFast IO, smaller file size and hierarchical filesystem-like data format,\npreferable for saving and sharing large datasets in an organised way.\n " )
+                        help   = "Write results in a HDF5 file (.h5). \nFast IO, smaller file size and hierarchical filesystem-like data format,\npreferable for saving and sharing large datasets in an organised way.\n " )
     numeric.add_argument("-nb",
                         action = 'store_true',
                         help   = 'Write results in Numpy binary file (.npy). \nPreferable when working with numpy for its much faster IO and easy portability.\n ')
     numeric.add_argument("-txt" ,
                         action = "store_true",
-                        help   = "Write results in a text file.")
+                         help="Write results in a text file.(default behaviour).")
     numeric.set_defaults(h5=False,txt=False, nb = False)
 
 
@@ -209,13 +210,13 @@ def main():
                          default=False)
     molpro.add_argument("-h5",
                         action = 'store_true',
-                        help   = "Write results in a HDF5 file (.h5). (default behaviour).\nFast IO, smaller file size and hierarchical filesystem-like data format,\npreferable for saving and sharing large datasets in an organised way.\n " )
+                        help   = "Write results in a HDF5 file (.h5).\nFast IO, smaller file size and hierarchical filesystem-like data format,\npreferable for saving and sharing large datasets in an organised way.\n " )
     molpro.add_argument("-nb",
                         action = 'store_true',
                         help   = 'Write results in Numpy binary file (.npy). \nPreferable when working with numpy for its much faster IO and easy portability.\n ')
     molpro.add_argument("-txt" ,
                         action = "store_true",
-                        help   = "Write results in a text file.")
+                        help="Write results in a text file. (default behaviour).")
     molpro.set_defaults(h5=False,txt=False, nb = False)
 
 
@@ -255,7 +256,7 @@ def main():
         nb = args.nb
         threads = args.n
 
-        if (h5==False and txt== False and nb==False ) : h5=True
+        if (h5==False and txt== False and nb==False ) : txt=True
 
         ffrmt = []
         if h5: ffrmt.append('HDF5')
@@ -306,8 +307,9 @@ def main():
         outfile = args.ofile.strip("'")
         h5      = args.h5
         txt     = args.txt
-        nb      = args.nb
-
+        nb = args.nb
+        
+        if (h5 == False and txt == False and nb == False): txt = True
 
         logger = make_logger("ADT Molpro Program")
 

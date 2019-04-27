@@ -88,14 +88,14 @@ class Base():
                                 state=self.eInfo['state'],
                                 wf =  self.eInfo['wf'],
                                 cas=cas,
-                                extra= self.nInfo['nact_extra'])
+                                extra= self.eInfo['multi_extra'])
 
             pairChunk = self.nactPairs[ind:ind+5]
             forceTemp = ''
             for count,pair in enumerate(pairChunk, start=1):
                 f,s = pair
-                nactTemp += "cpmcscf,nacm,{f}.1,{s}.1,record=51{n:02}.1;\n".format(
-                           f=f, s=s, n=count)
+                nactTemp += "cpmcscf,nacm,{f}.1,{s}.1,record=51{n:02}.1;{extra};\n".format(
+                    f=f, s=s, n=count, extra=self.nInfo['nact_extra'])
 
                 forceTemp +=textwrap.dedent("""
                 force;nacm,51{n:02}.1;varsav
@@ -321,21 +321,27 @@ class Base():
 
     def parseConfig(self, conFigFile):
         ''' 
-        Parses configuration for running molpro from the molpro config file provided
+        Parses configuration for running molpro from the provided molpro config file 
         and sets up different methods and attributes relavant to the configuration 
         '''
         scf = ConfigParser.SafeConfigParser()
         scf.read(conFigFile)
 
+
+        spec = self.__class__.__name__ == 'Spectroscopic'
+
         molInfo =  dict(scf.items('molInfo'))
         self.scrdir = molInfo['scrdir']
         self.memory = molInfo['memory']
-        self.proc   = molInfo['processor']
+        try:
+            self.proc = molInfo['processor']
+        except KeyError:
+            self.proc = '1'
 
         self.eInfo = dict(scf.items('eInfo'))
         self.nInfo = dict(scf.items('nInfo'))
 
-        #check if extra argument is present, if not put a blank string for consistency
+        #set some default values for the optional arguments
 
         if not 'multi_extra' in self.eInfo.keys():
             self.eInfo['multi_extra'] = ''
@@ -344,22 +350,23 @@ class Base():
         if not 'uhf_extra' in self.eInfo.keys():
             self.eInfo['uhf_extra'] = ''
         if not 'nact_extra' in self.nInfo.keys():
-            self.eInfo['nact_extra'] = ''
+            self.nInfo['nact_extra'] = ''
 
 
 
         gInfo = dict(scf.items('gInfo'))
 
         self.state = int(self.eInfo['state'])
-        self.nactPairs = [[i,j] for i in range(1,self.state+1) for j in range(i+1,self.state+1)]
+        self.nactPairs = [[i, j] for j in range(2, self.state+1) for i in range(1, j)]
+
+        # self.nactPairs = [[i,j] for i in range(1,self.state+1) for j in range(i+1,self.state+1)]
         self.nTau = len(self.nactPairs)
-        #or should I just take as rho/theta/phi grid?
         self.rhoList = map(float, gInfo['rho'].split(','))
         self.phiList = map(float, gInfo['phi'].split(','))
         self.phiGrid = self.makeGrid(self.phiList)
 
         spec = self.__class__.__name__=='Spectroscopic'
-        if spec:
+        if spec: # for spectroscopic system
             mInfo = dict(scf.items('mInfo'))
             self.vModes = [int(i)-1 for i in mInfo['varying'].split(',')]
             if len(self.rhoList) == 1:
@@ -367,12 +374,17 @@ class Base():
             self.rhoGrid = self.makeGrid(self.rhoList)
 
 
-        else:
+
+        else: # for scattering system
             if len(self.rhoList) != 1:
                 raise Exception('Give a fixed rho value for scattering calculation')
             self.rho = self.rhoList[0]
             self.thetaList = map(float, gInfo['theta'].split(','))
             self.thetaGrid = self.makeGrid(self.thetaList)
+            if not 'scale' in self.eInfo.keys():
+                raise Exception('Assymptotic energy value is mandatory for scaling the Energy surafaces for scattering system.')
+            #scalling factor for scattering system
+
 
 
         if self.nInfo['method']=='cpmcscf':
@@ -444,36 +456,41 @@ class Base():
         for file in files : 
             os.remove(file)
 
+
+
     def msg(self, m, cont=False):
         ''' Writes info in the log files'''
         if not cont : 
-            m= "{:<30}{}".format(datetime.now().strftime("[%d-%m-%Y %I:%M:%S %p]"), m)
+            m = '{:.<90}'.format(datetime.now().strftime("[%d-%m-%Y %I:%M:%S %p]     ") + m)
         else:
             m+='\n'
         self.logFile.write(m)
 
     def incompleteJobs(self, gridn1, g1, gridn2, g2):
         '''Saves the gemoetry and out file in a different folder '''
-        path = '{}_{}_{}_{}'.format(gridn1, g1, gridn2, g2)
+        path = '{}_{}/{}_{}'.format(gridn1, g1, gridn2, g2)
         path = os.path.join('IncompleteJobs', path)
-        os.mkdir(path)
+        os.makedirs(path)
         files = glob('*.xyz') + glob('*.out') + glob('*.res')
         for file in files:
             shutil.move(file, path)
-        for file in glob('*.xml'):
-            os.remove(file)
+
 
     def completeJobs(self, gridn1, g1, gridn2, g2):
         ''' Saves the geometry out and results file in a specific directory'''
-        path = '{}_{}_{}_{}'.format(gridn1, g1, gridn2, g2)
-        path = os.path.join('CompletedJobs', path)
-        os.mkdir(path)
+        path = '{}_{}/{}_{}'.format(gridn1, g1, gridn2, g2)
+        path = os.path.join('CompleteJobs', path)
+        os.makedirs(path)
         files = glob('*.xyz') + glob('*.out') + glob('*.res')
         for file in files:
             shutil.move(file, path)
-        for file in glob('*.xml'):
-            os.remove(file)
 
+    def moveFiles(self, path):
+        ''' Saves the geometry out and results file in a specific directory'''
+        os.makedirs(path)
+        files = glob('*.xyz') + glob('*.out') + glob('*.res')
+        for file in files:
+            shutil.move(file, path)
 
 
     def runThisMolpro(self, grid1, gridn1, grid2, gridn2, filEe, fileN1, fileN2):
@@ -492,17 +509,17 @@ class Base():
             shutil.rmtree('IncompleteJobs')
         os.mkdir('IncompleteJobs')
 
-        if os.path.isdir('CompletedJobs'):
-            shutil.rmtree('CompletedJobs')
-        os.mkdir('CompletedJobs')
+        if os.path.isdir('CompleteJobs'):
+            shutil.rmtree('CompleteJobs')
+        os.mkdir('CompleteJobs')
 
         self.equiRun()
         if self.__class__.__name__ == 'Spectroscopic':
-            self.completeJobs('Job', 'for', 'Equilibrium', 'point')
+            self.moveFiles('CompleteJobs/Equilibrium_point')
         else:
-            self.completeJobs('Job', 'for', 'Initial', 'point')
+            self.moveFiles('CompleteJobs/Initial_point')
 
-        done = False # why am I using this?
+        done = False 
 
         for g2 in grid2:
             shutil.copy('molpro_init.wfu', 'molpro.wfu')      # copy the wfu from the initial/equilibrium job
@@ -513,16 +530,20 @@ class Base():
                     continue # don't run the job for other rhos
                 else:
                     done = True
-                
+
                 self.createGridGeom(g1, g2)
-                self.msg( 'Running molpro job for {} = {}, {} = {}.......'.format(gridn1, g1, gridn2, g2))
+                self.msg('Running molpro job for {} = {}, {} = {}.......'.format(gridn1, g1, gridn2, g2))
+                path = 'CompleteJobs/{}_{}/{}_{}'.format(gridn1, g1, gridn2, g2)
                 shutil.copy('molpro.wfu',self.scrdir)
-                exitcode = subprocess.call(['molpro','-n', self.proc,"-d", self.scrdir,'-W .','grid.com'])
+                exitcode = subprocess.call(
+                    ['molpro', '-n', self.proc, "-d", self.scrdir, '-W .', 'grid.com', '--no-flush6', '--no-xml-output']
+                    )
                 if exitcode==0:
-                    self.msg( 'Job successful.', cont=True)
+                    self.msg( ' Job successful.', cont=True)
                 else:
-                    self.msg( 'Job failed.', cont=True)
-                    self.incompleteJobs(gridn1, g1, gridn2, g2)
+                    self.msg(' Job failed.', cont=True)
+                    path = path.replace('C', "Inc")
+                    self.moveFiles(path)
                     continue
 
                 enrData = self.parseResult('enr.res').flatten()
@@ -530,11 +551,11 @@ class Base():
                 np.savetxt(filee,  np.append([g1,g2],enrData)[None], fmt='%.8f', delimiter='\t')
                 np.savetxt(filen1, np.append([g1,g2],tau1)[None],  fmt='%.8f', delimiter='\t')
                 np.savetxt(filen2, np.append([g1,g2],tau2)[None],  fmt='%.8f', delimiter='\t')
-                self.completeJobs(gridn1, g1, gridn2, g2)
+                self.moveFiles(path)
             filee.write('\n')
             filen1.write('\n')
             filen2.write('\n')
-        # self.removeFiles(allOut=True)
+        # self.removeFiles(allOut=True)   # removes the wfu and .com files after complete run
         self.msg('All molpro jobs done.')
 
         scat = self.__class__.__name__=='Scattering'
@@ -543,14 +564,19 @@ class Base():
         for file in [filEe, fileN1, fileN2]:
             dat = self.interp(file)
             dat[:,1] = np.deg2rad(dat[:,1])
-            if scat: dat[:,0] = np.deg2rad(dat[:,0])  # for scattering also transform the column 0
-            if file == filEe: dat[:,2:] -= np.loadtxt('equienr.dat')[0]
+            if scat:                             # for scattering 
+                dat[:,0] = np.deg2rad(dat[:,0])  # for scattering also transform the column 0 i.e. theta column
+            if file == filEe:                    # Now scale the energy
+                if scat:                         # for scattering scale it with user given assymptote value
+                    dat[:,2:] -= self.eInfo['scale']
+                else:                            # for spectroscopic scale with equilibrium energy value
+                    dat[:,2:] -= np.loadtxt('equienr.dat')[0]
             self.writeFile(file.replace('.dat', '_mod.dat'), dat)
 
 
 
 class Spectroscopic(Base):
-    ''' Inherited from the Base class, this class containg necessary methods
+    ''' Inherited from the Base class, this class contains necessary methods
      for running molpro for a Spectroscopic system'''
     def __init__(self, conFigFile ,atomFile, geomFile , freqFile , wilsonFile ):
         self.parseData(atomFile)
@@ -625,11 +651,13 @@ class Spectroscopic(Base):
             f.write(tmp)
 
         self.msg( "Running molpro job for equilibrium point.......")
-        exitcode = subprocess.call(['molpro','-n', self.proc,"-d", self.scrdir ,'-W .','init.com'])
+        exitcode = subprocess.call(
+            ['molpro', '-n', self.proc, "-d", self.scrdir, '-W .', 'init.com', '--no-flush6', '--no-xml-output']
+            )
         if exitcode==0: 
-            self.msg( 'Job successful', cont=True)
+            self.msg( ' Job successful', cont=True)
         else:
-            self.msg( 'Job failed', cont=True)
+            self.msg( ' Job failed', cont=True)
             sys.exit('Molpro failed in equilibrium step')
         equiData = self.parseResult('equienr.res').flatten()
         np.savetxt('equienr.dat', equiData, fmt='%.8f')
@@ -667,7 +695,7 @@ class Scattering(Base):
         return ar
 
     def toJacobi(self,theta,phi):
-
+       #! do this in more short way?
         """ returns jacobi coordinates """
         m1, m2, m3 = self.atomMass
 
@@ -781,15 +809,16 @@ class Scattering(Base):
         self.createOneGeom(0, 0)
         self.msg( "Running molpro job for initial point....." )
         sys.stdout.flush()
-        exitcode = subprocess.call(['molpro','-n', self.proc,"-d", self.scrdir,'-W .','init.com'])
+        exitcode = subprocess.call(
+            ['molpro', '-n', self.proc, "-d", self.scrdir, '-W .', 'init.com', '--no-flush6', '--no-xml-output']
+            )
         if exitcode==0: 
-            self.msg( 'Job successful', cont= True)
+            self.msg( ' Job successful', cont= True)
         else:
-            self.msg( 'Job failed', cont= True)
+            self.msg( ' Job failed', cont= True)
             sys.exit('Molpro failed in initital step')
         equiData = self.parseResult('equienr.res').flatten()
         np.savetxt('equienr.dat', equiData, fmt='%.8f')
-
 
 
 
@@ -805,6 +834,6 @@ class Scattering(Base):
 
 
 if __name__ == "__main__":
-    # s = Scattering('./molpro.config', './atomfile.dat')
-    s = Spectroscopic('./molpro.config', './atomfile.dat', 'geomfile.dat','frequency.dat', 'wilson.dat')
+    s = Scattering('./molpro.config', './atomfile.dat')
+    #s = Spectroscopic('./molpro.config', './atomfile.dat', 'geomfile.dat','frequency.dat', 'wilson.dat')
     s.runMolpro()
