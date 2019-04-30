@@ -1,10 +1,10 @@
 __doc__='''
 Script to install the 'ADT' package. 
 
-Build and Run or directly run with specified flags
-or run > python setup.py -h for details about the commands and flags
+Build and Run or directly run with specified flags.
+execute python setup.py -h for details about the commands and flags
 
-By default this will install the package in root of the system and install an command line utility 'adtcli'
+By default this will install the package in root of the system and install an command line utility 'adt'
 if you dont have root privilage then install it with '--user' flag to install the package in a 
 local package folder for python(usuall ~/.local/lib/python2.7/site-packages/) and install the command line utility in
 respective folder (e.g /.local/bin/)

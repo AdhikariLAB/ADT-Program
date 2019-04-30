@@ -536,7 +536,7 @@ class Base():
                 path = 'CompleteJobs/{}_{}/{}_{}'.format(gridn1, g1, gridn2, g2)
                 shutil.copy('molpro.wfu',self.scrdir)
                 exitcode = subprocess.call(
-                    ['molpro', '-n', self.proc, "-d", self.scrdir, '-W .', 'grid.com', '--no-flush6', '--no-xml-output']
+                    ['molpro', '-n', self.proc, "-d", self.scrdir, '-W .', 'grid.com','--no-xml-output']
                     )
                 if exitcode==0:
                     self.msg( ' Job successful.', cont=True)
@@ -652,7 +652,7 @@ class Spectroscopic(Base):
 
         self.msg( "Running molpro job for equilibrium point.......")
         exitcode = subprocess.call(
-            ['molpro', '-n', self.proc, "-d", self.scrdir, '-W .', 'init.com', '--no-flush6', '--no-xml-output']
+            ['molpro', '-n', self.proc, "-d", self.scrdir, '-W .', 'init.com','--no-xml-output']
             )
         if exitcode==0: 
             self.msg( ' Job successful', cont=True)
@@ -810,7 +810,7 @@ class Scattering(Base):
         self.msg( "Running molpro job for initial point....." )
         sys.stdout.flush()
         exitcode = subprocess.call(
-            ['molpro', '-n', self.proc, "-d", self.scrdir, '-W .', 'init.com', '--no-flush6', '--no-xml-output']
+            ['molpro', '-n', self.proc, "-d", self.scrdir, '-W .', 'init.com','--no-xml-output']
             )
         if exitcode==0: 
             self.msg( ' Job successful', cont= True)
