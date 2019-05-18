@@ -12,18 +12,18 @@ import numpy as np
 import ConfigParser
 from glob import glob
 from datetime import datetime
+from adtmod import adt
 
-
-#DON'T forget to remove all `noexec` from the ddr template
 
 
 class Base():
     '''
         A base class containing the common methods to be used in both cases of spectroscopic and scattering
     '''
-    angtobohr = 1.8897259886
-    hbar = 0.063508
+    angtobohr    = 1.8897259886
+    hbar         = 0.063508
     cInvToTauInv = 0.001883651
+    bohrtoang    = 0.529177
 
     def sin(self, x):
         """ A sin function that directly takes degree as input unlike numpy"""
@@ -32,6 +32,10 @@ class Base():
     def cos(self, x):
         """ A cos function that directly takes degree as input unlike numpy"""
         return np.cos(np.deg2rad(x))
+
+    def interpolate(self,x,y,newx):
+        diff = adt.spline(x,y)
+        return np.array([ adt.splint(x,y,diff,xi) for xi in newx])
 
     def createAnaTemplate(self):
         ''''Creates the molpro template files analytical job'''
@@ -125,7 +129,7 @@ class Base():
 
 
             geometry=geom.xyz
-            {{uhf;{extra}}}
+            {{hf}}
             {enrl}
 
             show, energy
@@ -138,7 +142,7 @@ class Base():
             '''.format(memory = self.memory,
                         basis = self.eInfo['basis'],
                         enrl=energyLine,
-                        extra = self.eInfo['uhf_extra']))
+                        hf = self.eInfo['hf']))
 
         with open('init.com', 'w') as f:
             f.write(molproInitTemplate)
@@ -155,20 +159,7 @@ class Base():
         except:
             pass
 
-        # energyLine ='{{mcscf;{cas}; wf,{wf};state,{state};start,2140.2; orbital,2140.2;}}'.format(
-        #                 state=self.eInfo['state'],
-        #                 wf =  self.eInfo['wf'],
-        #                 cas = cas)
-
-        # if self.eInfo['method'] == 'mrci':
-        #     energyLine+='''
-        #     {{mrci;{cas}; wf,{wf};state,{state};}}
-        #     '''.format(state=self.eInfo['state'],
-        #                 wf =  self.eInfo['wf'],
-        #                 cas = self.eInfo['cas'],
-        #                 )
-
-        #mrci has to be done for ddr for using the ddr wf in ddr nact calculation
+        #mrci has to be done for ddr nact calculation
         energyLine = """
             {{mcscf;{cas1}; wf,{wf};state,{state};start,2140.2; orbital,2140.2;{extra1}}}
             {{mrci; {cas}; wf,{wf};state,{state};save,6000.2;{extra2}}}
@@ -178,7 +169,7 @@ class Base():
                         cas1   = cas,
                         extra1 = self.eInfo['multi_extra'],
                         extra2 = self.eInfo['mrci_extra'])
-            
+
 
         molproTemplate=textwrap.dedent('''
             ***, Molpro template created from ADT program for analytical job for analytical job.
@@ -291,7 +282,7 @@ class Base():
             geomtyp=xyz
             geometry=geom.xyz
 
-            {{uhf;{extra}}}
+            {{hf}}
             {enrl}
 
             show, energy
@@ -302,7 +293,7 @@ class Base():
             '''.format( memory = self.memory,
                         basis = self.eInfo['basis'],
                         enrl=energyLine,
-                        extra = self.eInfo['uhf_extra']))
+                        hf = self.eInfo['hf']))
 
 
 
@@ -319,13 +310,11 @@ class Base():
         self.atomNames = atomData['names']
         self.atomMass  = atomData['mass']
 
-    def parseConfig(self, conFigFile):
+    def parseConfig(self, scf):
         ''' 
         Parses configuration for running molpro from the provided molpro config file 
         and sets up different methods and attributes relavant to the configuration 
         '''
-        scf = ConfigParser.SafeConfigParser()
-        scf.read(conFigFile)
 
 
         spec = self.__class__.__name__ == 'Spectroscopic'
@@ -347,10 +336,16 @@ class Base():
             self.eInfo['multi_extra'] = ''
         if not 'mrci_extra' in self.eInfo.keys():
             self.eInfo['mrci_extra'] = ''
-        if not 'uhf_extra' in self.eInfo.keys():
-            self.eInfo['uhf_extra'] = ''
         if not 'nact_extra' in self.nInfo.keys():
             self.nInfo['nact_extra'] = ''
+
+
+        # set up initial HF calculation according to 'restricted' parameter
+        self.eInfo['hf'] = 'uhf'
+        if self.eInfo['restricted'].lower() == 'true':
+            self.eInfo['hf'] = 'hf'
+        if 'uhf_extra' in self.eInfo.keys():
+            self.eInfo['hf'] += ';' + self.eInfo['uhf_extra']
 
 
 
@@ -361,12 +356,19 @@ class Base():
 
         # self.nactPairs = [[i,j] for i in range(1,self.state+1) for j in range(i+1,self.state+1)]
         self.nTau = len(self.nactPairs)
-        self.rhoList = map(float, gInfo['rho'].split(','))
+
         self.phiList = map(float, gInfo['phi'].split(','))
         self.phiGrid = self.makeGrid(self.phiList)
 
-        spec = self.__class__.__name__=='Spectroscopic'
-        if spec: # for spectroscopic system
+        # there will be there types 
+        # i. normal mode/ spectroscopic
+        # ii. scattering hyperspherical
+        # iii. scattering jacobi 
+        # lets say it will taken through a newly introduced variable `type`.
+
+        sysType = dict(scf.items('sysInfo'))['type']
+        if sysType == 'spectroscopic': # for spectroscopic system
+            self.rhoList = map(float, gInfo['rho'].split(','))
             mInfo = dict(scf.items('mInfo'))
             self.vModes = [int(i)-1 for i in mInfo['varying'].split(',')]
             if len(self.rhoList) == 1:
@@ -375,7 +377,8 @@ class Base():
 
 
 
-        else: # for scattering system
+        elif sysType == 'scattering_hyper': # for scattering system
+            self.rhoList = map(float, gInfo['rho'].split(','))
             if len(self.rhoList) != 1:
                 raise Exception('Give a fixed rho value for scattering calculation')
             self.rho = self.rhoList[0]
@@ -385,6 +388,15 @@ class Base():
                 raise Exception('Assymptotic energy value is mandatory for scaling the Energy surafaces for scattering system.')
             #scalling factor for scattering system
 
+        elif sysType == 'scattering_jacobi':# for the jacobi case
+            self.smallR = float(gInfo['small_r'])
+            self.capR   = float(gInfo['capital_r'])
+            self.gamma  = float(gInfo['gamma'])
+            self.q      = float(gInfo['q'])
+            # phigrid is already above
+
+        else :
+            raise Exception('Not a proper system type')
 
 
         if self.nInfo['method']=='cpmcscf':
@@ -439,7 +451,7 @@ class Base():
             gx = g1Block[:,1]
             for col in range(2, lim):
                 gy = g1Block[:,col]
-                gny = np.interp(grid2, gx, gy)
+                gny = self.interpolate(gx,gy,grid2)
                 res1 = np.column_stack([res1, gny])
             res = np.vstack([res, res1])
         return res
@@ -465,25 +477,6 @@ class Base():
         else:
             m+='\n'
         self.logFile.write(m)
-
-    def incompleteJobs(self, gridn1, g1, gridn2, g2):
-        '''Saves the gemoetry and out file in a different folder '''
-        path = '{}_{}/{}_{}'.format(gridn1, g1, gridn2, g2)
-        path = os.path.join('IncompleteJobs', path)
-        os.makedirs(path)
-        files = glob('*.xyz') + glob('*.out') + glob('*.res')
-        for file in files:
-            shutil.move(file, path)
-
-
-    def completeJobs(self, gridn1, g1, gridn2, g2):
-        ''' Saves the geometry out and results file in a specific directory'''
-        path = '{}_{}/{}_{}'.format(gridn1, g1, gridn2, g2)
-        path = os.path.join('CompleteJobs', path)
-        os.makedirs(path)
-        files = glob('*.xyz') + glob('*.out') + glob('*.res')
-        for file in files:
-            shutil.move(file, path)
 
     def moveFiles(self, path):
         ''' Saves the geometry out and results file in a specific directory'''
@@ -568,7 +561,7 @@ class Base():
                 dat[:,0] = np.deg2rad(dat[:,0])  # for scattering also transform the column 0 i.e. theta column
             if file == filEe:                    # Now scale the energy
                 if scat:                         # for scattering scale it with user given assymptote value
-                    dat[:,2:] -= self.eInfo['scale']
+                    dat[:,2:] -= float(self.eInfo['scale'])
                 else:                            # for spectroscopic scale with equilibrium energy value
                     dat[:,2:] -= np.loadtxt('equienr.dat')[0]
             self.writeFile(file.replace('.dat', '_mod.dat'), dat)
@@ -578,10 +571,10 @@ class Base():
 class Spectroscopic(Base):
     ''' Inherited from the Base class, this class contains necessary methods
      for running molpro for a Spectroscopic system'''
-    def __init__(self, conFigFile ,atomFile, geomFile , freqFile , wilsonFile ):
+    def __init__(self, conFig ,atomFile, geomFile , freqFile , wilsonFile ):
         self.parseData(atomFile)
         self.parseSData(geomFile, freqFile, wilsonFile)
-        self.parseConfig(conFigFile)
+        self.parseConfig(conFig)
 
     def parseSData(self, geomFile, freqFile, wilsonFile):
         '''Parses equilibrium geometry, frequencies and the wilson matrix data for a sceptroscopic system'''
@@ -680,9 +673,9 @@ class Spectroscopic(Base):
 class Scattering(Base):
     ''' Inherited from the Base class, this class containg necessary methods
      for running molpro for a Scattering system'''
-    def __init__(self, conFigFile, atomFile ):
+    def __init__(self, conFig, atomFile ):
         self.parseData(atomFile)
-        self.parseConfig(conFigFile)
+        self.parseConfig(conFig)
 
     def AreaTriangle(self,a,b,c):
         """ area of a tringle with sides a,b,c """
@@ -833,7 +826,279 @@ class Scattering(Base):
             'tau_phi.dat' )
 
 
-if __name__ == "__main__":
-    s = Scattering('./molpro.config', './atomfile.dat')
-    #s = Spectroscopic('./molpro.config', './atomfile.dat', 'geomfile.dat','frequency.dat', 'wilson.dat')
-    s.runMolpro()
+
+
+class Jacobi(Base):
+    def __init__(self, conFig, atomFile ):
+        self.parseData(atomFile)
+        self.parseConfig(conFig)
+
+
+    def createDdrTemplate(self):
+        ''''Creates the molpro template files ddr job'''
+
+        cas = self.eInfo['cas']
+
+        #remove core from the cas
+        try:
+            core = re.search( '[0-9a-zA-Z,;](core,\d+;*)', cas).group(1)
+            cas = cas.replace(core, '').strip(';')
+        except:
+            pass
+
+
+        #mrci has to be done for ddr for using the ddr wf in ddr nact calculation
+        energyLine = """
+            {{mcscf;{cas1}; wf,{wf};state,{state};start,2140.2; orbital,2140.2;{extra1}}}
+            {{mrci; {cas}; wf,{wf};state,{state};save,6000.2;{extra2}}}
+            """.format(state   =self.eInfo['state'],
+                        wf     = self.eInfo['wf'],
+                        cas    = self.eInfo['cas'],
+                        cas1   = cas,
+                        extra1 = self.eInfo['multi_extra'],
+                        extra2 = self.eInfo['mrci_extra'])
+            
+
+        molproTemplate=textwrap.dedent('''
+            ***, Molpro template created from ADT program for analytical job for analytical job.
+            memory,{memory}
+            file,2,molpro.wfu;
+
+            basis={basis};
+
+            symmetry,nosym
+
+            geomtyp=xyz
+            geometry=geom1.xyz
+
+            {enrl}
+
+            show, energy
+            table, energy
+            save,enr.res,new
+            {{table,____; noprint,heading}}
+
+            !for +dr
+            symmetry,nosym
+            geometry=geom2.xyz
+            {{multi;{cas1} ;wf,{wf};state,{state};start,2140.2;orbital,2241.2;{extra1}}}
+            {{mrci; {cas}; wf,{wf};state,{state};save,6001.2;{extra2}}}
+            {{ci;trans,6000.2,6001.2;dm,8001.2;{extra3}}}
+
+
+            !for -dr
+            symmetry,nosym
+            geometry=geom3.xyz
+            {{multi;{cas1}; wf,{wf};state,{state};start,2140.2;orbital,2242.2;{extra1}}}
+            {{mrci; {cas}; wf,{wf};state,{state};save,6002.2;{extra2}}}
+            {{ci;trans,6000.2,6002.2;dm,8002.2;{extra3}}}
+
+
+
+            '''.format( memory = self.memory,
+                        basis  = self.eInfo['basis'],
+                        enrl   = energyLine,
+                        state  = self.eInfo['state'],
+                        wf     = self.eInfo['wf'],
+                        cas    = self.eInfo['cas'],
+                        cas1   = cas,
+                        extra1 = self.eInfo['multi_extra'],
+                        extra2 = self.eInfo['mrci_extra'],
+                        extra3 = self.nInfo['nact_extra']))
+
+
+        nactTemp= ''
+
+        for i,j in self.nactPairs:
+            nactTemp+=textwrap.dedent(''' 
+                !for taur     
+                {{ddr,{dt},2140.2,2241.2,8001.2;state, {j}.1,{i}.1}}
+                nacmepv=nacme
+
+                {{ddr,-{dt},2140.2,2242.2,8002.2;state, {j}.1,{i}.1}}
+                nacmemv=nacme
+
+                nacmp = 0.5*(nacmepv+ nacmemv)
+
+                table, nacmp
+                save,ddrnact{i}{j}.res,new;
+
+                '''.format(dt=self.dt,dp=self.dp,i=i,j=j))
+
+
+
+        molproTemplate += nactTemp + '\n---\n'
+
+        with open('grid.com','w') as f:
+            f.write(molproTemplate)
+
+        molproInitTemplate = textwrap.dedent('''
+            ***, Molpro template created from ADT program for ddr job.
+            memory,{memory}
+            file,2,molpro_init.wfu,new;
+
+            basis={basis};
+
+            symmetry,nosym
+
+            geomtyp=xyz
+            geometry=geom.xyz
+
+            {{hf}}
+            {enrl}
+
+            show, energy
+            table, energy
+            save,equienr.res,new
+            {{table,____; noprint,heading}}
+
+            '''.format( memory = self.memory,
+                        basis = self.eInfo['basis'],
+                        enrl=energyLine,
+                        hf = self.eInfo['hf']))
+
+        with open('init.com', 'w') as f:
+            f.write(molproInitTemplate)
+
+
+
+
+    def getTauAna(self, phi):
+        '''Used in Analytical NACT calculation'''
+        tauph = []
+        for i,j in self.nactPairs:
+            file   = 'ananac{}{}.res'.format(i,j)
+            grads  = self.parseResult(file)
+            val = self.q*(-grads[2,0]*self.sin(phi) + grads[2,1]*self.cos(phi))
+            tauph.append(np.abs(val))
+        return tauph
+
+
+    def getTauDdr(self, *args):
+        '''Used in DDR NACT calculation'''
+        tauph = []
+        for i,j in self.nactPairs : 
+            file = 'ddrnact{}{}.res'.format(i,j)
+            val  = self.parseResult(file)
+            tauph.append(np.abs(val))
+        return np.array(tauph)
+
+
+
+
+    def createOneGeom(self, phi, outFile='geom.xyz'):
+        ''' Creates geometry file, to be used in molpro for the given r, R, gamma, q, phi'''
+
+        curGeom  = self.bohrtoang*np.array([
+            [-self.smallR/2.0,0.0,0.0],
+            [self.smallR/2.0,0.0,0.0],
+            [self.capR*self.cos(self.gamma)+self.q*self.cos(phi), 
+            self.capR*self.sin(self.gamma)+self.q*self.sin(phi),
+            0.0]])
+        msg = 'for r = {}, R = {}, gamma = {}, Phi = {}'.format(self.smallR, self.capR, self.gamma, phi)
+        nAtoms = len(self.atomNames)
+        tmp = " {}\n".format(nAtoms)
+        tmp+= "Geometry file created from ADT program. %s \n"%msg
+        for i in range(nAtoms):
+            tmp += "{},{},{},{}\n".format(self.atomNames[i], *curGeom[i])
+        with open(outFile,"w") as f:
+            f.write(tmp)
+
+
+    def createAllGeom(self, theta, phi):
+        ''' Creates 3 different geometry files for using in molpro ddr calculation '''
+        self.createOneGeom(phi,    'geom1.xyz')
+        self.createOneGeom(phi+self.dp,'geom2.xyz')
+        self.createOneGeom(phi-self.dp,'geom3.xyz')
+
+
+
+    def equiRun(self):
+        '''Runs molpro for a initial geometry, i.e. phi=0'''
+        self.createOneGeom( 0)
+        self.msg( "Running molpro job for initial point....." )
+        sys.stdout.flush()
+        exitcode = subprocess.call(
+            ['molpro', '-n', self.proc, "-d", self.scrdir, '-W .', 'init.com','--no-xml-output']
+            )
+        if exitcode==0: 
+            self.msg( ' Job successful', cont= True)
+        else:
+            self.msg( ' Job failed', cont= True)
+            sys.exit('Molpro failed in initital step')
+        equiData = self.parseResult('equienr.res').flatten()
+        np.savetxt('equienr.dat', equiData, fmt='%.8f')
+
+
+
+    def runMolpro(self):
+        '''Runs the molpro for each gridpoints '''
+        # subprocess calls blocks system I/O buffer, so the I/Os (sometimes) have to be flushed out explicitely 
+        # open files to store result
+        filee  = open('energy.dat', 'w', buffering=1)
+        filen = open('tau_phi.dat','w', buffering=1)
+
+
+        #grid1 is theta or rho
+        #grid2 is phi
+        #create folder for incomplete jobs , delete if already exists
+        if os.path.isdir('IncompleteJobs'):
+            shutil.rmtree('IncompleteJobs')
+        os.mkdir('IncompleteJobs')
+
+        if os.path.isdir('CompleteJobs'):
+            shutil.rmtree('CompleteJobs')
+        os.mkdir('CompleteJobs')
+
+
+        self.equiRun()
+
+        shutil.copy('molpro_init.wfu', 'molpro.wfu')
+        for phi in self.phiGrid:
+                self.createGridGeom(phi)
+                self.msg('Running molpro job for Phi = {}.......'.format(phi))
+                path = 'CompleteJobs/Phi_{}'.format(phi)
+                shutil.copy('molpro.wfu',self.scrdir)
+
+                exitcode = subprocess.call(
+                    ['molpro', '-n', self.proc, "-d", self.scrdir, '-W .', 'grid.com','--no-xml-output']
+                    )
+                if exitcode==0:
+                    self.msg( ' Job successful.', cont=True)
+
+                else:
+                    self.msg(' Job failed.', cont=True)
+                    path = path.replace('C', "Inc")
+                    self.moveFiles(path)
+                    continue 
+                firstJobDone = True
+                enrData = self.parseResult('enr.res').flatten()
+                tau = self.getTau(phi)
+                self.moveFiles(path)
+                np.savetxt(filee,  np.append([phi],enrData)[None], fmt='%.8f', delimiter='\t')
+                np.savetxt(filen, np.append([phi],tau)[None],  fmt='%.8f', delimiter='\t')
+        self.msg('All molpro jobs done.', cont=True)
+
+        for file in ['energy.dat', 'tau_phi.dat']:
+            dat = np.loadtxt(file)
+            grid = self.phiGrid
+            res = grid
+            for col in range(1, dat.shape[1]):
+                filledDat = self.interpolate(dat[:,0], dat[:,col], grid)
+                res = np.column_stack([res, filledDat]) 
+            res[:,0] = np.deg2rad(res[:,0]) # convert phi to radian
+            if file == 'energy.dat':
+                res[:,1:] -= float(self.eInfo['scale'])
+            np.savetxt(
+                file.replace('.dat', '_mod.dat'),
+                res, fmt='%.8f', delimiter='\t'
+            )
+
+
+
+
+# if __name__ == "__main__":
+#     s = Jacobi('./molpro.config', './atomfile.dat')
+#     s.createOneGeom(0)
+#     #s = Spectroscopic('./molpro.config', './atomfile.dat', 'geomfile.dat','frequency.dat', 'wilson.dat')
+#     s.runMolpro()
