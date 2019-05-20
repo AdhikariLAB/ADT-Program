@@ -1,11 +1,9 @@
-# An example to show use of ADT package through an python module
+# An example to show use of ADT package as a python module
 import numpy as np
 from adt.numeric import adt_numeric
 
 
-
 def writeFile(data, file, xgrid):
-    #writes data as fc column wise
     file = open(file,"wb")
     for tp in xgrid:
         np.savetxt( file, data[data[:,0]==tp] ,delimiter="\t", fmt="%.8f")
@@ -13,9 +11,9 @@ def writeFile(data, file, xgrid):
 
 
 
-nact1 = np.loadtxt('../TEST_RUNS/NUMERICAL_CALCULATIONS/H3+/Tau_Rho.dat')
-nact2 = np.loadtxt('../TEST_RUNS/NUMERICAL_CALCULATIONS/H3+/Tau_Phi.dat')
-enr = np.loadtxt('../TEST_RUNS/NUMERICAL_CALCULATIONS/H3+/Adiabatic_PES.dat')
+nact1    = np.loadtxt('../TEST_RUNS/NUMERICAL_CALCULATIONS/H3+/Tau_Rho.dat')
+nact2    = np.loadtxt('../TEST_RUNS/NUMERICAL_CALCULATIONS/H3+/Tau_Phi.dat')
+enr      = np.loadtxt('../TEST_RUNS/NUMERICAL_CALCULATIONS/H3+/Adiabatic_PES.dat')
 fullGrid = nact1[:,[0,1]]
 
 grid1  = np.unique(nact1[:,0])
@@ -25,10 +23,9 @@ ngrid2 = grid2.shape[0]
 nstate = enr.shape[1]-2
 ntau   = nact1.shape[1]-2
 
-
 nact1 = nact1[:,2:].reshape(ngrid1, ngrid2, ntau)
 nact2 = nact2[:,2:].reshape(ngrid1, ngrid2, ntau)
-enr = enr[:,2:].reshape(ngrid1, ngrid2, nstate)
+enr   = enr[:,2:].reshape(ngrid1, ngrid2, nstate)
 
 
 angle, res, amat,db = adt_numeric.adt_quantities(grid1, grid2, nact1, nact2, path = 1, energy = enr)

@@ -310,7 +310,7 @@ def main():
             #     tmpLog += 'OpenMP threads       : {}'.format(threads)
             #     # set opnemp environment variable to spwan threads
             #     os.environ['OMP_NUM_THREADS'] = threads
-            # logger.info(tmpLog)
+            logger.info(tmpLog)
             
             # importing it here, just so that `OMP_NUM_THREADS` can take effect
             from numeric.adt_numeric import adt_numerical1d
