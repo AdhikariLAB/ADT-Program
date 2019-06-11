@@ -12,9 +12,7 @@ import numpy as np
 import ConfigParser
 from glob import glob
 from datetime import datetime
-from adtmod import adt
-
-
+from adt.numeric.adtmod import adt
 
 class Base():
     '''
@@ -699,10 +697,11 @@ class Scattering(Base):
         d3 = np.sqrt(m3*(m1+m2)/(mu*M))
         eps3 = 2 * np.arctan(m2/mu)
         eps2 = 2 * np.arctan(m3/mu)
-
-        R1 = (1.0/np.sqrt(2.0))*self.rho*d3*np.sqrt(1.0+ self.sin(theta)*self.cos(phi+eps3)) # F-H2 distance
-        R2 = (1.0/np.sqrt(2.0))*self.rho*d1*np.sqrt(1.0+ self.sin(theta)*self.cos(phi))      # H1-H2 distance
-        R3 = (1.0/np.sqrt(2.0))*self.rho*d2*np.sqrt(1.0+ self.sin(theta)*self.cos(phi-eps2)) # F-H1 distance
+        eps3 = np.rad2deg(eps3)
+        eps2 = np.rad2deg(eps2)
+        R1 = (1.0/np.sqrt(2.0))*self.rho*d3*np.sqrt(1.0+ self.sin(theta)*self.cos(phi+eps3)) 
+        R2 = (1.0/np.sqrt(2.0))*self.rho*d1*np.sqrt(1.0+ self.sin(theta)*self.cos(phi))      
+        R3 = (1.0/np.sqrt(2.0))*self.rho*d2*np.sqrt(1.0+ self.sin(theta)*self.cos(phi-eps2)) 
 
         if R1 < 1e-10:
             R1 = 0.0
@@ -778,8 +777,8 @@ class Scattering(Base):
     def getTauAna(self, theta, phi):
         '''Used in Analytical NACT calculation'''
         # What will be this values
-        dTheta = self.thetaList[2]/100
-        dPhi = self.phiList[2]/100
+        dTheta = self.thetaList[2]/100.0
+        dPhi = self.phiList[2]/100.0
 
         gradThetaPlus  = self.hyperToCart(theta+dTheta, phi)
         gradThetaMinus = self.hyperToCart(theta-dTheta, phi)

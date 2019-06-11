@@ -47,7 +47,7 @@ lib_links = []
 
 
 
-lib = Extension(name='adtmod', 
+lib = Extension(name='adt.numeric.adtmod', 
             sources=['adt/numeric/nummod.f90'],
             extra_f90_compile_args=fort_args,
             extra_link_args=lib_links)
@@ -56,7 +56,7 @@ lib = Extension(name='adtmod',
 
 setup(
     name='adt',
-    version='1.0.0',
+    version='0.1.0',
     description='Installer for the ADT_Program_Package.',
     author='Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari',
     author_email='pcsa@iacs.res.in',

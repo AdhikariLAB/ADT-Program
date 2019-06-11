@@ -118,12 +118,12 @@ def main():
 
 
     #adding options for numerical jobs
-    numeric_required.add_argument("-nfile1",
+    numeric_required.add_argument("-nfile",
                         type     = str,
                         help     = "Specify the NACT file along first coordinate. \nThis one NACT file is sufficient for evaluating ADT for a 1D grid of geometries. \nBut for calulating a 2D ADT user must also provide another NACT file \n(usinf '-nfile2') along the other coordinate.",
                         metavar  = "FILE",
                         required = True)
-    numeric.add_argument("-nfile2",
+    numeric.add_argument("-mfile",
                         type     = str,
                         help     = "Specify the NACT file along second coordinate. \nRequired for calculating ADT over a 2D grid of geometries.",
                         metavar  = "FILE")
@@ -242,8 +242,8 @@ def main():
         path    = args.intpath
         enrf    = args.efile
         nstate  = args.nstate
-        rhof    = args.nfile1
-        phif    = args.nfile2
+        rhof    = args.mfile
+        phif    = args.nfile
         outfile = args.ofile.strip("'")
         h5      = args.h5
         txt     = args.txt
@@ -303,7 +303,7 @@ def main():
             Number of states     : {}
             Output file/folder   : {}
             Output file format   : {}
-            '''.format(enrf, rhof, nstatet, outfile, ffrmt)
+            '''.format(enrf, phif, nstatet, outfile, ffrmt)
 
             #!!! no threaded part for 1D adt
             # if threads:
@@ -316,7 +316,7 @@ def main():
             from numeric.adt_numeric import adt_numerical1d
 
             try:
-                adt_numerical1d(enrf, nstate, rhof, outfile, logger, h5, txt, nb)
+                adt_numerical1d(enrf, nstate, phif, outfile, logger, h5, txt, nb)
                 print("Log saved in 'ADT.log'.")
             except Exception as e:
                 logger.error("Program failed. %s\n"%e+"-"*121)

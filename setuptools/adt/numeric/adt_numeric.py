@@ -21,7 +21,7 @@ Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar S
 
 import os,sys
 import numpy as np
-from adtmod import adt as fadt
+from adt.numeric.adtmod import adt as fadt
 from time import time
 try:
     from h5py import File
@@ -129,11 +129,11 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger, h5, txt, nb):
     # calculation of ADT angles
     logger.info("Calculating ADT Angles on path %s"%path)
     full_angle = fadt.get_angle(fadt.ngridr, fadt.ngridp, fadt.ntau, path)
-    residue    = np.sum(full_angle, axis=1)
+    residue    = full_angle[-1,...]
 
     full_angle = full_angle.reshape(fadt.ngridr*fadt.ngridp, fadt.ntau)
     adtAngle   = np.column_stack([rdat[:,[0,1]], full_angle])
-    residue    = np.column_stack((fadt.gridr, residue))
+    residue    = np.column_stack((fadt.gridp, residue))
 
     # calculation of ADT matrix elements
     logger.info("Calculating ADT matrix elements")
@@ -313,7 +313,7 @@ def adt_numerical1d(enrf, nstate, tauf, outfile, logger, h5, txt, nb):
 
 
     adtAngle   = np.column_stack([fadt.grid, full_angle])
-    # residue    = np.column_stack((fadt.gridr, residue))          
+    residue    = adtAngle[-1]
 
     # calculation of ADT matrix elements
     logger.info("Calculating ADT matrix elements")
