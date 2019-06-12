@@ -202,6 +202,10 @@ def main():
                          type=str,
                          help="Specify number of OpenMP threads to use for parallel calculation. \nApplicable only when installed using OpenMP support.\n(default: Maximum avilable threads)\n ",
                          default=False)
+    molpro.add_argument("-mo" ,
+                        action = "store_true",
+                        help="Terminate the program after completion of MOLPRO jobs befor calculating the ADT quantities.")
+
     molpro.add_argument("-h5",
                         action = 'store_true',
                         help   = "Write results in a HDF5 file (.h5).\nFast IO, smaller file size and hierarchical filesystem-like data format,\npreferable for saving and sharing large datasets in an organised way.\n " )
@@ -211,7 +215,7 @@ def main():
     molpro.add_argument("-txt" ,
                         action = "store_true",
                         help="Write results in a text file. (default behaviour).")
-    molpro.set_defaults(h5=False,txt=False, nb = False)
+    molpro.set_defaults(h5=False,txt=False, nb = False, mo = False)
 
 
     args = parser.parse_args()
@@ -263,7 +267,7 @@ def main():
         else :nstatet = nstate
         
         # adt1D true means an 1D adt will be done
-        adt2D = True if phif else False
+        adt2D = True if rhof else False
 
 
 
@@ -340,6 +344,7 @@ def main():
         h5      = args.h5
         txt     = args.txt
         nb = args.nb
+        mo = args.mo 
         
         if (h5 == False and txt == False and nb == False): txt = True
 
@@ -422,22 +427,25 @@ def main():
             sys.exit(1)
 
         try:
-            from numeric.adt_numeric import adt_numerical, adt_numerical1d
-            if sysType in ['spectroscopic' , 'scattering_hyper']:
-                logger.info('''Starting Numerical calculation
-                Integration Path   : {}
-                Output file/folder : {}
-                Output file format : {}
-                '''.format(path, outfile, ffrmt))
-                adt_numerical('energy_mod.dat', None, trFile, 'tau_phi_mod.dat', path, outfile, logger, h5, txt, nb)
-            else :
-                logger.info('''Starting Numerical calculation
-                Output file/folder : {}
-                Output file format : {}
-                '''.format(path, outfile, ffrmt))
-                adt_numerical1d('energy_mod.dat', None, 'tau_phi_mod.dat', outfile, logger, h5, txt, nb)
-        except Exception as e:
-            logger.error("Program failed in numerical calculation. %s\n"%e+"-"*121)
+            if not mo:
+                from numeric.adt_numeric import adt_numerical, adt_numerical1d
+                if sysType in ['spectroscopic' , 'scattering_hyper']:
+                    logger.info('''Starting Numerical calculation
+                    Integration Path   : {}
+                    Output file/folder : {}
+                    Output file format : {}
+                    '''.format(path, outfile, ffrmt))
+                    adt_numerical('energy_mod.dat', None, trFile, 'tau_phi_mod.dat', path, outfile, logger, h5, txt, nb)
+                else :
+                    logger.info('''Starting Numerical calculation
+                    Output file/folder : {}
+                    Output file format : {}
+                    '''.format(path, outfile, ffrmt))
+                    adt_numerical1d('energy_mod.dat', None, 'tau_phi_mod.dat', outfile, logger, h5, txt, nb)
+            except Exception as e:
+                logger.error("Program failed in numerical calculation. %s\n"%e+"-"*121)
+            else:
+                logger.info("'-mo' flag specified, exiting program.")
 
     #######################################################################################################################
 

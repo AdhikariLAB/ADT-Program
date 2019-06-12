@@ -175,6 +175,7 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger, h5, txt, nb):
     # Writing of numerical output in '.dat' files
     if txt:
         outpath = outfile+"_%s"%path
+        logger.info("Saving results in folder '%s'"%outpath)
         if not os.path.exists(outpath):os.makedirs(outpath)
         os.chdir(outpath)
         file = "Angles.dat"
@@ -199,6 +200,7 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger, h5, txt, nb):
     # Writing of numerical output in '.npy' files
     if nb:
         outpath = outfile+"_%s"%path
+        logger.info("Saving results in folder '%s'"%outpath)
         if not os.path.exists(outpath):os.makedirs(outpath)
         os.chdir(outpath)
         file = "Angles"
@@ -313,7 +315,7 @@ def adt_numerical1d(enrf, nstate, tauf, outfile, logger, h5, txt, nb):
 
 
     adtAngle   = np.column_stack([fadt.grid, full_angle])
-    residue    = adtAngle[-1]
+    residue    = adtAngle[-1, np.newaxis]
 
     # calculation of ADT matrix elements
     logger.info("Calculating ADT matrix elements")
@@ -339,6 +341,8 @@ def adt_numerical1d(enrf, nstate, tauf, outfile, logger, h5, txt, nb):
         ang = file.create_group("ADT Angles")
         ang.create_dataset("Angles",data=adtAngle, compression="gzip")
 
+        ang = file.create_group("ADT Angles Residues")
+        res.create_dataset("Angles Residues",data=residue, compression="gzip")
         # logger.info('Writing ADT Angle residues')
         # ang.create_dataset("Residue", data= residue, compression="gzip")
 
@@ -359,13 +363,14 @@ def adt_numerical1d(enrf, nstate, tauf, outfile, logger, h5, txt, nb):
     # Writing of numerical output in '.dat' files
     if txt:
         outpath = outfile+"_%s"%path
+        logger.info("Saving results in folder '%s'"%outpath)
         if not os.path.exists(outpath):os.makedirs(outpath)
         os.chdir(outpath)
         file = "Angles.dat"
         logger.info("Writing ADT Angles in '%s'"%file)
         np.savetxt(file, adtAngle, delimiter="\t", fmt="%.8f")
-        # logger.info("Writing ADT Angles in 'Angle_residues.dat'")
-        # np.savetxt('Angle_residues.dat', residue ,delimiter="\t", fmt="%.8f")
+        logger.info("Writing ADT Angles in 'Angle_residues.dat'")
+        np.savetxt('Angle_residues.dat', residue ,delimiter="\t", fmt="%.8f")
 
 
         for i in range(fadt.nstate):
@@ -383,13 +388,14 @@ def adt_numerical1d(enrf, nstate, tauf, outfile, logger, h5, txt, nb):
     # Writing of numerical output in '.npy' files
     if nb:
         outpath = outfile+"_%s"%path
+        logger.info("Saving results in folder '%s'"%outpath)
         if not os.path.exists(outpath):os.makedirs(outpath)
         os.chdir(outpath)
         file = "Angles"
         logger.info("Writing ADT Angles in '%s.npy'"%file)
         np.save(file, adtAngle)
-        # logger.info("Writing ADT Angles in 'Angle_residues.npy'")
-        # np.save('Angle_residues', residue)
+        logger.info("Writing ADT Angles in 'Angle_residues.npy'")
+        np.save('Angle_residues', residue)
 
 
         for i in range(fadt.nstate):
@@ -418,32 +424,32 @@ def file_write(file, data, col):
 # These are python modular level APIs to the ADT software package
 # can be called from any python script after installation
 
-def adt_quantities(grid1, grid2, nact1, nact2, energy=None, path = 1):
+def adt2d(grid1, grid2, nact1, nact2, energy=None, path = 1):
     '''
-        Calculates ADT quantities, namely, ADT angle, residue, ADT matrix and diabatic
-        matrix elements
+    Calculates ADT quantities, namely, ADT angle, residue, ADT matrix and diabatic
+    matrix elements
 
-        Parameters
-        ----------
-        grid1 : 1D ndarray for 1st co-ordinate grid.
-        grid2 : 1D ndarray for 2nd coordinate grid.
-        nact1 : 3D ndarray for component of NACT along the 1st coordinate in shape of
-            `(ngrid1, ngrid2, ntau)` where ngrid1, ngrid2, ntau are the number of grid points
-            for 1st coordinate , grid points for 2nd coordinate and number of NACTs respectively.
-        nact2 : 3D ndarray for component of NACT along the 1st coordinate in shape same as 
-            `nact1`.
-        energy : 3D ndarray for energy in shape of `(ngrid1, ngrid2, nstate)` where nstate is the 
-            number of energy state.
-        
+    Parameters
+    ----------
+    grid1 : 1D ndarray for 1st co-ordinate grid.
+    grid2 : 1D ndarray for 2nd coordinate grid.
+    nact1 : 3D ndarray for component of NACT for the 1st coordinate in shape of
+          `(ngrid1, ngrid2, ntau)` where ngrid1, ngrid2, ntau are the number of grid points
+          for 1st coordinate , grid points for 2nd coordinate and number of NACTs respectively.
+    nact2 : 3D ndarray for component of NACT for the 1st coordinate in shape same as 
+          `nact1`.
+    energy: 3D ndarray for energy in shape of `(ngrid1, ngrid2, nstate)` where nstate is the 
+           number of energy state.
+    
 
-        Returns
-        -------
-        full_angle : 3D ndarray for ADT angles in shape of `(ngrid1, ngrid2, ntau)`.
-        residue    : 2D ndarray for residues of ADT angles in shape of `(ngrid1, ntau)`.
-        amat       : 4D ndarray for ADT matrix elements in shape of `(ngrid1, ngrid2, nstate, nstate)` .
-        db         : 4D ndarray for diabatic potential energy matrix elements 
-            in shape of `(ngrid1, ngrid2, nstate, nstate)`. Only returned when adiabatic energy is 
-            provided in the input argument.
+    Returns
+    -------
+    ADT Angle       : 3D ndarray for ADT angles in shape of `(ngrid1, ngrid2, ntau)`.
+    Angle Residue   : 2D ndarray for residues of ADT angles in shape of `(ngrid1, ntau)`.
+    ADT Matrix      : 4D ndarray for ADT matrix elements in shape of `(ngrid1, ngrid2, nstate, nstate)` .
+    Diabatic Matrix : 4D ndarray for diabatic potential energy matrix elements 
+                    in shape of `(ngrid1, ngrid2, nstate, nstate)`. Only returned when adiabatic energy is 
+                    provided in the input argument.
 
     '''
     # quantities are given in shape of (grid1, grid2, ntau)
@@ -478,7 +484,7 @@ def adt_quantities(grid1, grid2, nact1, nact2, energy=None, path = 1):
 
     # calculation of ADT angles
     full_angle = fadt.get_angle(fadt.ngridr, fadt.ngridp, fadt.ntau, path)
-    residue    = np.sum(full_angle, axis=1)
+    residue    = full_angle[-1,...]
 
     # calculation of ADT matrix elements
 
@@ -494,27 +500,29 @@ def adt_quantities(grid1, grid2, nact1, nact2, energy=None, path = 1):
         return [full_angle, residue, amat, db]
 
 
-def adt_quantities1d(grid, taudat, energy = None):
+def adt1d(grid, taudat, energy = None):
     '''
-        Calculates ADT quantities, namely, ADT angle, residue, ADT matrix and diabatic
-        matrix elements
+    Calculates ADT quantities, namely, ADT angle, residue, ADT matrix and diabatic
+    matrix elements
 
-        Parameters
-        ----------
-        grid : 1D ndarray for 1st co-ordinate grid.
-        nact : 2D ndarray for NACT  in shape of
+    Parameters
+    ----------
+    grid   : 1D ndarray for 1st co-ordinate grid.
+    nact   : 2D ndarray for NACT  in shape of
             `(ngrid, ntau)` where ngrid, ntau are the number of grid points and number of NACTs respectively.
-        energy : 2D ndarray for energy in shape of `(ngrid, nstate)` where nstate is the 
+    energy : 2D ndarray for energy in shape of `(ngrid, nstate)` where nstate is the 
             number of energy state. Optional argument.
-        
 
-        Returns
-        -------
-        full_angle : 2D ndarray for ADT angles in shape of `(ngrid, ntau)`.
-        amat       : 3D ndarray for ADT matrix elements in shape of `(ngrid, nstate, nstate)` .
-        db         : 3D ndarray for diabatic potential energy matrix elements 
-            in shape of `(ngrid, nstate, nstate)`. Only returned when adiabatic energy is 
-            provided in the input argument.
+
+    Returns
+    -------
+    ADT Angles     : 2D ndarray for ADT angles in shape of `(ngrid, ntau)`.
+
+    ADT matrix     : 3D ndarray for ADT matrix elements in shape of `(ngrid, nstate, nstate)` .
+    Angle Residues : 1D ndarray of ADT Angle residues in shape of `ntau` 
+    Diabatic Matrix: 3D ndarray for diabatic potential energy matrix elements 
+                    in shape of `(ngrid, nstate, nstate)`. Only returned when adiabatic energy is 
+                    provided in the input argument.
 
     '''
 
@@ -545,10 +553,10 @@ def adt_quantities1d(grid, taudat, energy = None):
 
 
     if energy is None :
-        return [full_angle, amat]
+        return [full_angle, full_angle[-1], amat]
     else :
         db = np.einsum("ijk,ij,ijl->ikl",amat,energy,amat)
-        return [full_angle, amat, db]
+        return [full_angle, full_angle[-1], amat, db]
 
 
 
