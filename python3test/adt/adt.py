@@ -23,9 +23,9 @@ import sys
 import logging
 import textwrap
 import argparse
-from analytic.adt_analytic import adt_analytical
-from molpro.adt_molpro import Scattering, Spectroscopic, Jacobi
-import ConfigParser
+from .analytic.adt_analytic import adt_analytical
+from .molpro.adt_molpro import Scattering, Spectroscopic, Jacobi
+import configparser as ConfigParser
 
 class CustomParser(argparse.ArgumentParser):
     def error(self, message):
