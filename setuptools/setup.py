@@ -78,7 +78,7 @@ setup(
     extras_require={
         'h5':  ["h5py"]
     },
-    python_requires='>=2.7, <3',
+    # python_requires='>=2.7, <3',
     packages=find_packages(),
     ext_modules=[lib],
     entry_points={

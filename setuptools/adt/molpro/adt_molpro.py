@@ -1,4 +1,4 @@
-
+from __future__ import absolute_import, unicode_literals
 __authors__  = '''
 Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari
 '''
@@ -9,10 +9,18 @@ import shutil
 import textwrap
 import subprocess
 import numpy as np
-import ConfigParser
 from glob import glob
 from datetime import datetime
-from adt.numeric.adtmod import adt
+from adt.numeric.adtmod import adt as fadt
+
+
+if sys.version_info.major>2:
+    import configparser as ConfigParser
+else :
+    import ConfigParser
+
+
+
 
 class Base():
     '''
@@ -32,8 +40,8 @@ class Base():
         return np.cos(np.deg2rad(x))
 
     def interpolate(self,x,y,newx):
-        diff = adt.spline(x,y)
-        return np.array([ adt.splint(x,y,diff,xi) for xi in newx])
+        diff = fadt.spline(x,y)
+        return np.array([ fadt.splint(x,y,diff,xi) for xi in newx])
 
     def createAnaTemplate(self):
         ''''Creates the molpro template files analytical job'''
@@ -304,7 +312,7 @@ class Base():
     def parseData(self, atomFile):
         ''' Parse atom names and masses from data file'''
         atomData = np.loadtxt(atomFile, 
-            dtype={'names': ('names', 'mass'),'formats': ('S1', 'f8')})
+            dtype={'names': ('names', 'mass'),'formats': ('U1', 'f8')})
         self.atomNames = atomData['names']
         self.atomMass  = atomData['mass']
 
@@ -355,7 +363,8 @@ class Base():
         # self.nactPairs = [[i,j] for i in range(1,self.state+1) for j in range(i+1,self.state+1)]
         self.nTau = len(self.nactPairs)
 
-        self.phiList = map(float, gInfo['phi'].split(','))
+        # self.phiList = map(float, gInfo['phi'].split(','))
+        self.phiList = [float(i) for i in gInfo['phi'].split(',')]
         self.phiGrid = self.makeGrid(self.phiList)
 
         # there will be there types 
@@ -366,7 +375,7 @@ class Base():
 
         sysType = dict(scf.items('sysInfo'))['type']
         if sysType == 'spectroscopic': # for spectroscopic system
-            self.rhoList = map(float, gInfo['rho'].split(','))
+            self.rhoList = [float(i) for i in gInfo['rho'].split(',')] #map(float, gInfo['rho'].split(','))
             mInfo = dict(scf.items('mInfo'))
             self.vModes = [int(i)-1 for i in mInfo['varying'].split(',')]
             if len(self.rhoList) == 1:
@@ -376,11 +385,11 @@ class Base():
 
 
         elif sysType == 'scattering_hyper': # for scattering system
-            self.rhoList = map(float, gInfo['rho'].split(','))
+            self.rhoList = [float(i) for i in gInfo['rho'].split(',')]#map(float, gInfo['rho'].split(','))
             if len(self.rhoList) != 1:
                 raise Exception('Give a fixed rho value for scattering calculation')
             self.rho = self.rhoList[0]
-            self.thetaList = map(float, gInfo['theta'].split(','))
+            self.thetaList = [float(i) for i in gInfo['theta'].split(',')]#map(float, gInfo['theta'].split(','))
             self.thetaGrid = self.makeGrid(self.thetaList)
             if not 'scale' in self.eInfo.keys():
                 raise Exception('Assymptotic energy value is mandatory for scaling the Energy surafaces for scattering system.')
@@ -415,18 +424,19 @@ class Base():
 
         else:
             sys.exit('%s Not a proper option'%self.nInfo['method'])
-        self.logFile = open('adt_molpro.log', 'w', buffering=0)
+        self.logFile = open('adt_molpro.log', 'w')
+
 
     def parseResult(self, file):
         ''' Parses result from the ouptpu .res files'''
         with open(file,"r") as f:
             dat = f.read().replace("D","E").strip().split("\n")[1:]
-        dat = [map(float,i.strip().split()) for i in dat]
+        dat = [float(j) for i in dat for j in i.strip().split()]#[map(float,i.strip().split()) for i in dat]
         return np.array(dat)
 
     def writeFile(self, file, data):
         ''' Writes output data in plain txt'''
-        file = open(file,'wb')
+        file = open(file,'w')
         for tp in np.unique(data[:,0]):
             np.savetxt( file, data[data[:,0]==tp] ,delimiter="\t", fmt="%.8f")
             file.write("\n")
@@ -475,6 +485,7 @@ class Base():
         else:
             m+='\n'
         self.logFile.write(m)
+        self.logFile.flush()
 
     def moveFiles(self, path):
         ''' Saves the geometry out and results file in a specific directory'''

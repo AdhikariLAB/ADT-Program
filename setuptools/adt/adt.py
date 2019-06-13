@@ -1,4 +1,4 @@
-
+from __future__ import absolute_import, unicode_literals
 __doc__='''
 
 This python file parses the command line arguments associated with 'adt' command. It uses subparser either to
@@ -17,15 +17,17 @@ __authors__  = '''
 Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari
 '''
 
-
 import os
 import sys
 import logging
 import textwrap
 import argparse
-from analytic.adt_analytic import adt_analytical
-from molpro.adt_molpro import Scattering, Spectroscopic, Jacobi
-import ConfigParser
+from adt.analytic.adt_analytic import adt_analytical
+from adt.molpro.adt_molpro import Scattering, Spectroscopic, Jacobi
+if sys.version_info.major>2:
+    import configparser as ConfigParser
+else :
+    import ConfigParser
 
 class CustomParser(argparse.ArgumentParser):
     def error(self, message):
@@ -290,7 +292,7 @@ def main():
             logger.info(tmpLog)
             
             # importing it here, just so that `OMP_NUM_THREADS` can take effect
-            from numeric.adt_numeric import adt_numerical
+            from adt.numeric.adt_numeric import adt_numerical
 
             try:
                 adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger, h5, txt, nb)
@@ -317,7 +319,7 @@ def main():
             logger.info(tmpLog)
             
             # importing it here, just so that `OMP_NUM_THREADS` can take effect
-            from numeric.adt_numeric import adt_numerical1d
+            from adt.numeric.adt_numeric import adt_numerical1d
 
             try:
                 adt_numerical1d(enrf, nstate, phif, outfile, logger, h5, txt, nb)
@@ -345,6 +347,7 @@ def main():
         txt     = args.txt
         nb = args.nb
         mo = args.mo 
+        threads = args.n
         
         if (h5 == False and txt == False and nb == False): txt = True
 
@@ -367,68 +370,71 @@ def main():
         outfoText='''Molpro jobs completed. Data saved in following files:
                 Energy File : energy_mod.dat'''
 
-        try:
-            if sysType == 'spectroscopic':
-                infoText +='''
-                System type               : Spectroscopic
-                Co-ordinate type          : Normal Modes
-                Molpro Config file        : {}
-                Atom Info file            : {}
-                Equilibrium Geometry file : {}
-                Frequency Info file       : {}
-                Wilson Matrix file        : {}
+        # try:
+        if sysType == 'spectroscopic':
+            infoText +='''
+            System type               : Spectroscopic
+            Co-ordinate type          : Normal Modes
+            Molpro Config file        : {}
+            Atom Info file            : {}
+            Equilibrium Geometry file : {}
+            Frequency Info file       : {}
+            Wilson Matrix file        : {}
 
-                '''.format(configfile, atomfile, geomfile, freqfile, wilsonfile)
-                logger.info(infoText + "\nCheck 'adt_molpro.log' for progress...")
-                jobRunner = Spectroscopic(scf, atomfile, geomFile, freqfile, wilsonFile)
-                trFile = 'tau_rho_mod.dat'
-                outfoText += '''
-                NACT 1 File : tau_rho_mod.dat
-                NACT 2 File : '''
+            '''.format(configfile, atomfile, geomfile, freqfile, wilsonfile)
+            logger.info(infoText + "\nCheck 'adt_molpro.log' for progress...")
+            jobRunner = Spectroscopic(scf, atomfile, geomFile, freqfile, wilsonFile)
+            trFile = 'tau_rho_mod.dat'
+            outfoText += '''
+            NACT 1 File : tau_rho_mod.dat
+            NACT 2 File : '''
 
 
 
-            elif sysType == 'scattering_hyper':
-                infoText +='''
-                System type               : Scattering
-                Co-ordinate type          : Hyperspherical
-                Molpro Config file        : {}
-                Atom Info file            : {}
+        elif sysType == 'scattering_hyper':
+            infoText +='''
+            System type               : Scattering
+            Co-ordinate type          : Hyperspherical
+            Molpro Config file        : {}
+            Atom Info file            : {}
 
-                '''.format(configfile, atomfile)
-                logger.info(infoText + "\nCheck 'adt_molpro.log' for progress...")
-                jobRunner = Scattering(scf, atomfile)
-                trFile = 'tau_rho_mod.dat'
-                outfoText += '''
-                NACT 1 File : tau_rho_mod.dat
-                NACT 2 File : '''
+            '''.format(configfile, atomfile)
+            logger.info(infoText + "\nCheck 'adt_molpro.log' for progress...")
+            jobRunner = Scattering(scf, atomfile)
+            trFile = 'tau_rho_mod.dat'
+            outfoText += '''
+            NACT 1 File : tau_rho_mod.dat
+            NACT 2 File : '''
 
-            elif sysType == 'scattering_jacobi':
-                infoText +='''
-                System type               : Scattering
-                Co-ordinate type          : Jacobi
-                Molpro Config file        : {}
-                Atom Info file            : {}
+        elif sysType == 'scattering_jacobi':
+            infoText +='''
+            System type               : Scattering
+            Co-ordinate type          : Jacobi
+            Molpro Config file        : {}
+            Atom Info file            : {}
 
-                '''.format(configfile, atomfile)
+            '''.format(configfile, atomfile)
 
-                logger.info(infoText + "\nCheck 'adt_molpro.log' for progress...")
-                jobRunner = Jacobi(scf, atomfile)
-                outfoText += '''
-                NACT File : '''
+            logger.info(infoText + "\nCheck 'adt_molpro.log' for progress...")
+            jobRunner = Jacobi(scf, atomfile)
+            outfoText += '''
+            NACT File : '''
 
-            else :
-                raise Exception('Not a proper system type')
+            # else :
+            #     raise Exception('Not a proper system type')
             jobRunner.runMolpro()
-            logger.info(outfoText+'tau_phi_mod.dat')
+            # logger.info(outfoText+'tau_phi_mod.dat')
 
-        except Exception as e:
-            logger.error("Program failed in molpro job. %s\n"%e+"-"*121)
-            sys.exit(1)
+        # except Exception as e:
+        #     logger.error("Program failed in molpro job. %s\n"%e+"-"*121)
+        #     sys.exit(1)
 
         if not mo:
             try:
-                from numeric.adt_numeric import adt_numerical, adt_numerical1d
+                if threads:
+                    # set opnemp environment variable to spwan threads
+                    os.environ['OMP_NUM_THREADS'] = threads
+                from adt.numeric.adt_numeric import adt_numerical, adt_numerical1d
                 if sysType in ['spectroscopic' , 'scattering_hyper']:
                     logger.info('''Starting Numerical calculation
                     Integration Path   : {}

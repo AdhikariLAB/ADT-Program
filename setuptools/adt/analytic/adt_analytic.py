@@ -1,3 +1,4 @@
+from __future__ import absolute_import, unicode_literals
 __doc__='''
 
 This python script is specifically implemented for devising analytic expressions of eight adiabatic to diabatic
@@ -20,7 +21,7 @@ Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar S
 '''
 
 
-import anamod
+from adt.analytic import anamod
 from time import time
 
 
