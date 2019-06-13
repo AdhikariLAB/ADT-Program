@@ -45,14 +45,15 @@ class Base():
 
     def createAnaTemplate(self):
         ''''Creates the molpro template files analytical job'''
-        cas = self.eInfo['cas']
+        # cas = self.eInfo['cas']
 
-        #remove core from the cas
-        try:
-            core = re.search( '[0-9a-zA-Z,;](core,\d+;*)', cas).group(1)
-            cas = cas.replace(core, '').strip(';')
-        except:
-            pass
+        # #remove core from the cas
+        # try:
+        #     core = re.search( '[0-9a-zA-Z,;](core,\d+;*)', cas).group(1)
+        #     cas = cas.replace(core, '').strip(';')
+        # except:
+        #     pass
+        cas = re.sub('[0-9a-zA-Z,;](core,\d+;*)', '', self.eInfo['cas'])
 
 
         energyLine ='{{mcscf;{cas}; wf,{wf};state,{state};start,2140.2; orbital,2140.2;{extra}}}'.format(
@@ -156,14 +157,15 @@ class Base():
     def createDdrTemplate(self):
         ''''Creates the molpro template files ddr job'''
 
-        cas = self.eInfo['cas']
+        # cas = self.eInfo['cas']
 
-        #remove core from the cas
-        try:
-            core = re.search( '[0-9a-zA-Z,;](core,\d+;*)', cas).group(1)
-            cas = cas.replace(core, '').strip(';')
-        except:
-            pass
+        # #remove core from the cas
+        # try:
+        #     core = re.search( '[0-9a-zA-Z,;](core,\d+;*)', cas).group(1)
+        #     cas = cas.replace(core, '').strip(';')
+        # except:
+        #     pass
+        cas = re.sub('[0-9a-zA-Z,;](core,\d+;*)', '', self.eInfo['cas'])
 
         #mrci has to be done for ddr nact calculation
         energyLine = """
@@ -266,7 +268,6 @@ class Base():
                 table, nacmr,nacmp
                 save,ddrnact{i}{j}.res,new;
 
-                
                 '''.format(dt=self.dt,dp=self.dp,i=i,j=j))
 
 
@@ -374,7 +375,7 @@ class Base():
         # lets say it will taken through a newly introduced variable `type`.
 
         sysType = dict(scf.items('sysInfo'))['type']
-        if sysType == 'spectroscopic': # for spectroscopic system
+        if sysType == 'spec': # for spectroscopic system
             self.rhoList = [float(i) for i in gInfo['rho'].split(',')] #map(float, gInfo['rho'].split(','))
             mInfo = dict(scf.items('mInfo'))
             self.vModes = [int(i)-1 for i in mInfo['varying'].split(',')]
@@ -384,7 +385,7 @@ class Base():
 
 
 
-        elif sysType == 'scattering_hyper': # for scattering system
+        elif sysType == 'scat_hyper': # for scattering system
             self.rhoList = [float(i) for i in gInfo['rho'].split(',')]#map(float, gInfo['rho'].split(','))
             if len(self.rhoList) != 1:
                 raise Exception('Give a fixed rho value for scattering calculation')
@@ -395,11 +396,20 @@ class Base():
                 raise Exception('Assymptotic energy value is mandatory for scaling the Energy surafaces for scattering system.')
             #scalling factor for scattering system
 
-        elif sysType == 'scattering_jacobi':# for the jacobi case
+        elif sysType == 'scat_jacobi':# for the jacobi case
             self.smallR = float(gInfo['small_r'])
             self.capR   = float(gInfo['capital_r'])
             self.gamma  = float(gInfo['gamma'])
-            self.q      = float(gInfo['q'])
+            # Checking if q is given in a list for grid or just
+            # a single value of q depending on that 2D or 1D adt will be done
+            ql = gInfo['q'].split(',')
+            if len(ql) == 1:  # 1D Jacobi will be done
+                self.1dJacobi = True
+                self.q      = float(gInfo['q'])
+            else :            # 2D Jacobi will be done
+                self.1dJacobi = False
+                ql = [float(i) for i in ql]
+                self.qGrid = self.makeGrid(ql)
             # phigrid is already above
 
         else :
@@ -538,7 +548,7 @@ class Base():
                 path = 'CompleteJobs/{}_{}/{}_{}'.format(gridn1, g1, gridn2, g2)
                 shutil.copy('molpro.wfu',self.scrdir)
                 exitcode = subprocess.call(
-                    ['molpro', '-n', self.proc, "-d", self.scrdir, '-W .', 'grid.com','--no-xml-output']
+                    ['molpro', '-n', self.proc, "-d", self.scrdir, '-W .', 'grid.com']
                     )
                 if exitcode==0:
                     self.msg( ' Job successful.', cont=True)
@@ -560,7 +570,7 @@ class Base():
         # self.removeFiles(allOut=True)   # removes the wfu and .com files after complete run
         self.msg('All molpro jobs done.')
 
-        scat = self.__class__.__name__=='Scattering'
+        scat = self.__class__.__name__=='Scattering'  # check which class is calling this
         #fill the missing values by 1D interpolation
         # '_mod' suffix means files with filled data
         for file in [filEe, fileN1, fileN2]:
@@ -654,7 +664,7 @@ class Spectroscopic(Base):
 
         self.msg( "Running molpro job for equilibrium point.......")
         exitcode = subprocess.call(
-            ['molpro', '-n', self.proc, "-d", self.scrdir, '-W .', 'init.com','--no-xml-output']
+            ['molpro', '-n', self.proc, "-d", self.scrdir, '-W .', 'init.com']
             )
         if exitcode==0: 
             self.msg( ' Job successful', cont=True)
@@ -813,7 +823,7 @@ class Scattering(Base):
         self.msg( "Running molpro job for initial point....." )
         sys.stdout.flush()
         exitcode = subprocess.call(
-            ['molpro', '-n', self.proc, "-d", self.scrdir, '-W .', 'init.com','--no-xml-output']
+            ['molpro', '-n', self.proc, "-d", self.scrdir, '-W .', 'init.com']
             )
         if exitcode==0: 
             self.msg( ' Job successful', cont= True)
@@ -838,7 +848,7 @@ class Scattering(Base):
 
 
 
-class Jacobi(Base):
+class Jacobi1D(Base):
     def __init__(self, conFig, atomFile ):
         self.parseData(atomFile)
         self.parseConfig(conFig)
@@ -847,14 +857,14 @@ class Jacobi(Base):
     def createDdrTemplate(self):
         ''''Creates the molpro template files ddr job'''
 
-        cas = self.eInfo['cas']
+        cas = re.sub( '[0-9a-zA-Z,;](core,\d+;*)', '', self.eInfo['cas'])
 
         #remove core from the cas
-        try:
-            core = re.search( '[0-9a-zA-Z,;](core,\d+;*)', cas).group(1)
-            cas = cas.replace(core, '').strip(';')
-        except:
-            pass
+        # try:
+        #     core = re.search( '[0-9a-zA-Z,;](core,\d+;*)', cas).group(1)
+        #     cas = cas.replace(core, '').strip(';')
+        # except:
+        #     pass
 
 
         #mrci has to be done for ddr for using the ddr wf in ddr nact calculation
@@ -1015,7 +1025,7 @@ class Jacobi(Base):
             f.write(tmp)
 
 
-    def createAllGeom(self, theta, phi):
+    def createAllGeom(self, phi):
         ''' Creates 3 different geometry files for using in molpro ddr calculation '''
         self.createOneGeom(phi,    'geom1.xyz')
         self.createOneGeom(phi+self.dp,'geom2.xyz')
@@ -1027,9 +1037,9 @@ class Jacobi(Base):
         '''Runs molpro for a initial geometry, i.e. phi=0'''
         self.createOneGeom( 0)
         self.msg( "Running molpro job for initial point....." )
-        sys.stdout.flush()
+
         exitcode = subprocess.call(
-            ['molpro', '-n', self.proc, "-d", self.scrdir, '-W .', 'init.com','--no-xml-output']
+            ['molpro', '-n', self.proc, "-d", self.scrdir, '-W .', 'init.com']
             )
         if exitcode==0: 
             self.msg( ' Job successful', cont= True)
@@ -1043,15 +1053,13 @@ class Jacobi(Base):
 
     def runMolpro(self):
         '''Runs the molpro for each gridpoints '''
+        # this here is only for 1d jacobi
         # subprocess calls blocks system I/O buffer, so the I/Os (sometimes) have to be flushed out explicitely 
         # open files to store result
         filee  = open('energy.dat', 'w', buffering=1)
         filen = open('tau_phi.dat','w', buffering=1)
 
 
-        #grid1 is theta or rho
-        #grid2 is phi
-        #create folder for incomplete jobs , delete if already exists
         if os.path.isdir('IncompleteJobs'):
             shutil.rmtree('IncompleteJobs')
         os.mkdir('IncompleteJobs')
@@ -1071,7 +1079,7 @@ class Jacobi(Base):
                 shutil.copy('molpro.wfu',self.scrdir)
 
                 exitcode = subprocess.call(
-                    ['molpro', '-n', self.proc, "-d", self.scrdir, '-W .', 'grid.com','--no-xml-output']
+                    ['molpro', '-n', self.proc, "-d", self.scrdir, '-W .', 'grid.com']
                     )
                 if exitcode==0:
                     self.msg( ' Job successful.', cont=True)
@@ -1105,6 +1113,93 @@ class Jacobi(Base):
             )
 
 
+
+
+class Jacobi2D(Base):
+    def __init__(self, conFig, atomFile ):
+        self.parseData(atomFile)
+        self.parseConfig(conFig)
+        # from here returns the type of the jacobi calculation so 
+        # that the main function can under stand the type
+
+
+    def getTauAna(self,q,  phi):
+        '''Used in Analytical NACT calculation'''
+        tauph = []
+        for i,j in self.nactPairs:
+            file   = 'ananac{}{}.res'.format(i,j)
+            grads  = self.parseResult(file)
+            val = q*(-grads[2,0]*self.sin(phi) + grads[2,1]*self.cos(phi))
+            tauph.append(np.abs(val))
+        return tauph
+
+
+    def getTauDdr(self, *args):
+        '''Used in DDR NACT calculation'''
+        tauph = []
+        for i,j in self.nactPairs : 
+            file = 'ddrnact{}{}.res'.format(i,j)
+            val  = self.parseResult(file)
+            tauph.append(np.abs(val))
+        return np.array(tauph)
+
+
+
+
+    def createOneGeom(self, q, phi, outFile='geom.xyz'):
+        ''' Creates geometry file, to be used in molpro for the given r, R, gamma, q, phi'''
+
+        curGeom  = self.bohrtoang*np.array([
+            [-self.smallR/2.0,0.0,0.0],
+            [self.smallR/2.0,0.0,0.0],
+            [self.capR*self.cos(self.gamma)+q*self.cos(phi), 
+            self.capR*self.sin(self.gamma)+q*self.sin(phi),
+            0.0]])
+        msg = 'for r = {}, R = {}, gamma = {}, Phi = {}, q= {}'.format(self.smallR, self.capR, self.gamma, phi, q)
+        nAtoms = len(self.atomNames)
+        tmp = " {}\n".format(nAtoms)
+        tmp+= "Geometry file created from ADT program. %s \n"%msg
+        for i in range(nAtoms):
+            tmp += "{},{},{},{}\n".format(self.atomNames[i], *curGeom[i])
+        with open(outFile,"w") as f:
+            f.write(tmp)
+
+
+    def createAllGeom(self, q, phi):
+        ''' Creates 5 different geometry files for using in molpro ddr calculation '''
+        self.createOneGeom(q,  phi,  'geom1.xyz')
+        self.createOneGeom(q+self.q, phi, 'geom2.xyz')
+        self.createOneGeom(q-self.q, phi, 'geom3.xyz')
+        self.createOneGeom(q, phi+self.dp,'geom4.xyz')
+        self.createOneGeom(q, phi-self.dp,'geom5.xyz')
+
+
+    def equiRun(self):
+        '''Runs molpro for a initial geometry, i.e. phi=0 and initial q grid  point'''
+        self.createOneGeom(self.qGrid[0],  0)
+        self.msg( "Running molpro job for initial point....." )
+
+        exitcode = subprocess.call(
+            ['molpro', '-n', self.proc, "-d", self.scrdir, '-W .', 'init.com']
+            )
+        if exitcode==0: 
+            self.msg( ' Job successful', cont= True)
+        else:
+            self.msg( ' Job failed', cont= True)
+            sys.exit('Molpro failed in initital step')
+        equiData = self.parseResult('equienr.res').flatten()
+        np.savetxt('equienr.dat', equiData, fmt='%.8f')
+
+
+    def runMolpro(self):
+        self.runThisMolpro(
+            self.qGrid, 
+            'q', 
+            self.phiGrid, 
+            'Phi', 
+            'energy.dat', 
+            'tau_q.dat', 
+            'tau_phi.dat' )
 
 
 # if __name__ == "__main__":

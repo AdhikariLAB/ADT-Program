@@ -23,7 +23,7 @@ import logging
 import textwrap
 import argparse
 from adt.analytic.adt_analytic import adt_analytical
-from adt.molpro.adt_molpro import Scattering, Spectroscopic, Jacobi
+from adt.molpro.adt_molpro import Scattering, Spectroscopic, Jacobi1D, Jacobi2D
 if sys.version_info.major>2:
     import configparser as ConfigParser
 else :
@@ -277,13 +277,13 @@ def main():
             logger = make_logger("ADT Numerical Program")
             tmpLog = '''Starting Numerical program for 2D ADT. 
 
-            Energy File          : {}
-            NACT 1 File          : {}
-            NACT 2 File          : {}
-            Number of states     : {}
-            Integration path     : {}
-            Output file/folder   : {}
-            Output file format   : {}
+            Energy File             : {}
+            NACT File (non-circular): {}
+            NACT File (circular)    : {}
+            Number of states        : {}
+            Integration path        : {}
+            Output file/folder      : {}
+            Output file format      : {}
             '''.format(enrf, rhof, phif, nstatet, path, outfile, ffrmt)
             if threads:
                 tmpLog += 'OpenMP threads       : {}'.format(threads)
@@ -371,7 +371,7 @@ def main():
                 Energy File : energy_mod.dat'''
 
         # try:
-        if sysType == 'spectroscopic':
+        if sysType == 'spec':
             infoText +='''
             System type               : Spectroscopic
             Co-ordinate type          : Normal Modes
@@ -391,7 +391,7 @@ def main():
 
 
 
-        elif sysType == 'scattering_hyper':
+        elif sysType == 'scat_hyper':
             infoText +='''
             System type               : Scattering
             Co-ordinate type          : Hyperspherical
@@ -406,7 +406,7 @@ def main():
             NACT 1 File : tau_rho_mod.dat
             NACT 2 File : '''
 
-        elif sysType == 'scattering_jacobi':
+        elif sysType == 'scat_jacobi':
             infoText +='''
             System type               : Scattering
             Co-ordinate type          : Jacobi
@@ -416,7 +416,11 @@ def main():
             '''.format(configfile, atomfile)
 
             logger.info(infoText + "\nCheck 'adt_molpro.log' for progress...")
-            jobRunner = Jacobi(scf, atomfile)
+            jacobi1D = len(dict(scf.items('gInfo'))['q'].split(','))==1
+            if jacobi1D:
+                jobRunner = Jacobi1D(scf, atomfile)
+            else:
+                jobRunner = Jacobi2D(scf, atomFile)
             outfoText += '''
             NACT File : '''
 
