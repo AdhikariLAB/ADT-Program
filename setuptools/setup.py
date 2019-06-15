@@ -29,28 +29,28 @@ from setuptools import find_packages
 
 #for default_fortran compiler(usually gfortran) without parallel
 # python setup.py install
-fort_args = []
-lib_links = []
+fort_args = ''
+lib_links = ''
 
 
 # for ifort with openmp parallel flags
 # python setup.py config_fc --fcompiler=intelem  install
-# fort_args = ['-qopenmp']
-# lib_links = ['-liomp5']
+# fort_args = '-qopenmp'
+# lib_links = '-liomp5'
 
 
 
 #for gfortran with openmp parallel flags
 # python setup.py config_fc --fcompiler=gnu95  install
-#fort_args = ['-fopenmp']
-#lib_links = ['-lgomp']
+#fort_args = '-fopenmp'
+#lib_links = '-lgomp'
 
 
 
 lib = Extension(name='adt.numeric.adtmod', 
             sources=['adt/numeric/nummod.f90'],
-            extra_f90_compile_args=fort_args,
-            extra_link_args=lib_links)
+            extra_f90_compile_args=[fort_args],
+            extra_link_args=[lib_links])
 
 
 

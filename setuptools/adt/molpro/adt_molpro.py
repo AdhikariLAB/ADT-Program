@@ -404,10 +404,10 @@ class Base():
             # a single value of q depending on that 2D or 1D adt will be done
             ql = gInfo['q'].split(',')
             if len(ql) == 1:  # 1D Jacobi will be done
-                self.1dJacobi = True
+                # self.Jacobi = True
                 self.q      = float(gInfo['q'])
             else :            # 2D Jacobi will be done
-                self.1dJacobi = False
+                # self.Jacobi = False
                 ql = [float(i) for i in ql]
                 self.qGrid = self.makeGrid(ql)
             # phigrid is already above
