@@ -1,4 +1,4 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import absolute_import, unicode_literals, division, print_function
 __doc__='''
 
 This python script is specifically implemented for devising analytic expressions of eight adiabatic to diabatic
@@ -27,50 +27,60 @@ from time import time
 
 #Main switcher function
 
+# def adt_analytical(N,p, logger):
+#     start = time()
+
+#     {1: adt1, 2: adt2, 3: adt3, 4: adt4,
+#      5: adt5, 6: adt6, 7: adt7, 8: adt8
+#     }[p](N,logger)
+
+#     logger.info("Program completed successfully in %.5f seconds\n"%(time()-start)+"-"*121)
+
+
+# 6 available options, removing first two from earlier
 def adt_analytical(N,p, logger):
     start = time()
 
-    {1: adt1, 2: adt2, 3: adt3, 4: adt4,
-     5: adt5, 6: adt6, 7: adt7, 8: adt8
+    {1: adt3, 2: adt4,
+     3: adt5, 4: adt6, 5: adt7, 6: adt8
     }[p](N,logger)
 
     logger.info("Program completed successfully in %.5f seconds\n"%(time()-start)+"-"*121)
 
 
-
 #This definition returns elements of adiabatic potential energy matrix
 
-def adt1(N,logger):
-    logger.info("Deriving adiabatic potential energy matrix")
-    U_Matrix = anamod.adiabatic(N)
+# def adt1(N,logger):
+#     logger.info("Deriving adiabatic potential energy matrix")
+#     U_Matrix = anamod.adiabatic(N)
 
-    txt =""
-    for i in range(1,N+1):
-      for j in range(1,N+1):
-        txt += ' U_%s_%s = ' % (i,j)
-        txt += U_Matrix[i-1][j-1] +"\n\n"
+#     txt =""
+#     for i in range(1,N+1):
+#       for j in range(1,N+1):
+#         txt += ' U_%s_%s = ' % (i,j)
+#         txt += U_Matrix[i-1][j-1] +"\n\n"
 
-    logger.info("Writing results in 'U_MATRIX.DAT'")
+#     logger.info("Writing results in 'U_MATRIX.DAT'")
 
-    with open('U_MATRIX.DAT', "w") as f:
-        f.write(txt)
+#     with open('U_MATRIX.DAT', "w") as f:
+#         f.write(txt)
 
 
-#This definition returns elements of nonadiabatic coupling matrix (NACM)
+# #This definition returns elements of nonadiabatic coupling matrix (NACM)
 
-def adt2(N,logger):
-    logger.info("Deriving NACM")
-    NACM = anamod.nacm(N)
+# def adt2(N,logger):
+#     logger.info("Deriving NACM")
+#     NACM = anamod.nacm(N)
 
-    txt =""
-    for i in range(1,N+1):
-      for j in range(1,N+1):
-        txt += ' NACM_%s_%s = ' % (i,j)
-        txt += NACM[i-1][j-1] + "\n\n"
+#     txt =""
+#     for i in range(1,N+1):
+#       for j in range(1,N+1):
+#         txt += ' NACM_%s_%s = ' % (i,j)
+#         txt += NACM[i-1][j-1] + "\n\n"
 
-    logger.info("Writing results in 'NACM.DAT'")
-    with open('NACM.DAT','w') as f:
-        f.write(txt)
+#     logger.info("Writing results in 'NACM.DAT'")
+#     with open('NACM.DAT','w') as f:
+#         f.write(txt)
 
 
 #This definition returns elements of adiabatic to diabatic transformation (ADT) matrix
