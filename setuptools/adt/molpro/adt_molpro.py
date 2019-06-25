@@ -358,9 +358,22 @@ class Base():
 
         gInfo = dict(scf.items('gInfo'))
 
-        self.state = int(self.eInfo['state'])
-        self.nactPairs = [[i, j] for j in range(2, self.state+1) for i in range(1, j)]
 
+        # `nstate` contains number of states and `state` state number and indexes
+
+        self.state = self.eInfo['state']
+
+        # Haven't checked this regex, take caution
+        # nstate = int(re.search('^(\d+)[\d,]*',self.state ).group(1))
+        states = [int(i) for i in self.state.split(',')]
+        if len(states)==1:
+            self.nactPairs = [[i, j] for j in range(2, states[0]+1) for i in range(1, j)]
+        else:
+            # so I think all the states have to be mentioned.
+            nstate = states[0]
+            statez = states[1:]
+            assert nstate == len(statez), 'Provide all the %d states'%nstate
+            self.nactPairs = [[statez[i], statez[j]] for j in range(nstate) for i in range(j)]
         # self.nactPairs = [[i,j] for i in range(1,self.state+1) for j in range(i+1,self.state+1)]
         self.nTau = len(self.nactPairs)
 
@@ -1216,8 +1229,10 @@ class Jacobi2D(Base):
             'tau_phi.dat' )
 
 
-# if __name__ == "__main__":
-#     s = Jacobi('./molpro.config', './atomfile.dat')
-#     s.createOneGeom(0)
+if __name__ == "__main__":
+    scf = ConfigParser.ConfigParser()
+    scf.read('./molpro.config')
+    s = Jacobi(scf, './atomfile.dat')
+    s.createOneGeom(0)
 #     #s = Spectroscopic('./molpro.config', './atomfile.dat', 'geomfile.dat','frequency.dat', 'wilson.dat')
 #     s.runMolpro()
