@@ -416,7 +416,7 @@ def adt_numerical1d(enrf, nstate, tauf, outfile, logger, h5, txt, nb):
 def file_write(file, data, col):
     file = open(file, "w")
     for r in col:
-        np.savetxt( file, data[data[:,0]==r] ,delimiter="\t", fmt="%.8f")
+        np.savetxt( file, data[data[:,0]==r] ,delimiter="\t", fmt=str("%.8f"))
         file.write("\n")
 
 
@@ -440,7 +440,7 @@ def adt2d(grid1, grid2, nact1, nact2, energy=None, path = 1):
           `nact1`.
     energy: 3D ndarray for energy in shape of `(ngrid1, ngrid2, nstate)` where nstate is the 
            number of energy state.
-    
+
 
     Returns
     -------

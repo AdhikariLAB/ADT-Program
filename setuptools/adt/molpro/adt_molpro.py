@@ -461,7 +461,7 @@ class Base():
         ''' Writes output data in plain txt'''
         file = open(file,'w')
         for tp in np.unique(data[:,0]):
-            np.savetxt( file, data[data[:,0]==tp] ,delimiter="\t", fmt="%.8f")
+            np.savetxt( file, data[data[:,0]==tp] ,delimiter="\t", fmt=str("%.8f"))
             file.write("\n")
 
     def interp(self, file ):

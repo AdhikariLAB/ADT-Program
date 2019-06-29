@@ -24,10 +24,12 @@ import textwrap
 import argparse
 from adt.analytic.adt_analytic import adt_analytical
 from adt.molpro.adt_molpro import Scattering, Spectroscopic, Jacobi1D, Jacobi2D
+
 if sys.version_info.major>2:
-    import configparser as ConfigParser
+    from configparser import ConfigParser as ConfigParser
 else :
-    import ConfigParser
+    from ConfigParser import SafeConfigParser as ConfigParser
+    
 
 class CustomParser(argparse.ArgumentParser):
     def error(self, message):
@@ -207,7 +209,6 @@ def main():
     molpro.add_argument("-mo" ,
                         action = "store_true",
                         help="Terminate the program after completion of MOLPRO jobs befor calculating the ADT quantities.")
-
     molpro.add_argument("-h5",
                         action = 'store_true',
                         help   = "Write results in a HDF5 file (.h5).\nFast IO, smaller file size and hierarchical filesystem-like data format,\npreferable for saving and sharing large datasets in an organised way.\n " )
@@ -289,12 +290,13 @@ def main():
             if threads:
                 tmpLog += 'OpenMP threads       : {}'.format(threads)
                 # set opnemp environment variable to spwan threads
-            # else:
-            #     threads = 1
-                os.environ['OMP_NUM_THREADS'] = threads
+            else:
+                threads = 1
+                
             logger.info(tmpLog)
 
             # importing it here, just so that `OMP_NUM_THREADS` can take effect
+            os.environ['OMP_NUM_THREADS'] = threads
             from adt.numeric.adt_numeric import adt_numerical
 
             try:
@@ -313,15 +315,9 @@ def main():
             Output file/folder   : {}
             Output file format   : {}
             '''.format(enrf, phif, nstatet, outfile, ffrmt)
-
-            #!!! no threaded part for 1D adt
-            # if threads:
-            #     tmpLog += 'OpenMP threads       : {}'.format(threads)
-            #     # set opnemp environment variable to spwan threads
-            #     os.environ['OMP_NUM_THREADS'] = threads
             logger.info(tmpLog)
 
-            # importing it here, just so that `OMP_NUM_THREADS` can take effect
+            #!!! no threaded part for 1D adt
             from adt.numeric.adt_numeric import adt_numerical1d
 
             try:

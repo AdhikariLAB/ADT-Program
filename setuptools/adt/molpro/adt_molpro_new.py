@@ -15,10 +15,30 @@ from adt.numeric.adtmod import adt as fadt
 
 
 if sys.version_info.major>2:
-    import configparser as ConfigParser
+    from configparser import ConfigParser as ConfigParser
 else :
-    import ConfigParser
+    from ConfigParser import SafeConfigParser as ConfigParser
 
+# 180/pi multiplication from ddr removed
+
+
+def mainDriver(logger, configFile, atomFile, *args):
+    scf = ConfigParser()
+    scf.read(configfile)
+    sysType = scf.get('sysInfo', 'type')
+
+    logger.info("Starting molpro jobs.")
+
+    if sysType == 'spec':
+        # args is a list of [geomFile, freqfile, wilsonFile]
+        jobRunner = Spectroscopic(scf, atomfile, *args)
+    elif sysType == 'scat_hyper':
+        jobRunner = Scattering(scf, atomfile)
+    elif sysType == 'scat_jacobi':
+        jobRunner = Scattering(scf, atomfile)
+    else :
+        raise Exception('Not a proper system type')
+    jobRunner.runJob()
 
 
 
@@ -30,6 +50,7 @@ class Base():
     hbar         = 0.063508
     cInvToTauInv = 0.001883651
     bohrtoang    = 0.529177
+    writeFmt     = str("%.8f")
 
     def sin(self, x):
         """ A sin function that directly takes degree as input unlike numpy"""
@@ -170,7 +191,7 @@ class Base():
         #mrci has to be done for ddr nact calculation
         energyLine = """
             {{mcscf;{cas1}; wf,{wf};state,{state};start,2140.2; orbital,2140.2;{extra1}}}
-            {{mrci; {cas}; wf,{wf};state,{state};save,6000.2;{extra2}}}
+            {{mrci; {cas}; wf,{wf};state,{state};save,6000.2;dm,8000.2;{extra2}}}
             """.format(state   =self.eInfo['state'],
                         wf     = self.eInfo['wf'],
                         cas    = self.eInfo['cas'],
@@ -246,30 +267,53 @@ class Base():
         nactTemp= ''
 
         for i,j in self.nactPairs:
+            # nactTemp+=textwrap.dedent(''' 
+            #     !for taur     
+            #     {{ddr,{dt},2140.2,2241.2,8001.2;state, {j}.1,{i}.1}}
+            #     nacmepv=nacme
+
+            #     {{ddr,-{dt},2140.2,2242.2,8002.2;state, {j}.1,{i}.1}}
+            #     nacmemv=nacme
+
+            #     nacmr = 0.5*(nacmepv+ nacmemv)
+
+            #     !for taup
+            #     {{ddr,{dp},2140.2,2243.2,8003.2;state, {j}.1,{i}.1}}
+            #     nacmepv=nacme
+
+            #     {{ddr,-{dp},2140.2,2244.2,8004.2;state, {j}.1,{i}.1}}
+            #     nacmemv=nacme
+            #     nacmp = 0.5*(nacmepv+ nacmemv)
+
+
+            #     table, nacmr,nacmp
+            #     save,ddrnact{i}{j}.res,new;
+
+            #     '''.format(dt=self.dt,dp=self.dp,i=i,j=j))
+
+
+            #implementing three point cebtral difference
             nactTemp+=textwrap.dedent(''' 
                 !for taur     
-                {{ddr,{dt},2140.2,2241.2,8001.2;state, {j}.1,{i}.1}}
-                nacmepv=nacme
-
-                {{ddr,-{dt},2140.2,2242.2,8002.2;state, {j}.1,{i}.1}}
-                nacmemv=nacme
-
-                nacmr = 0.5*(nacmepv+ nacmemv)
+                {{ddr, 2*{dt}
+                orbital,2140.2,2141.2,2142.2;
+                density,8000.2,8001.2,8002.2;
+                state, {j}.1,{i}.1
+                }}
+                nacmr = nacme
 
                 !for taup
-                {{ddr,{dp},2140.2,2243.2,8003.2;state, {j}.1,{i}.1}}
-                nacmepv=nacme
-
-                {{ddr,-{dp},2140.2,2244.2,8004.2;state, {j}.1,{i}.1}}
-                nacmemv=nacme
-                nacmp = 0.5*(nacmepv+ nacmemv)
-
+                {{ddr, 2*{dp}
+                orbital,2140.2,2143.2,2144.2;
+                density,8000.2,8003.2,8004.2;
+                state, {j}.1,{i}.1
+                }}
+                nacmp = nacme
 
                 table, nacmr,nacmp
                 save,ddrnact{i}{j}.res,new;
 
                 '''.format(dt=self.dt,dp=self.dp,i=i,j=j))
-
 
 
         molproTemplate += nactTemp + '\n---\n'
@@ -317,12 +361,11 @@ class Base():
         self.atomNames = atomData['names']
         self.atomMass  = atomData['mass']
 
-    def parseConfig(self, scf):
+    def parseCommonConfig(self, scf):
         ''' 
         Parses configuration for running molpro from the provided molpro config file 
         and sets up different methods and attributes relavant to the configuration 
         '''
-
 
         spec = self.__class__.__name__ == 'Spectroscopic'
 
@@ -448,7 +491,7 @@ class Base():
         ''' Writes output data in plain txt'''
         file = open(file,'w')
         for tp in np.unique(data[:,0]):
-            np.savetxt( file, data[data[:,0]==tp] ,delimiter="\t", fmt="%.8f")
+            np.savetxt( file, data[data[:,0]==tp] ,delimiter="\t", fmt=writeFmt)
             file.write("\n")
 
     def interp(self, file ):
@@ -487,7 +530,6 @@ class Base():
             os.remove(file)
 
 
-
     def msg(self, m, cont=False):
         ''' Writes info in the log files'''
         if not cont : 
@@ -496,6 +538,7 @@ class Base():
             m+='\n'
         self.logFile.write(m)
         self.logFile.flush()
+
 
     def moveFiles(self, path):
         ''' Saves the geometry out and results file in a specific directory'''
@@ -560,15 +603,18 @@ class Base():
 
                 enrData = self.parseResult('enr.res').flatten()
                 tau1, tau2 = self.getTau(g1, g2)
-                np.savetxt(filee,  np.append([g1,g2],enrData)[None], fmt='%.8f', delimiter='\t')
-                np.savetxt(filen1, np.append([g1,g2],tau1)[None],  fmt='%.8f', delimiter='\t')
-                np.savetxt(filen2, np.append([g1,g2],tau2)[None],  fmt='%.8f', delimiter='\t')
+                np.savetxt(filee,  np.append([g1,g2],enrData)[None], fmt=writeFmt, delimiter='\t')
+                np.savetxt(filen1, np.append([g1,g2],tau1)[None],  fmt=writeFmt, delimiter='\t')
+                np.savetxt(filen2, np.append([g1,g2],tau2)[None],  fmt=writeFmt, delimiter='\t')
                 self.moveFiles(path)
             filee.write('\n')
             filen1.write('\n')
             filen2.write('\n')
         # self.removeFiles(allOut=True)   # removes the wfu and .com files after complete run
         self.msg('All molpro jobs done.')
+
+
+
 
         scat = self.__class__.__name__=='Scattering'  # check which class is calling this
         #fill the missing values by 1D interpolation
@@ -590,10 +636,26 @@ class Base():
 class Spectroscopic(Base):
     ''' Inherited from the Base class, this class contains necessary methods
      for running molpro for a Spectroscopic system'''
-    def __init__(self, conFig ,atomFile, geomFile , freqFile , wilsonFile ):
+    def __init__(self, conFig ,atomFile, geomFile , freqFile , wilsonFile, logger ):
         self.parseData(atomFile)
         self.parseSData(geomFile, freqFile, wilsonFile)
         self.parseConfig(conFig)
+
+        logger.info(
+            '''
+            System type               : Spectroscopic
+            Co-ordinate type          : Normal Modes
+            Molpro Config file        : {}
+            Atom Info file            : {}
+            Equilibrium Geometry file : {}
+            Frequency Info file       : {}
+            Wilson Matrix file        : {}
+                '''.format(configfile, atomfile, geomfile, freqfile, wilsonfile)
+        )
+
+
+
+
 
     def parseSData(self, geomFile, freqFile, wilsonFile):
         '''Parses equilibrium geometry, frequencies and the wilson matrix data for a sceptroscopic system'''
@@ -650,7 +712,7 @@ class Spectroscopic(Base):
         '''Used in DDR NACT calculation'''
         tau =  np.stack([self.parseResult('ddrnact{}{}.res'.format(i,j)) 
                                     for i,j in self.nactPairs]).T
-        return (180.0/mp.pi)*np.abs(tau)
+        return np.abs(tau)
 
 
 
@@ -675,7 +737,7 @@ class Spectroscopic(Base):
             self.msg( ' Job failed', cont=True)
             sys.exit('Molpro failed in equilibrium step')
         equiData = self.parseResult('equienr.res').flatten()
-        np.savetxt('equienr.dat', equiData, fmt='%.8f')
+        np.savetxt('equienr.dat', equiData, fmt=writeFmt)
 
 
 
@@ -695,9 +757,23 @@ class Spectroscopic(Base):
 class Scattering(Base):
     ''' Inherited from the Base class, this class containg necessary methods
      for running molpro for a Scattering system'''
-    def __init__(self, conFig, atomFile ):
+    def __init__(self, conFig, atomFile, logger):
         self.parseData(atomFile)
         self.parseConfig(conFig)
+
+        logger.info(
+            '''
+            System type               : Scattering
+            Co-ordinate type          : Hyperspherical
+            Molpro Config file        : {}
+            Atom Info file            : {}
+
+            '''.format(configfile, atomfile)
+        )
+
+
+
+
 
     def AreaTriangle(self,a,b,c):
         """ area of a tringle with sides a,b,c """
@@ -818,7 +894,7 @@ class Scattering(Base):
         '''Used in DDR NACT calculation'''
         tau = np.vstack([self.parseResult('ddrnact{}{}.res'.format(i,j)) 
                                     for i,j in self.nactPairs]).T
-        return (180.0/mp.pi)*np.abs(tau)
+        return np.abs(tau)
 
 
     def equiRun(self):
@@ -835,7 +911,7 @@ class Scattering(Base):
             self.msg( ' Job failed', cont= True)
             sys.exit('Molpro failed in initital step')
         equiData = self.parseResult('equienr.res').flatten()
-        np.savetxt('equienr.dat', equiData, fmt='%.8f')
+        np.savetxt('equienr.dat', equiData, fmt=writeFmt)
 
 
 
@@ -848,6 +924,30 @@ class Scattering(Base):
             'energy.dat', 
             'tau_theta.dat', 
             'tau_phi.dat' )
+
+
+
+
+
+
+class Jacobi(Base):
+    def __init__(self, conFig, atomFile, logger):
+        self.parseData(atomFile)
+        self.parseConfig(conFig)
+        logger.info(
+            '''
+            System type               : Scattering
+            Co-ordinate type          : Jacobi
+            Molpro Config file        : {}
+            Atom Info file            : {}
+
+            '''.format(configfile, atomfile)
+        )
+
+
+
+
+
 
 
 
@@ -1064,7 +1164,7 @@ class Jacobi1D(Base):
             path = path.replace('C', "Inc")
         equiData = self.parseResult('equienr.res').flatten()
         self.moveFiles(path)
-        np.savetxt('equienr.dat', equiData, fmt='%.8f')
+        np.savetxt('equienr.dat', equiData, fmt=writeFmt)
 
 
 
@@ -1109,8 +1209,8 @@ class Jacobi1D(Base):
                 enrData = self.parseResult('enr.res').flatten()
                 tau = self.getTau(phi)
                 self.moveFiles(path)
-                np.savetxt(filee,  np.append([phi],enrData)[None], fmt='%.8f', delimiter='\t')
-                np.savetxt(filen, np.append([phi],tau)[None],  fmt='%.8f', delimiter='\t')
+                np.savetxt(filee,  np.append([phi],enrData)[None], fmt=writeFmt, delimiter='\t')
+                np.savetxt(filen, np.append([phi],tau)[None],  fmt=writeFmt, delimiter='\t')
         self.msg('All molpro jobs done.', cont=True)
 
         for file in ['energy.dat', 'tau_phi.dat']:
@@ -1125,7 +1225,7 @@ class Jacobi1D(Base):
                 res[:,1:] -= float(self.eInfo['scale'])
             np.savetxt(
                 file.replace('.dat', '_mod.dat'),
-                res, fmt='%.8f', delimiter='\t'
+                res, fmt=writeFmt, delimiter='\t'
             )
 
 
@@ -1157,7 +1257,7 @@ class Jacobi2D(Base):
             file = 'ddrnact{}{}.res'.format(i,j)
             val  = self.parseResult(file)
             tauph.append(np.abs(val))
-        return (180.0/mp.pi)*np.array(tauph)
+        return np.array(tauph)
 
 
     def createOneGeom(self, q, phi, outFile='geom.xyz'):
@@ -1202,7 +1302,7 @@ class Jacobi2D(Base):
             self.msg( ' Job failed', cont= True)
             sys.exit('Molpro failed in initital step')
         equiData = self.parseResult('equienr.res').flatten()
-        np.savetxt('equienr.dat', equiData, fmt='%.8f')
+        np.savetxt('equienr.dat', equiData, fmt=writeFmt)
 
 
     def runMolpro(self):
