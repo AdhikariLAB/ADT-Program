@@ -23,15 +23,12 @@ import logging
 import textwrap
 import argparse
 from adt.analytic.adt_analytic import adt_analytical
-from adt.molpro.adt_molpro import Scattering, Spectroscopic, Jacobi1D, Jacobi2D
+from adt.molpro.adt_molpro import mainDriver
 
-if sys.version_info.major>2:
-    from configparser import ConfigParser as ConfigParser
-else :
-    from ConfigParser import SafeConfigParser as ConfigParser
-    
 
 class CustomParser(argparse.ArgumentParser):
+    # subcommands are mandatory arguments in python 2 but not in python 3. 
+    # So, absence of any subcommand will throw an error in python 2 but not in python 3
     def error(self, message):
         sys.stderr.write('\033[91mError: %s\n\033[0m' % message)
         self.print_help()
@@ -270,7 +267,7 @@ def main():
         else :nstatet = nstate
 
         
-        # adt1D true means an 1D adt will be done
+        #as phifile is mandatory, presence of another nact file means 2D nact will be done
         adt2D = True if rhof else False
 
 
@@ -289,10 +286,8 @@ def main():
             '''.format(enrf, rhof, phif, nstatet, path, outfile, ffrmt)
             if threads:
                 tmpLog += 'OpenMP threads       : {}'.format(threads)
-                # set opnemp environment variable to spwan threads
-            else:
-                threads = 1
-                
+            else: # if thread not specified then just spawn one thread
+                threads = str(1)
             logger.info(tmpLog)
 
             # importing it here, just so that `OMP_NUM_THREADS` can take effect
@@ -317,7 +312,6 @@ def main():
             '''.format(enrf, phif, nstatet, outfile, ffrmt)
             logger.info(tmpLog)
 
-            #!!! no threaded part for 1D adt
             from adt.numeric.adt_numeric import adt_numerical1d
 
             try:
@@ -360,73 +354,8 @@ def main():
 
 
 
-        scf = ConfigParser.SafeConfigParser()
-        scf.read(configfile)
-        sysType = dict(scf.items('sysInfo'))['type']
-
-
-        infoText = "Starting molpro jobs. "
-        outfoText='''Molpro jobs completed. Data saved in following files:
-                Energy File : energy_mod.dat'''
-
         try:
-            if sysType == 'spec':
-                infoText +='''
-                System type               : Spectroscopic
-                Co-ordinate type          : Normal Modes
-                Molpro Config file        : {}
-                Atom Info file            : {}
-                Equilibrium Geometry file : {}
-                Frequency Info file       : {}
-                Wilson Matrix file        : {}
-
-                '''.format(configfile, atomfile, geomfile, freqfile, wilsonfile)
-                logger.info(infoText + "\nCheck 'adt_molpro.log' for progress...")
-                jobRunner = Spectroscopic(scf, atomfile, geomFile, freqfile, wilsonFile)
-                trFile = 'tau_rho_mod.dat'
-                outfoText += '''
-                NACT 1 File : tau_rho_mod.dat
-                NACT 2 File : '''
-
-
-
-            elif sysType == 'scat_hyper':
-                infoText +='''
-                System type               : Scattering
-                Co-ordinate type          : Hyperspherical
-                Molpro Config file        : {}
-                Atom Info file            : {}
-
-                '''.format(configfile, atomfile)
-                logger.info(infoText + "\nCheck 'adt_molpro.log' for progress...")
-                jobRunner = Scattering(scf, atomfile)
-                trFile = 'tau_rho_mod.dat'
-                outfoText += '''
-                NACT 1 File : tau_rho_mod.dat
-                NACT 2 File : '''
-
-            elif sysType == 'scat_jacobi':
-                infoText +='''
-                System type               : Scattering
-                Co-ordinate type          : Jacobi
-                Molpro Config file        : {}
-                Atom Info file            : {}
-
-                '''.format(configfile, atomfile)
-
-                logger.info(infoText + "\nCheck 'adt_molpro.log' for progress...")
-                jacobi1D = len(dict(scf.items('gInfo'))['q'].split(','))==1
-                if jacobi1D:
-                    jobRunner = Jacobi1D(scf, atomfile)
-                else:
-                    jobRunner = Jacobi2D(scf, atomFile)
-                outfoText += '''
-                NACT File : '''
-
-            else :
-                raise Exception('Not a proper system type')
-            jobRunner.runMolpro()
-            logger.info(outfoText+'tau_phi_mod.dat')
+            files = mainFunction(logger, configFile, atomfile, geomfile, freqfile, wilsonfile)
 
         except Exception as e:
             logger.error("Program failed in molpro job. %s\n"%e+"-"*121)
@@ -435,22 +364,25 @@ def main():
         if not mo:
             try:
                 if threads:
-                    # set opnemp environment variable to spwan threads
-                    os.environ['OMP_NUM_THREADS'] = threads
+                    tmpLog += 'OpenMP threads       : {}'.format(threads)
+                else: # if thread not specified then just spawn one thread
+                    threads = str(1)
+                os.environ['OMP_NUM_THREADS'] = threads
+
                 from adt.numeric.adt_numeric import adt_numerical, adt_numerical1d
-                if sysType in ['spectroscopic' , 'scattering_hyper']:
+                if len(file)==3: # that means ab initio is done on a 2D grid.
                     logger.info('''Starting Numerical calculation
                     Integration Path   : {}
                     Output file/folder : {}
                     Output file format : {}
                     '''.format(path, outfile, ffrmt))
-                    adt_numerical('energy_mod.dat', None, trFile, 'tau_phi_mod.dat', path, outfile, logger, h5, txt, nb)
+                    adt_numerical(files[0], None, files[1], files[2], path, outfile, logger, h5, txt, nb)
                 else :
                     logger.info('''Starting Numerical calculation
                     Output file/folder : {}
                     Output file format : {}
                     '''.format(path, outfile, ffrmt))
-                    adt_numerical1d('energy_mod.dat', None, 'tau_phi_mod.dat', outfile, logger, h5, txt, nb)
+                    adt_numerical1d(files[0], None, files[1], outfile, logger, h5, txt, nb)
             except Exception as e:
                 logger.error("Program failed in numerical calculation. %s\n"%e+"-"*121)
         else:

@@ -129,11 +129,11 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger, h5, txt, nb):
     # calculation of ADT angles
     logger.info("Calculating ADT Angles on path %s"%path)
     full_angle = fadt.get_angle(fadt.ngridr, fadt.ngridp, fadt.ntau, path)
-    residue    = full_angle[-1,...]
+    residue    = full_angle[:,-1,:] # taking the last value of phi grid
 
     full_angle = full_angle.reshape(fadt.ngridr*fadt.ngridp, fadt.ntau)
     adtAngle   = np.column_stack([rdat[:,[0,1]], full_angle])
-    residue    = np.column_stack((fadt.gridp, residue))
+    residue    = np.column_stack((fadt.gridr, residue))
 
     # calculation of ADT matrix elements
     logger.info("Calculating ADT matrix elements")
@@ -182,7 +182,7 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger, h5, txt, nb):
         logger.info("Writing ADT Angles in '%s'"%file)
         file_write(file, adtAngle, fadt.gridr)
         logger.info("Writing ADT Angles in 'Angle_residues.dat'")
-        np.savetxt('Angle_residues.dat', residue ,delimiter="\t", fmt="%.8f")
+        np.savetxt('Angle_residues.dat', residue ,delimiter="\t", fmt=str("%.8f"))
 
 
         for i in range(fadt.nstate):
@@ -368,21 +368,21 @@ def adt_numerical1d(enrf, nstate, tauf, outfile, logger, h5, txt, nb):
         os.chdir(outpath)
         file = "Angles.dat"
         logger.info("Writing ADT Angles in '%s'"%file)
-        np.savetxt(file, adtAngle, delimiter="\t", fmt="%.8f")
+        np.savetxt(file, adtAngle, delimiter="\t", fmt=str("%.8f"))
         logger.info("Writing ADT Angles in 'Angle_residues.dat'")
-        np.savetxt('Angle_residues.dat', residue ,delimiter="\t", fmt="%.8f")
+        np.savetxt('Angle_residues.dat', residue ,delimiter="\t", fmt=str("%.8f"))
 
 
         for i in range(fadt.nstate):
             file =  "Matrix_Row_%s.dat"%(i+1)
             logger.info("Writing ADT Matrix elements in '%s'"%(file))
-            np.savetxt(file,  np.column_stack([fadt.grid,amat[:,i,:]]), delimiter="\t", fmt="%.8f")
+            np.savetxt(file,  np.column_stack([fadt.grid,amat[:,i,:]]), delimiter="\t", fmt=str("%.8f"))
 
         if enrf != None:
             for i in range(fadt.nstate):
                 file =  "Diabatic_Row_%s.dat"%(i+1)
                 logger.info("Writing Diabatic Matrix elements in '%s'"%(file))
-                np.savetxt(file, np.column_stack([fadt.grid,db[:,i,:]]), delimiter="\t", fmt="%.8f")
+                np.savetxt(file, np.column_stack([fadt.grid,db[:,i,:]]), delimiter="\t", fmt=str("%.8f"))
 
 
     # Writing of numerical output in '.npy' files
@@ -484,7 +484,7 @@ def adt2d(grid1, grid2, nact1, nact2, energy=None, path = 1):
 
     # calculation of ADT angles
     full_angle = fadt.get_angle(fadt.ngridr, fadt.ngridp, fadt.ntau, path)
-    residue    = full_angle[-1,...]
+    residue    = full_angle[:,-1,:]
 
     # calculation of ADT matrix elements
 
