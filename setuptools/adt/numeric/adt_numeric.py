@@ -409,7 +409,7 @@ def adt_numerical1d(enrf, nstate, tauf, outfile, logger, h5, txt, nb):
                 logger.info("Writing Diabatic Matrix elements in '%s.npy'"%(file))
                 np.save(file, np.column_stack([fadt.grid,db[:,i,:]]) )
 
-
+    logger.info("Program completed successfully in %.5f seconds\n"%(time()-start)+"-"*121)
 
 
 

@@ -23,7 +23,7 @@ import logging
 import textwrap
 import argparse
 from adt.analytic.adt_analytic import adt_analytical
-from adt.molpro.adt_molpro import mainDriver
+from adt.molpro.adt_molpro import mainFunction
 
 
 class CustomParser(argparse.ArgumentParser):
@@ -205,7 +205,7 @@ def main():
                          default=False)
     molpro.add_argument("-mo" ,
                         action = "store_true",
-                        help="Terminate the program after completion of MOLPRO jobs befor calculating the ADT quantities.")
+                        help="Terminate the program after completion of MOLPRO jobs befor calculating the ADT quantities.\n ")
     molpro.add_argument("-h5",
                         action = 'store_true',
                         help   = "Write results in a HDF5 file (.h5).\nFast IO, smaller file size and hierarchical filesystem-like data format,\npreferable for saving and sharing large datasets in an organised way.\n " )
@@ -355,7 +355,7 @@ def main():
 
 
         try:
-            files = mainFunction(logger, configFile, atomfile, geomfile, freqfile, wilsonfile)
+            files = mainFunction(logger, configfile, atomfile, geomfile, freqfile, wilsonfile)
 
         except Exception as e:
             logger.error("Program failed in molpro job. %s\n"%e+"-"*121)
@@ -370,7 +370,7 @@ def main():
                 os.environ['OMP_NUM_THREADS'] = threads
 
                 from adt.numeric.adt_numeric import adt_numerical, adt_numerical1d
-                if len(file)==3: # that means ab initio is done on a 2D grid.
+                if len(files)==3: # that means ab initio is done on a 2D grid.
                     logger.info('''Starting Numerical calculation
                     Integration Path   : {}
                     Output file/folder : {}
@@ -381,7 +381,7 @@ def main():
                     logger.info('''Starting Numerical calculation
                     Output file/folder : {}
                     Output file format : {}
-                    '''.format(path, outfile, ffrmt))
+                    '''.format(outfile, ffrmt))
                     adt_numerical1d(files[0], None, files[1], outfile, logger, h5, txt, nb)
             except Exception as e:
                 logger.error("Program failed in numerical calculation. %s\n"%e+"-"*121)
