@@ -354,7 +354,7 @@ class Base():
 
     def makeGrid(self, ll):
         # due to precision error from np.arange, linspace is used
-        bl = int((ll[1]-ll[0])/ll[2]+1)
+        bl = int(round((ll[1]-ll[0])/ll[2]+1))
         return np.linspace(ll[0], ll[1], bl)
 
     def parseData(self, atomFile):
@@ -424,6 +424,7 @@ class Base():
         for tp in np.unique(data[:,0]):
             np.savetxt( file, data[data[:,0]==tp] ,delimiter="\t", fmt=str("%.8f"))
             file.write("\n")
+        file.flush()
 
     def interp(self, file ):
         ''' Fills the missing values in output file using a 1D interpolation '''
@@ -540,7 +541,7 @@ class Base():
             filen2.write('\n')
         # self.removeFiles(allOut=True)   # removes the wfu and .com files after complete run
         self.msg('All molpro jobs done.\n' ,cont=True)
-        
+
 
 
 
