@@ -100,6 +100,32 @@ class Base():
         return np.array([ fadt.splint(x,y,diff,xi) for xi in newx])
 
 
+
+    def validity(self, cas, subs, nIreps):
+        ss = re.search('[0-9a-zA-Z,;](%s[0-9,]+;?)'%subs, cas).group(1)
+        assert len(re.findall('(\d+)', ss))==nIreps, "{} number of {} required for {} symmetry".format(nIreps, subs, symmetry)
+
+
+
+
+    def createSymAnaTempl(self):
+        # core can have one or more number due to number of ireps
+        cas = re.sub('[0-9a-zA-Z,;](core[0-9,]+;?)','', self.eInfo['cas'])
+
+        
+
+
+        # number of IREPS    <<<=====
+        nIreps = 
+        # so occ,closed, core, wf , state all will have nIreps number of entries
+        # but occ closed and core is passed through the cas option so no manual prep
+        energyLine = 
+
+
+
+
+
+
     def createAnaTemplate(self):
         ''''Creates the molpro template files analytical job'''
 
@@ -598,13 +624,14 @@ class Base():
             filen1.write('\n')
             filen2.write('\n')
         # self.removeFiles(allOut=True)   # removes the wfu and .com files after complete run
-        self.msg('All molpro jobs done.\n' ,cont=True)
 
 
         scalingVal = self.runScaleCalc()
+        self.msg('All molpro jobs done.\n' ,cont=True)
 
         # the first column will be turned to radian only when theta is there in scattering case
-        1stColRad = (self.__class__.__name__=='Scattering') & self.fixedRho
+        # the attribute fixedRho exist only in scattering fixed rho case
+        fColRad = hasattr(self, 'fixedRho')
 
         #fill the missing values by 1D interpolation
         # '_mod' suffix means files with filled data
@@ -613,7 +640,7 @@ class Base():
         for iFile,oFile in zip(inFiles, outFiles):
             dat = self.interp(iFile)
             dat[:,1] = np.deg2rad(dat[:,1])      # second column is radian, convert it to phi
-            if 1stColRad:                             # for scattering 
+            if fColRad:                             # for scattering 
                 dat[:,0] = np.deg2rad(dat[:,0])  # for scattering also transform the column 0 i.e. theta column
             if iFile == filEe:                   # Now scale the energy
                 dat[:,2:] -= scalingVal          # scale the energy
@@ -625,6 +652,7 @@ class Base():
     def scaleWrapper(cls, func):
         def innerFunc(cls):
             if 'scale' not in cls.eInfo.keys():
+                # print("scale not found")
                 return 0
             func(cls)
 
@@ -636,9 +664,11 @@ class Base():
                 cls.msg( ' Job successful', cont=True)
                 # get the ground state energy value of the scale geometry 
                 scale = cls.parseResult('scale.res').flatten()[0]
+                cls.moveFiles('CompleteJobs/Scaling_point')
                 return scale
             else:
                 cls.msg( ' Job failed', cont=True)
+                cls.moveFiles('IncompleteJobs/Scaling_point')
                 return 'not done'
         return innerFunc
 
@@ -680,7 +710,7 @@ class Spectroscopic(Base):
             self.createDdrTemplate()
             self.createGridGeom = self.createAllGeom
             self.getTau = self.getTauDdr
-        if 'scale' in self.eInfo.keys():
+
 
 
     def parseSData(self, geomFile, freqFile, wilsonFile):
@@ -765,7 +795,7 @@ class Spectroscopic(Base):
         np.savetxt('equienr.dat', equiData, fmt=str("%.8f"))
 
 
-    @scaleWrapper
+    @Base.scaleWrapper
     def runScaleCalc(self):
         scaleList = [float(i) for i in self.eInfo['scale'].split(',')]
         assert len(scaleList)==2, "Provide coordinate for scale energy calculation"
@@ -799,12 +829,12 @@ class Scattering(Base):
         thetaList = [float(i) for i in self.gInfo['theta'].split(',')]
         r= len(rhoList)
         t= len(thetaList)
-
-        if (r==1 & t==3): # ab initio will be done for a fixed rho
+        print (r,t)
+        if (r==1) & (t==3): # ab initio will be done for a fixed rho
             self.fixedRho = True
             self.rho = rhoList[0]
             self.thetaGrid = self.makeGrid(thetaList)
-        else if (r==3 & t==1): # ab initio will be done for a fixed theta
+        elif (r==3) & (t==1): # ab initio will be done for a fixed theta
             self.fixedRho = False
             self.theta = thetaList[0]
             self.rhoGrid =  self.makeGrid(rhoList)
@@ -813,12 +843,8 @@ class Scattering(Base):
 
 
         phiList = [float(i) for i in self.gInfo['phi'].split(',')]
-        assert len(self.phiList)==3, "A grid of phi is required"
-        self.phiGrid = self.makeGrid(self.phiList)
-
-        #to be modified
-        if not 'scale' in self.eInfo.keys():
-            raise Exception('Assymptotic energy value is mandatory for scaling the Energy surafaces for scattering system.')
+        assert len(phiList)==3, "A grid of phi is required"
+        self.phiGrid = self.makeGrid(phiList)
 
 
         if self.nInfo['method']=='cpmcscf':
@@ -831,7 +857,7 @@ class Scattering(Base):
                 self.d1 = float(self.gInfo['dtheta']) if self.fixedRho else float(self.gInfo['drho'])
                 self.d2 = float(self.gInfo['dphi'])
             except KeyError as key:
-                raise Exception("$s keyword as geometry increment is required for ddr NACT calculation"%key)
+                raise Exception("%s keyword as geometry increment is required for ddr NACT calculation"%str(key))
             self.createDdrTemplate()
             self.createGridGeom = self.createAllGeom
             self.getTau = self.getTauDdr
@@ -991,7 +1017,10 @@ class Scattering(Base):
 
     def equiRun(self):
         '''Runs molpro for a initial geometry, i.e. theta=phi=0'''
-        self.createOneGeom(0, 0)
+        if self.fixedRho:
+            self.createOneGeom(self.thetaGrid[0], self.phiGrid[0])
+        else:
+            self.createOneGeom(self.rhoGrid[0], self.phiGrid[0])
         self.msg( "Running molpro job for initial point....." )
         sys.stdout.flush()
         exitcode = subprocess.call(
@@ -1007,7 +1036,7 @@ class Scattering(Base):
 
 
 
-    @scaleWrapper
+    @Base.scaleWrapper
     def runScaleCalc(self):
         scaleList = [float(i) for i in self.eInfo['scale'].split(',')]
         assert len(scaleList)==3, "Provide coordinate for scale energy calculation"
@@ -1071,8 +1100,6 @@ class Jacobi(Base):
             ql = [float(i) for i in ql]
             self.qGrid = self.makeGrid(ql)
 
-        if not 'scale' in self.eInfo.keys():
-            raise Exception('Assymptotic energy value is mandatory for scaling the Energy surafaces for scattering system.')
 
 
         if self.nInfo['method']=='cpmcscf':
@@ -1081,7 +1108,7 @@ class Jacobi(Base):
             self.createGridGeom = self.createOneGeom
 
         elif self.nInfo['method']=='ddr':
-            if Jacobi1D:
+            if self.Jacobi1D:
                 self.d1 = float(gInfo['dphi'])
             else:
                 self.d1 = float(gInfo['dq'])
@@ -1285,13 +1312,16 @@ class Jacobi(Base):
 
 
 
-    @scaleWrapper
+    @Base.scaleWrapper
     def runScaleCalc(self):
         scaleList = [float(i) for i in self.eInfo['scale'].split(',')]
         assert len(scaleList)==3, "Provide coordinate for scale energy calculation"
         self.smallR, self.capR, self.gamma = scaleList
         # scaling is run at the end so modifying r,R,gamma globally and passing rho=phi=0
-        self.createOneGeom(0,0)
+        if self.Jacobi1D:
+            self.createOneGeom(0)
+        else:
+            self.createOneGeom(0,0)
 
 
 
@@ -1299,7 +1329,7 @@ class Jacobi(Base):
     def runMolpro(self):
         file = ['energy.dat','tau_q.dat','tau_phi.dat']
         self.runThisMolpro(
-            self.thetaGrid, 
+            self.qGrid, 
             'q', 
             self.phiGrid, 
             'Phi', *file )
@@ -1352,6 +1382,8 @@ class Jacobi(Base):
                 np.savetxt(filen, np.append([phi],tau)[None],  fmt=str("%.8f"), delimiter='\t')
         self.msg('All molpro jobs done.', cont=True)
 
+        scalingVal = self.runScaleCalc()
+
         for file in ['energy.dat', 'tau_phi.dat']:
             dat = np.loadtxt(file)
             grid = self.phiGrid
@@ -1361,7 +1393,7 @@ class Jacobi(Base):
                 res = np.column_stack([res, filledDat]) 
             res[:,0] = np.deg2rad(res[:,0]) # convert phi to radian
             if file == 'energy.dat':
-                res[:,1:] -= float(self.eInfo['scale'])
+                res[:,1:] -= scalingVal
             np.savetxt(
                 file.replace('.dat', '_mod.dat'),
                 res, fmt=str("%.8f"), delimiter='\t'

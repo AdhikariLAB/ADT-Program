@@ -354,12 +354,12 @@ def main():
 
 
 
-        try:
-            files = mainFunction(logger, configfile, atomfile, geomfile, freqfile, wilsonfile)
+        # try:
+        files = mainFunction(logger, configfile, atomfile, geomfile, freqfile, wilsonfile)
 
-        except Exception as e:
-            logger.error("Program failed in molpro job. %s\n"%e+"-"*121)
-            sys.exit(1)
+        # except Exception as e:
+        #     logger.error("Program failed in molpro job. %s\n"%e+"-"*121)
+        #     sys.exit(1)
 
         if not mo:
             try:
