@@ -157,8 +157,22 @@ class Base():
         return np.array([ fadt.splint(x,y,diff,xi) for xi in newx])
 
 
+
+
     def irepChecks(self):
-        #* sanity checks for cas, check number of things like occ,closed, core is consistent with IREPs
+        """Checks everythings against the IREP numbers"""
+
+        self.symmetry = scf.get('sysInfo', 'symmetry')
+        self.nIREPs    = 2                             # something dependent on self.symmetry
+
+        self.nStateList = [int(i) for i in re.findall('(\d+)', self.eInfo['state'])]
+
+        # nact pairs are now 3 dimensional list. i.e list containing the list of pairs
+        self.nactPairsList =[[[i, j] for j in range(2, state+1) for i in range(1, j)] for state in self.nStateList]
+        self.nTau = [len(item) for item in self.nactPairsList]
+
+
+        # Chekc occ closed and core for against IREP number
         for substring in self.eInfo['cas'].split(';'):
             for item in ['occ', 'closed', 'core']:
                 if item in substring:
@@ -171,8 +185,7 @@ class Base():
                         )
 
 
-        #* sanity checks for state and split state into list of integers
-        self.nStateList = [int(i) for i in re.findall('(\d+)', self.eInfo['state'])]
+        #* sanity checks for state
         assert self.nStateList==nIREPs, (
                 "{a} number of states required for {a} IREPs of {c} symmetry".format(
                                             a = nIREPs,
@@ -181,42 +194,12 @@ class Base():
                 )
 
 
+    def createTemplate(self):
+        # check everything is on par with the number of irep
+        self.irepChecks()
 
-    def createAnaTemplate(self):
-
-
-        #! number of IREPS    <<<=====
-        nIREPs = self.nIREP # for Cs
-        # but occ closed and core is passed through the cas option so no manual prep
-
-        # core can have one or more number due to number of ireps
-
-
-        #* sanity checks for cas, check number of things like occ,closed, core is consistent with IREPs
-        for substring in self.eInfo['cas'].split(';'):
-            for item in ['occ', 'closed', 'core']:
-                if item in substring:
-                    assert len(re.findall('(\d+)', substring)) == nIREPs, (
-                        "{a} number of {b} required for {a} IREPs of {c} symmetry".format(
-                                                    a = nIREPs,
-                                                    b = item,
-                                                    c = self.symmetry
-                                                    )
-                        )
-
-
-        #* sanity checks for state and split state into list of integers
-        self.nStateList = [int(i) for i in re.findall('(\d+)', self.eInfo['state'])]
-        assert len(self.nStateList)==nIREPs, (
-                "{a} number of states required for {a} IREPs of {c} symmetry".format(
-                                            a = nIREPs,
-                                            c = self.symmetry
-                                            )
-                )
-
-
+        # remove `core` from cas for mcscf
         cas = re.sub('[0-9a-zA-Z,;](core[0-9,]+;?)','', self.eInfo['cas'])
-
 
         irepCard = ''
         #looping through the statelist as its already checked through in above
@@ -231,18 +214,17 @@ class Base():
                 )
 
 
-
         energyLine ='''{{mcscf;{cas};{irepCard};start,2140.2; orbital,2140.2;{extra}}}
                     '''.format(
-                            cas = cas,   #! <<<----- the cas after stripping the core 
+                            cas = cas,   # <<<----- the cas after stripping the core for mcscf
                             irepCard =  irepCard,
                             extra= self.eInfo['multi_extra']
                             )
 
-
-
-        if self.eInfo['method'] == 'mrci':
-            energyLine+='''{{mrci;{cas}; {irepCard};{extra}}}
+        #If mrci is provided or ddr is to be done then do the mrci line
+        # NOTE: The `dm` for mrci is not needed for cpmcscf nact but its written here for convenience
+        if (self.eInfo['method'] == 'mrci') or (self.nInfo['method']=='ddr'):
+            energyLine+='''{{mrci;{cas};{irepCard};save,6000.2;dm,8000.2;{extra}}}
                         '''.format(
                                 cas=self.eInfo['cas'],
                                 irepCard = irepCard,
@@ -250,40 +232,61 @@ class Base():
                                 )
 
 
-
-
-        molproTemplate=textwrap.dedent('''
-            ***, Molpro template created from ADT program for analytical job.
+        baseTemplate = textwrap.dedent('''
+            ***, Molpro template created from ADT program for analytical job
             memory,{memory}
-            file,2,molpro.wfu;
+            file,2,molpro_init.wfu,new;
 
             basis={basis};
 
             symmetry,{sym}
 
             geometry=geom.xyz
+            !HF:{{hf}}
             {enrl}
 
             show, energy
             table, energy
-            save,enr.res,new
+            !GRID:save,enr.res,new
+            !SCALE:save,scale.res,new
             {{table,____; noprint,heading}}
+
+            ---
+
             '''.format(memory = self.memory,
-                        basis = self.eInfo['basis'],
-                        sym = self.symmetry,
-                        enrl = energyLine))
+                       basis  = self.eInfo['basis'],
+                       enrl   = energyLine,
+                       sym    = self.symmetry,
+                       hf     = self.eInfo['hf']))
 
 
+        # remove the proper wildcards for proper template 
+        initTemplate = re.sub("!HF:|!GRID:.*|!SCALE:.*", '', baseTemplate)
+        scaleTemplate= re.sub("!HF:.*|!GRID:.*|!SCALE:", '', baseTemplate)
+        gridTemplate = re.sub("!HF:.*|!GRID:|!SCALE:.*", '', baseTemplate)
 
 
-        # nact pairs are now 3 dimensional list. i.e list containing the list of pairs
-        self.nactPairsList =[[[i, j] for j in range(2, state+1) for i in range(1, j)] for state in self.nStateList]
+        # Crete nact calculation part of the template 
+        if self.nInfo['method']=='ddr' :
+            gridTemplate += self.ddrTemplate(irepCard)
+        elif self.nInfo['method']=='cpmcscf':
+            gridTemplate += self.anaTemplate(irepCard)
+        else:
+            raise Exception("%s is not a valid NACT calculation method"%self.nInfo['method'])
 
-        self.nTau = [len(item) for item in self.nactPairsList]
 
+        # write the templates
+        with open('init.com', 'w') as f: f.write(initTemplate)
+
+        with open('scale.com','w') as f: f.write(scaleTemplate)
+
+        with open('grid.com','w') as f: f.write(gridTemplate)
+
+
+    def anaTemplate(self, irepCard):
+        # Create NACT part of the template for mcscf nact calculation
+        
         nactText= "\n\nbasis={}\n".format(self.nInfo['basis'])
-
-
         getChunk = lambda seq: [seq[i:i+5] for i in range(0, len(seq), 5)]
 
         for nIrep, nactPairs in enumerate(self.nactPairsList, start=1):
@@ -297,8 +300,9 @@ class Base():
                         extra= self.eInfo['multi_extra'])
 
                 forceText = ''
-                for count,pair in enumerate(pairs, start=1):
-                    f,s = pair
+                count = 0
+                for f,s in pairs:
+                    count +=1
                     nactText += "cpmcscf,nacm,{f}.{irep},{s}.{irep},record=51{n:02}.1,{extra};\n".format(
                                 f=f, s=s, 
                                 n=count, 
@@ -315,65 +319,13 @@ class Base():
                                 """.format(a=f, b=s,r=nIrep, n=count))
                 nactText += "}\n\n" + forceText
 
-
-
-
-        molproTemplate += nactText + '\n---\n'
-
-        with open('grid.com','w') as f:
-            f.write(molproTemplate)
+        return nactText + '\n---\n'
 
 
 
 
-
-
-        molproInitTemplate = textwrap.dedent('''
-            ***, Molpro template created from ADT program for analytical job
-            memory,{memory}
-            file,2,molpro_init.wfu,new;
-
-            basis={basis};
-
-            symmetry,{sym}
-
-            geometry=geom.xyz
-            {{hf}}
-            {enrl}
-
-            show, energy
-            {{table,____; noprint,heading}}
-
-            ---
-
-            '''.format(memory = self.memory,
-                       basis  = self.eInfo['basis'],
-                       enrl   = energyLine,
-                       sym    = self.symmetry,
-                       hf     = self.eInfo['hf']))
-
-        with open('init.com', 'w') as f:
-            f.write(molproInitTemplate)
-
-
-
-    def createDdrTemplate(self):
-        ''''Creates the molpro template files ddr job'''
-
-
-        cas = re.sub('[0-9a-zA-Z,;](core,\d+;*)', '', self.eInfo['cas'])
-
-        #mrci has to be done for ddr nact calculation
-        energyLine = """
-            {{mcscf;{cas1}; wf,{wf};state,{state};start,2140.2; orbital,2140.2;{extra1}}}
-            {{mrci; {cas}; wf,{wf};state,{state};save,6000.2;dm,8000.2;{extra2}}}
-            """.format(state   =self.eInfo['state'],
-                        wf     = self.eInfo['wf'],
-                        cas    = self.eInfo['cas'],
-                        cas1   = cas,
-                        extra1 = self.eInfo['multi_extra'],
-                        extra2 = self.eInfo['mrci_extra'])
-
+    def ddrTemplate(self, irepCard):
+        # Create NACT part of the template for ddr nact calculation
         # d1 is increment in rho, theta or q depending on calculation type
         # and d2 is always phi
         molproTemplate=textwrap.dedent('''
@@ -396,141 +348,80 @@ class Base():
             {{table,____; noprint,heading}}
 
             !for +d1
-            symmetry,nosym
+            symmetry,{sym}
             geometry=geom2.xyz
-            {{multi;{cas1} ;wf,{wf};state,{state};start,2140.2;orbital,2241.2;{extra1}}}
-            {{mrci; {cas}; wf,{wf};state,{state};save,6001.2;{extra2}}}
+            {{multi;{cas1} ;{irepCard};start,2140.2;orbital,2241.2;{extra1}}}
+            {{mrci; {cas}; {irepCard};save,6001.2;{extra2}}}
             {{ci;trans,6000.2,6001.2;dm,8001.2;{extra3}}}
 
 
             !for -d1
-            symmetry,nosym
+            symmetry,{sym}
             geometry=geom3.xyz
-            {{multi;{cas1}; wf,{wf};state,{state};start,2140.2;orbital,2242.2;{extra1}}}
-            {{mrci; {cas}; wf,{wf};state,{state};save,6002.2;{extra2}}}
+            {{multi;{cas1}; {irepCard};start,2140.2;orbital,2242.2;{extra1}}}
+            {{mrci; {cas}; {irepCard};save,6002.2;{extra2}}}
             {{ci;trans,6000.2,6002.2;dm,8002.2;{extra3}}}
 
 
-
+            !N1D:
             !for +d2
-            symmetry,nosym
+            symmetry,{sym}
             geometry=geom4.xyz
-            {{multi;{cas1}; wf,{wf};state,{state};start,2140.2;orbital,2243.2;{extra1}}}
-            {{mrci; {cas}; wf,{wf};state,{state};save,6003.2;{extra2}}}
+            {{multi;{cas1}; {irepCard};start,2140.2;orbital,2243.2;{extra1}}}
+            {{mrci; {cas}; {irepCard};save,6003.2;{extra2}}}
             {{ci;trans,6000.2,6003.2;dm,8003.2;{extra3}}}
 
 
+            !N1D:
             !for -d2
-            symmetry,nosym
+            symmetry,{sym}
             geometry=geom5.xyz
-            {{multi;{cas1}; wf,{wf};state,{state};start,2140.2;orbital,2244.2;{extra1}}}
-            {{mrci; {cas}; wf,{wf};state,{state};save,6004.2;{extra2}}}
+            {{multi;{cas1}; {irepCard};start,2140.2;orbital,2244.2;{extra1}}}
+            {{mrci; {cas}; {irepCard};save,6004.2;{extra2}}}
             {{ci;trans,6000.2,6004.2;dm,8004.2;{extra3}}}
 
 
             '''.format( memory = self.memory,
                         basis  = self.eInfo['basis'],
                         enrl   = energyLine,
-                        state  = self.eInfo['state'],
-                        wf     = self.eInfo['wf'],
+                        irepCard = irepCard
                         cas    = self.eInfo['cas'],
                         cas1   = cas,
+                        sym    = self.symmetry,
                         extra1 = self.eInfo['multi_extra'],
                         extra2 = self.eInfo['mrci_extra'],
                         extra3 = self.nInfo['nact_extra']))
 
 
         nactTemp= ''
-
-        for i,j in self.nactPairs:
-
-            #implementing three point cebtral difference
-            nactTemp+=textwrap.dedent(''' 
-                !for taur     
-                {{ddr, 2*{d1}
-                orbital,2140.2,2141.2,2142.2;
-                density,8000.2,8001.2,8002.2;
-                state, {j}.1,{i}.1
-                }}
-                nacmr = nacme
-
-                !for taup
-                {{ddr, 2*{d2}
-                orbital,2140.2,2143.2,2144.2;
-                density,8000.2,8003.2,8004.2;
-                state, {j}.1,{i}.1
-                }}
-                nacmp = nacme
-
-                table, nacmr,nacmp
-                save,ddrnact{i}{j}.res,new;
-
-                '''.format(d1=self.d1,d2=self.d2,i=i,j=j))
+        for nIrep, nactPairs in enumerate(self.nactPairsList, start=1):
+            for i,j in nactPairs:
+                #implementing three point cebtral difference
+                nactTemp+=textwrap.dedent(''' 
+                    !for taur     
+                    {{ddr, 2*{d1}
+                    orbital,2140.2,2141.2,2142.2;
+                    density,8000.2,8001.2,8002.2;
+                    state, {j}.{r},{i}.{r}
+                    }}
+                    nacmr = nacme
 
 
-        molproTemplate += nactTemp + '\n---\n'
+                    !N1D:for taup
+                    {{ddr, 2*{d2}
+                    orbital,2140.2,2143.2,2144.2;
+                    density,8000.2,8003.2,8004.2;
+                    state, {j}.{r},{i}.{irep}
+                    }}
+                    nacmp = nacme
 
-        with open('grid.com','w') as f:
-            f.write(molproTemplate)
+                    table, nacmr,nacmp
+                    save,ddrnact_{i}.{r}_{j}.{r}.res,new;
 
-        molproInitTemplate = textwrap.dedent('''
-            ***, Molpro template created from ADT program for ddr job.
-            memory,{memory}
-            file,2,molpro_init.wfu,new;
-
-            basis={basis};
-
-            symmetry,nosym
-
-            geomtyp=xyz
-            geometry=geom.xyz
-
-            {{hf}}
-            {enrl}
-
-            show, energy
-            table, energy
-            save,equienr.res,new
-            {{table,____; noprint,heading}}
-
-            '''.format( memory = self.memory,
-                        basis = self.eInfo['basis'],
-                        enrl=energyLine,
-                        hf = self.eInfo['hf']))
+                    '''.format(d1=self.d1,d2=self.d2,i=i,j=j,r=nIrep))
 
 
-
-        with open('init.com', 'w') as f:
-            f.write(molproInitTemplate)
-
-
-
-
-        molproScaleTemplate = textwrap.dedent('''
-            ***, Molpro template created from ADT program for ddr job.
-            memory,{memory}
-            file,2,molpro_init.wfu,new;
-
-            basis={basis};
-
-            symmetry,nosym
-
-            geomtyp=xyz
-            geometry=geom.xyz
-
-            {enrl}
-
-            show, energy
-            table, energy
-            save,scale.res,new
-            {{table,____; noprint,heading}}
-
-            '''.format( memory = self.memory,
-                        basis = self.eInfo['basis'],
-                        enrl=energyLine))
-
-        with open('scale.com', 'w') as f:
-            f.write(molproScaleTemplate)
+        return nactTemp + '\n---\n'
 
 
 
@@ -561,11 +452,7 @@ class Base():
             self.proc = '1'
 
 
-        self.symmetry = scf.get('sysInfo', 'symmetry')
-        self.nIREP    = 2 # something dependent on self.symmetry
 
-
-        #* IREPs sanity chacks      <<<<<==============
 
         self.eInfo = dict(scf.items('eInfo'))
         self.nInfo = dict(scf.items('nInfo'))
@@ -591,7 +478,7 @@ class Base():
             self.eInfo['hf'] += ';' + self.eInfo['uhf_extra']
 
 
-        self.logFile = open('adt_molpro.log', 'w')
+        
 
     def parseResult(self, file):
         ''' Parses result from the ouptpu .res files'''
@@ -673,30 +560,11 @@ class Base():
 
 
 
-    def parseNactResult(self, file, lim):
-        with open(file, 'r') as f:
-            dat = f.read().replace("D","E").strip().split("\n")
-            dat = [i.strip() for i in dat]
-            dat = [i.split() for i in dat if i]
-        ret = [[[float(i) for i in j]
-                                for j in dat[ind+1:ind+lim]]
-                                    for ind in range(0, len(dat), lim)]
-        return np.array(ret)
-
-
-
-    def parseEnrResult(self, file):
-        with open(file, "r") as f:
-            dat = f.read().replace("D","E").strip().split("\n")
-        return np.array([ float(i)  for i in dat[1:]])
-
-
-
 
     def runThisMolpro(self, grid1, gridn1, grid2, gridn2, filEe, fileN1, fileN2):
         '''Runs the molpro for each gridpoints '''
         # subprocess calls blocks system I/O buffer, explicit I/O buffers are used to flush by force 
-
+        self.logFile = open('adt_molpro.log', 'w')
         # open files to store result
         filee  = open(filEe, 'w', buffering=1)
         filen1 = open(fileN1,'w', buffering=1)
@@ -848,6 +716,25 @@ class Base():
 
 
 
+
+    @classmethod
+    def initWrapper(cls, func):
+        def innerFunc(cls):
+            func(cls)
+            exitcode = subprocess.call(
+                ['molpro', '-n', cls.proc, "-d", cls.scrdir, '-W .', 'init.com']
+                )
+            if exitcode==0: 
+                cls.msg( ' Job successful', cont=True)
+                cls.moveFiles('CompleteJobs/Equilibrium_point')
+            else:
+                cls.msg( ' Job failed', cont=True)
+                sys.exit('Molpro failed in equilibrium step')
+        return innerFunc
+
+
+
+
 class Spectroscopic(Base):
     ''' Inherited from the Base class, this class contains necessary methods
      for running molpro for a Spectroscopic system'''
@@ -872,8 +759,9 @@ class Spectroscopic(Base):
         assert len(self.phiList)==3, "A grid of phi is required"
         self.phiGrid = self.makeGrid(self.phiList)
 
+        self.createTemplate()
         if self.nInfo['method']=='cpmcscf':
-            self.createAnaTemplate()
+            # self.createAnaTemplate()
             self.getTau = self.getTauAna
             self.createGridGeom = self.createOneGeom
 
@@ -881,7 +769,7 @@ class Spectroscopic(Base):
         elif self.nInfo['method']=='ddr':
             self.d1 = float(gInfo['drho'])
             self.d2 = float(gInfo['dphi'])
-            self.createDdrTemplate()
+            # self.createDdrTemplate()
             self.createGridGeom = self.createAllGeom
             self.getTau = self.getTauDdr
 
@@ -922,19 +810,6 @@ class Spectroscopic(Base):
         self.createOneGeom(rho, phi+self.dp,'geom4.xyz')
         self.createOneGeom(rho, phi-self.dp,'geom5.xyz')
 
-    # def parseNact(self, i,j,rho,phi):
-    #     '''Calculates NACT Rho Phi from the output gradients '''
-    #     file = 'ananac{}{}.res'.format(i,j)
-
-    #     grads = self.angtobohr*self.parseResult(file)
-    #     rotoMat = np.array([[self.cos(phi), self.sin(phi)], [-rho*self.sin(phi), rho*self.cos(phi)]])
-    #     tau = np.einsum('ijk,ij,lk->l',self.wilFM[...,self.vModes], grads, rotoMat)
-    #     return np.abs(tau)
-
-    # def getTauAna(self, rho, phi):
-    #     '''Used in Analytical NACT calculation'''
-    #     return np.stack([self.parseNact(i, j, rho, phi) 
-    #                                 for i,j in self.nactPairs]).T
 
 
     def getTauAna(self,rho,phi):
@@ -964,6 +839,8 @@ class Spectroscopic(Base):
         return np.abs(tauList).T
 
 
+
+    @Base.initWrapper
     def equiRun(self):
         '''Runs molpro for the equilibrium geometry'''
         nAtoms = len(self.atomNames)
@@ -972,19 +849,9 @@ class Spectroscopic(Base):
         for i in range(nAtoms):
             tmp += "{},{},{},{}\n".format(self.atomNames[i], *self.equiGeom[i])
 
-        with open('geom.xyz',"w") as f:
-            f.write(tmp)
+        with open('geom.xyz',"w") as f: f.write(tmp)
 
         self.msg( "Running molpro job for equilibrium point.......")
-        exitcode = subprocess.call(
-            ['molpro', '-n', self.proc, "-d", self.scrdir, '-W .', 'init.com']
-            )
-        if exitcode==0: 
-            self.msg( ' Job successful', cont=True)
-            self.moveFiles('CompleteJobs/Equilibrium_point')
-        else:
-            self.msg( ' Job failed', cont=True)
-            sys.exit('Molpro failed in equilibrium step')
 
 
 
@@ -1039,9 +906,8 @@ class Scattering(Base):
         assert len(phiList)==3, "A grid of phi is required"
         self.phiGrid = self.makeGrid(phiList)
 
-
         if self.nInfo['method']=='cpmcscf':
-            self.createAnaTemplate()
+            # self.createAnaTemplate()
             self.getTau = self.getTauAna
             self.createGridGeom = self.createOneGeom
 
@@ -1051,9 +917,11 @@ class Scattering(Base):
                 self.d2 = float(self.gInfo['dphi'])
             except KeyError as key:
                 raise Exception("%s keyword as geometry increment is required for ddr NACT calculation"%str(key))
-            self.createDdrTemplate()
+            # self.createDdrTemplate()
             self.createGridGeom = self.createAllGeom
             self.getTau = self.getTauDdr
+    
+        self.createTemplate()
 
 
     def AreaTriangle(self,a,b,c):
@@ -1163,14 +1031,14 @@ class Scattering(Base):
 
 
 
-    def parseNact(self, i,j,gradRhoTheta, gradPhi):
-        '''Calculates NACT Rho Phi from the output gradients '''
-        file = 'ananac{}{}.res'.format(i,j)
-        grads = self.angtobohr*self.parseResult(file)
+    # def parseNact(self, i,j,gradRhoTheta, gradPhi):
+    #     '''Calculates NACT Rho Phi from the output gradients '''
+    #     file = 'ananac{}{}.res'.format(i,j)
+    #     grads = self.angtobohr*self.parseResult(file)
 
-        tauRhoTheta = np.einsum('ij,ij', grads, gradRhoTheta)
-        tauPhi   = np.einsum('ij,ij', grads, gradPhi)
-        return np.abs(np.array([tauRhoTheta, tauPhi]))
+    #     tauRhoTheta = np.einsum('ij,ij', grads, gradRhoTheta)
+    #     tauPhi   = np.einsum('ij,ij', grads, gradPhi)
+    #     return np.abs(np.array([tauRhoTheta, tauPhi]))
 
 
     def getTauAna(self, rhoTheta, phi):
@@ -1197,17 +1065,34 @@ class Scattering(Base):
         gradPhi      = (gradPhiPlus - gradPhiMinus)/2*dPhi 
 
 
-        return np.vstack([self.parseNact(i,j,gradRhoTheta, gradPhi) 
-                                    for i,j in self.nactPairs]).T
+
+        # rotoMat = np.array([[self.cos(phi), self.sin(phi)], [-rho*self.sin(phi), rho*self.cos(phi)]])
+        tauList = []
+        for nIrep, nactPairs in enumerate(self.nactPairsList, start=1):
+            for l,u in nactPairs:
+                file = "ananac_{a}.{r}_{b}.{r}.res".format(a=l,b=u,r=nIrep)
+                grads = self.angtobohr*self.parseResult(file)
+                tauRhoTheta = np.einsum('ij,ij', grads, gradRhoTheta)
+                tauPhi   = np.einsum('ij,ij', grads, gradPhi)
+                tauList.append([tauRhoTheta, tauPhi])
+        return np.abs(tauList).T
+
+        # return np.vstack([self.parseNact(i,j,gradRhoTheta, gradPhi) 
+                                    # for i,j in self.nactPairs]).T
 
 
     def getTauDdr(self, *args):
         '''Used in DDR NACT calculation'''
-        tau = np.vstack([self.parseResult('ddrnact{}{}.res'.format(i,j)) 
-                                    for i,j in self.nactPairs]).T
-        return np.abs(tau)
+        tauList = []
+        for nIrep, nactPairs in enumerate(self.nactPairsList, start=1):
+            for l,u in nactPairs:
+                file = "ddrnact_{a}.{r}_{b}.{r}.res".format(a=l,b=u,r=nIrep)
+                tau = self.parseResult(file)
+                tauList.append(tau)
+        return np.abs(tauList).T
 
 
+    @Base.initWrapper
     def equiRun(self):
         '''Runs molpro for a initial geometry, i.e. theta=phi=0'''
         if self.fixedRho:
@@ -1215,17 +1100,7 @@ class Scattering(Base):
         else:
             self.createOneGeom(self.rhoGrid[0], self.phiGrid[0])
         self.msg( "Running molpro job for initial point....." )
-        sys.stdout.flush()
-        exitcode = subprocess.call(
-            ['molpro', '-n', self.proc, "-d", self.scrdir, '-W .', 'init.com']
-            )
-        if exitcode==0: 
-            self.msg( ' Job successful', cont= True)
-        else:
-            self.msg( ' Job failed', cont= True)
-            sys.exit('Molpro failed in initital step')
-        equiData = self.parseResult('equienr.res').flatten()
-        np.savetxt('equienr.dat', equiData, fmt=str("%.8f"))
+
 
 
 
@@ -1285,7 +1160,7 @@ class Jacobi(Base):
             self.Jacobi1D          = True
             self.q                 = float(self.gInfo['q'])
             self.runMolpro         = self.runMolpro1D
-            self.createDdrTemplate = self.createDdrTemplate1D
+            # self.createDdrTemplate = self.createDdrTemplate1D
             self.createOneGeom     = self.createOneGeom1D
             self.createAllGeom     = self.createAllGeom1D
         else :            # 2D Jacobi will be done
@@ -1296,135 +1171,156 @@ class Jacobi(Base):
 
 
         if self.nInfo['method']=='cpmcscf':
-            self.createAnaTemplate()
+            # self.createAnaTemplate()
             self.getTau = self.getTauAna
             self.createGridGeom = self.createOneGeom
 
         elif self.nInfo['method']=='ddr':
             if self.Jacobi1D:
                 self.d1 = float(gInfo['dphi'])
+                self.createTemplate = self.createDdrTemplate1D
             else:
                 self.d1 = float(gInfo['dq'])
                 self.d2 = float(gInfo['dphi'])
-            self.createDdrTemplate()
+            # self.createDdrTemplate()
             self.createGridGeom = self.createAllGeom
             self.getTau = self.getTauDdr
 
+        self.createTemplate()
 
 
+    #! ordering of the function calls
     def createDdrTemplate1D(self):
-        ''''Creates the molpro template files ddr job'''
+        # this ddr template is trickily being done by just modifying the 2D ddr template
+        # just a dumb move so that 2D template can  be created
+        self.d2 = self.d1
+        # Remember I have modified the default `createTemplate` function, so call it from parent
+        super(Jacobi, self).createTemplate()   #! <<<<==== CAUTION
 
-        cas = re.sub( '[0-9a-zA-Z,;](core,\d+;*)', '', self.eInfo['cas'])
+        with open("grid.com","r") as f:
+            template = f.read()
+        # remove 7 lines starting from N1D and also remove the word ",nacmp"
+        1dTemplate = re.sub('N1D:((.*\n){7})|,nacmp','',template)
+    
+        with open("grid.com","r") as f:
+            f.write(1dTemplate)
 
 
-        #mrci has to be done for ddr for using the ddr wf in ddr nact calculation
-        energyLine = """
-            {{mcscf;{cas1}; wf,{wf};state,{state};start,2140.2; orbital,2140.2;{extra1}}}
-            {{mrci; {cas}; wf,{wf};state,{state};save,6000.2;dm,8000.2;{extra2}}}
-            """.format(state   =self.eInfo['state'],
-                        wf     = self.eInfo['wf'],
-                        cas    = self.eInfo['cas'],
-                        cas1   = cas,
-                        extra1 = self.eInfo['multi_extra'],
-                        extra2 = self.eInfo['mrci_extra'])
+
+
+    # def createDdrTemplate1D(self):
+    #     ''''Creates the molpro template files ddr job'''
+
+    #     cas = re.sub( '[0-9a-zA-Z,;](core,\d+;*)', '', self.eInfo['cas'])
+
+
+    #     #mrci has to be done for ddr for using the ddr wf in ddr nact calculation
+    #     energyLine = """
+    #         {{mcscf;{cas1}; wf,{wf};state,{state};start,2140.2; orbital,2140.2;{extra1}}}
+    #         {{mrci; {cas}; wf,{wf};state,{state};save,6000.2;dm,8000.2;{extra2}}}
+    #         """.format(state   =self.eInfo['state'],
+    #                     wf     = self.eInfo['wf'],
+    #                     cas    = self.eInfo['cas'],
+    #                     cas1   = cas,
+    #                     extra1 = self.eInfo['multi_extra'],
+    #                     extra2 = self.eInfo['mrci_extra'])
             
-        # for jacobi 1d d1 is phi, unlike 2d where d1 is q.
-        molproTemplate=textwrap.dedent('''
-            ***, Molpro template created from ADT program for analytical job for analytical job.
-            memory,{memory}
-            file,2,molpro.wfu;
+    #     # for jacobi 1d d1 is phi, unlike 2d where d1 is q.
+    #     molproTemplate=textwrap.dedent('''
+    #         ***, Molpro template created from ADT program for analytical job for analytical job.
+    #         memory,{memory}
+    #         file,2,molpro.wfu;
 
-            basis={basis};
+    #         basis={basis};
 
-            symmetry,nosym
+    #         symmetry,nosym
 
-            geomtyp=xyz
-            geometry=geom1.xyz
+    #         geomtyp=xyz
+    #         geometry=geom1.xyz
 
-            {enrl}
+    #         {enrl}
 
-            show, energy
-            table, energy
-            save,enr.res,new
-            {{table,____; noprint,heading}}
+    #         show, energy
+    #         table, energy
+    #         save,enr.res,new
+    #         {{table,____; noprint,heading}}
 
-            !for +d1
-            symmetry,nosym
-            geometry=geom2.xyz
-            {{multi;{cas1} ;wf,{wf};state,{state};start,2140.2;orbital,2241.2;{extra1}}}
-            {{mrci; {cas}; wf,{wf};state,{state};save,6001.2;{extra2}}}
-            {{ci;trans,6000.2,6001.2;dm,8001.2;{extra3}}}
-
-
-            !for -d1
-            symmetry,nosym
-            geometry=geom3.xyz
-            {{multi;{cas1}; wf,{wf};state,{state};start,2140.2;orbital,2242.2;{extra1}}}
-            {{mrci; {cas}; wf,{wf};state,{state};save,6002.2;{extra2}}}
-            {{ci;trans,6000.2,6002.2;dm,8002.2;{extra3}}}
+    #         !for +d1
+    #         symmetry,nosym
+    #         geometry=geom2.xyz
+    #         {{multi;{cas1} ;wf,{wf};state,{state};start,2140.2;orbital,2241.2;{extra1}}}
+    #         {{mrci; {cas}; wf,{wf};state,{state};save,6001.2;{extra2}}}
+    #         {{ci;trans,6000.2,6001.2;dm,8001.2;{extra3}}}
 
 
-
-            '''.format( memory = self.memory,
-                        basis  = self.eInfo['basis'],
-                        enrl   = energyLine,
-                        state  = self.eInfo['state'],
-                        wf     = self.eInfo['wf'],
-                        cas    = self.eInfo['cas'],
-                        cas1   = cas,
-                        extra1 = self.eInfo['multi_extra'],
-                        extra2 = self.eInfo['mrci_extra'],
-                        extra3 = self.nInfo['nact_extra']))
+    #         !for -d1
+    #         symmetry,nosym
+    #         geometry=geom3.xyz
+    #         {{multi;{cas1}; wf,{wf};state,{state};start,2140.2;orbital,2242.2;{extra1}}}
+    #         {{mrci; {cas}; wf,{wf};state,{state};save,6002.2;{extra2}}}
+    #         {{ci;trans,6000.2,6002.2;dm,8002.2;{extra3}}}
 
 
-        nactTemp= ''
 
-        for i,j in self.nactPairs:
-            nactTemp+=textwrap.dedent(''' 
-                {{ddr, 2*{d1}
-                orbital,2140.2,2141.2,2142.2;
-                density,8000.2,8001.2,8002.2;
-                state, {j}.1,{i}.1
-                }}
-
-                table, nacme
-                save,ddrnact{i}{j}.res,new;
-
-                '''.format(d1=self.d1,i=i,j=j))
+    #         '''.format( memory = self.memory,
+    #                     basis  = self.eInfo['basis'],
+    #                     enrl   = energyLine,
+    #                     state  = self.eInfo['state'],
+    #                     wf     = self.eInfo['wf'],
+    #                     cas    = self.eInfo['cas'],
+    #                     cas1   = cas,
+    #                     extra1 = self.eInfo['multi_extra'],
+    #                     extra2 = self.eInfo['mrci_extra'],
+    #                     extra3 = self.nInfo['nact_extra']))
 
 
-        molproTemplate += nactTemp + '\n---\n'
+    #     nactTemp= ''
 
-        with open('grid.com','w') as f:
-            f.write(molproTemplate)
+    #     for i,j in self.nactPairs:
+    #         nactTemp+=textwrap.dedent(''' 
+    #             {{ddr, 2*{d1}
+    #             orbital,2140.2,2141.2,2142.2;
+    #             density,8000.2,8001.2,8002.2;
+    #             state, {j}.1,{i}.1
+    #             }}
 
-        molproInitTemplate = textwrap.dedent('''
-            ***, Molpro template created from ADT program for ddr job.
-            memory,{memory}
-            file,2,molpro_init.wfu,new;
+    #             table, nacme
+    #             save,ddrnact{i}{j}.res,new;
 
-            basis={basis};
+    #             '''.format(d1=self.d1,i=i,j=j))
 
-            symmetry,nosym
 
-            geomtyp=xyz
-            geometry=geom.xyz
+    #     molproTemplate += nactTemp + '\n---\n'
 
-            {{hf}}
-            {enrl}
+    #     with open('grid.com','w') as f:
+    #         f.write(molproTemplate)
 
-            show, energy
-            table, energy
-            save,equienr.res,new
-            {{table,____; noprint,heading}}
+        # molproInitTemplate = textwrap.dedent('''
+        #     ***, Molpro template created from ADT program for ddr job.
+        #     memory,{memory}
+        #     file,2,molpro_init.wfu,new;
 
-            '''.format( memory = self.memory,
-                        basis = self.eInfo['basis'],
-                        enrl=energyLine,
-                        hf = self.eInfo['hf']))
+        #     basis={basis};
 
-        with open('init.com', 'w') as f:
+        #     symmetry,nosym
+
+        #     geomtyp=xyz
+        #     geometry=geom.xyz
+
+        #     {{hf}}
+        #     {enrl}
+
+        #     show, energy
+        #     table, energy
+        #     save,equienr.res,new
+        #     {{table,____; noprint,heading}}
+
+        #     '''.format( memory = self.memory,
+        #                 basis = self.eInfo['basis'],
+        #                 enrl=energyLine,
+        #                 hf = self.eInfo['hf']))
+
+        # with open('init.com', 'w') as f:
             f.write(molproInitTemplate)
 
 
