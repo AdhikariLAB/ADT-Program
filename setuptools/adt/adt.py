@@ -353,7 +353,7 @@ def main():
         ffrmt = ', '.join(ffrmt)
 
 
-
+#! uncomment these
         # try:
         files = mainFunction(logger, configfile, atomfile, geomfile, freqfile, wilsonfile)
 

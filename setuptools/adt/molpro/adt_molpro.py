@@ -19,7 +19,7 @@ if sys.version_info.major>2:
 else :
     from ConfigParser import SafeConfigParser as ConfigParser
 
-# 180/pi multiplication from ddr removed
+
 
 
 def mainFunction(logger, conFig, atomFile, *args):
@@ -62,17 +62,6 @@ def mainFunction(logger, conFig, atomFile, *args):
         raise Exception('Not a proper system type')
     logger.info(txt+"\nCheck 'adt_molpro.log' for progress.\n")
     fls = jobRunner.runMolpro()
-    txt = """Molpro jobs completed. \n\tData saved in the following files
-        Energy file : energy_mod.dat"""
-    if len(fls)==3: # 2D case
-        txt+="""
-        NACT 1 file : {}
-        NACT 2 file : """.format(fls[1])
-    else :         # 1D jacobi case
-        txt+="""
-        NACT file   : """
-    txt+=fls[-1] +'\n\n'
-    logger.info(txt)
 
     return fls
 
@@ -1115,11 +1104,14 @@ class Jacobi(Base):
             self.createGridGeom = self.createOneGeom
 
         elif self.nInfo['method']=='ddr':
-            if self.Jacobi1D:
-                self.d1 = float(gInfo['dphi'])
-            else:
-                self.d1 = float(gInfo['dq'])
-                self.d2 = float(gInfo['dphi'])
+            try:
+                if self.Jacobi1D:
+                    self.d1 = float(gInfo['dphi'])
+                else:
+                    self.d1 = float(gInfo['dq'])
+                    self.d2 = float(gInfo['dphi'])
+            except KeyError as e:
+                raise Exception('%s keyword as geometry increment is required for ddr NACT calculation')
             self.createDdrTemplate()
             self.createGridGeom = self.createAllGeom
             self.getTau = self.getTauDdr
@@ -1381,6 +1373,7 @@ class Jacobi(Base):
                     path = path.replace('C', "Inc")
                     self.moveFiles(path)
                     continue 
+
                 firstJobDone = True
                 enrData = self.parseResult('enr.res').flatten()
                 tau = self.getTau(phi)

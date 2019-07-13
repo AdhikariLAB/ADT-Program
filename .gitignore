@@ -6,7 +6,9 @@
 *.out*
 *.xyz
 *.wfu
+*.log
 *.res
+*_mod.dat
 .vscode
 test.py
 dist
