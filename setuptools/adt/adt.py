@@ -28,7 +28,8 @@ from adt.molpro.adt_molpro import mainFunction
 
 class CustomParser(argparse.ArgumentParser):
     # subcommands are mandatory arguments in python 2 but not in python 3. 
-    # So, absence of any subcommand will throw an error in python 2 but not in python 3
+    # So, absence of any subcommand will throw an error in python 2 and thus 
+    # trigger this function to show the full manual but not in python 3
     def error(self, message):
         sys.stderr.write('\033[91mError: %s\n\033[0m' % message)
         self.print_help()
@@ -148,7 +149,7 @@ def main():
                         default="'ADT_numeric'")
     numeric.add_argument("-n",
                         type    =str,
-                        help="Specify number of OpenMP threads to use for parallel calculation. \nApplicable only when installed using OpenMP support.\n(default: Maximum avilable threads)\n ",
+                        help="Specify number of OpenMP threads to use for parallel calculation. \nApplicable only when installed using OpenMP support.\n(default: 1)\n ",
                         default= False)
     numeric.add_argument("-h5",
                         action = 'store_true',
@@ -201,7 +202,7 @@ def main():
                         default="'ADT_numeric'")
     molpro.add_argument("-n",
                          type=str,
-                         help="Specify number of OpenMP threads to use for parallel calculation. \nApplicable only when installed using OpenMP support.\n(default: Maximum avilable threads)\n ",
+                         help="Specify number of OpenMP threads to use for parallel calculation. \nApplicable only when installed using OpenMP support.\n(default: 1)\n ",
                          default=False)
     molpro.add_argument("-mo" ,
                         action = "store_true",
@@ -355,11 +356,14 @@ def main():
 
 #! uncomment these
         # try:
-        files = mainFunction(logger, configfile, atomfile, geomfile, freqfile, wilsonfile)
+        # files = mainFunction(logger, configfile, atomfile, geomfile, freqfile, wilsonfile)
+        adtType, fls = mainFunction(logger, configfile, atomfile, geomfile, freqfile, wilsonfile)
+
 
         # except Exception as e:
         #     logger.error("Program failed in molpro job. %s\n"%e+"-"*121)
         #     sys.exit(1)
+
 
         if not mo:
             try:
@@ -370,23 +374,69 @@ def main():
                 os.environ['OMP_NUM_THREADS'] = threads
 
                 from adt.numeric.adt_numeric import adt_numerical, adt_numerical1d
-                if len(files)==3: # that means ab initio is done on a 2D grid.
-                    logger.info('''Starting Numerical calculation
-                    Integration Path   : {}
-                    Output file/folder : {}
-                    Output file format : {}
-                    '''.format(path, outfile, ffrmt))
-                    adt_numerical(files[0], None, files[1], files[2], path, outfile, logger, h5, txt, nb)
-                else :
-                    logger.info('''Starting Numerical calculation
-                    Output file/folder : {}
-                    Output file format : {}
-                    '''.format(outfile, ffrmt))
-                    adt_numerical1d(files[0], None, files[1], outfile, logger, h5, txt, nb)
+
+
+                for nIrep, files in enumerate(fls, start=1):
+                    # files is a list of energy and nact files for this particular IREP
+                    # now if 0 is provided for this IREP in state keyword in the config file then this list is practically empty, 
+                    # but is here to easily keep track of the IREPs. Again when state is 1 this list just has one energy file so, adt has to done
+                    if len(files) < 2: #only energy file or nothing
+                        continue
+                    
+                    # the number just after the `ADT_numeric` indicates the IREP number
+                    if adtType == "2D":
+                        outfile+ = ".{}_{}".format(nIrep, path)
+                        logger.info('''Starting Numerical calculation
+                        Integration Path   : {}
+                        Output file/folder : {}
+                        Output file format : {}
+                        '''.format(path, outfile, ffrmt))
+
+                        adt_numerical(files[0], None, files[1], files[2], path, outfile, logger, h5, txt, nb)
+
+                    else adtType:
+                        outfile+ = ".{}_1D".format(nIrep)
+                        logger.info('''Starting Numerical calculation
+                        Output file/folder : {}
+                        Output file format : {}
+                        '''.format(outfile, ffrmt))
+            
+                        adt_numerical1d(files[0], None, files[1], outfile, logger, h5, txt, nb)
+
             except Exception as e:
                 logger.error("Program failed in numerical calculation. %s\n"%e+"-"*121)
         else:
             logger.info("'-mo' flag specified, exiting program.")
+
+
+
+
+        # if not mo:
+        #     try:
+        #         if threads:
+        #             tmpLog += 'OpenMP threads       : {}'.format(threads)
+        #         else: # if thread not specified then just spawn one thread
+        #             threads = str(1)
+        #         os.environ['OMP_NUM_THREADS'] = threads
+
+        #         from adt.numeric.adt_numeric import adt_numerical, adt_numerical1d
+        #         if len(files)==3: # that means ab initio is done on a 2D grid.
+        #             logger.info('''Starting Numerical calculation
+        #             Integration Path   : {}
+        #             Output file/folder : {}
+        #             Output file format : {}
+        #             '''.format(path, outfile, ffrmt))
+        #             adt_numerical(files[0], None, files[1], files[2], path, outfile, logger, h5, txt, nb)
+        #         else :
+        #             logger.info('''Starting Numerical calculation
+        #             Output file/folder : {}
+        #             Output file format : {}
+        #             '''.format(outfile, ffrmt))
+        #             adt_numerical1d(files[0], None, files[1], outfile, logger, h5, txt, nb)
+        #     except Exception as e:
+        #         logger.error("Program failed in numerical calculation. %s\n"%e+"-"*121)
+        # else:
+        #     logger.info("'-mo' flag specified, exiting program.")
 
     #######################################################################################################################
 
