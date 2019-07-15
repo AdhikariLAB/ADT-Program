@@ -382,25 +382,22 @@ def main():
                     # but is here to easily keep track of the IREPs. Again when state is 1 this list just has one energy file so, adt has to done
                     if len(files) < 2: #only energy file or nothing
                         continue
-                    
                     # the number just after the `ADT_numeric` indicates the IREP number
+                    outfile += "_irep_{}".format(nIrep)
                     if adtType == "2D":
-                        outfile+ = ".{}_{}".format(nIrep, path)
                         logger.info('''Starting Numerical calculation
-                        Integration Path   : {}
-                        Output file/folder : {}
-                        Output file format : {}
+                    Integration Path   : {}
+                    Output file/folder : {}
+                    Output file format : {}
                         '''.format(path, outfile, ffrmt))
 
                         adt_numerical(files[0], None, files[1], files[2], path, outfile, logger, h5, txt, nb)
 
-                    else adtType:
-                        outfile+ = ".{}_1D".format(nIrep)
+                    else :
                         logger.info('''Starting Numerical calculation
-                        Output file/folder : {}
-                        Output file format : {}
+                    Output file/folder : {}
+                    Output file format : {}
                         '''.format(outfile, ffrmt))
-            
                         adt_numerical1d(files[0], None, files[1], outfile, logger, h5, txt, nb)
 
             except Exception as e:

@@ -1,7 +1,7 @@
 # An example to show use of ADT package as a python module
 import numpy as np
-from adt.numeric import adt_numeric
-
+from adt.numeric import adt_numeric as an
+import os
 
 def writeFile(data, file, xgrid):
     file = open(file,"wb")
@@ -27,21 +27,23 @@ nact1 = nact1[:,2:].reshape(ngrid1, ngrid2, ntau)
 nact2 = nact2[:,2:].reshape(ngrid1, ngrid2, ntau)
 enr   = enr[:,2:].reshape(ngrid1, ngrid2, nstate)
 
-
-angle, res, amat,db = adt_numeric.adt_quantities(grid1, grid2, nact1, nact2, path = 1, energy = enr)
+path = 1
+fol = "ADT_numeric_script_%s"%path
+os.makedirs(fol)
+angle, res, amat,db = an.adt2d(grid1, grid2, nact1, nact2, path = path, energy = enr)
 
 
 angle =  angle.reshape(ngrid1*ngrid2, ntau)
 adtAngle = np.column_stack([fullGrid, angle])
-writeFile(adtAngle, 'angle.dat', grid1)
+writeFile(adtAngle, '%s/Angle.dat'%fol, grid1)
 
 res = np.column_stack([grid1, res])
-np.savetxt( 'angle_residues.dat', res ,delimiter="\t", fmt="%.8f")
+np.savetxt( '%s/Angle_residues.dat'%fol, res ,delimiter="\t", fmt="%.8f")
 
 db = db.reshape(ngrid1*ngrid2, nstate, nstate)
 for i in range(nstate):
-    writeFile( np.column_stack([fullGrid, db[:,i,:]]), 'Diab_Row_%s.dat'%(i+1), grid1)
+    writeFile( np.column_stack([fullGrid, db[:,i,:]]), '%s/Diab_Row_%s.dat'%(fol, i+1), grid1)
 
 amat = amat.reshape(ngrid1*ngrid2, nstate, nstate)
 for i in range(nstate):
-    writeFile( np.column_stack([fullGrid, amat[:,i,:]]), 'Amat_Row_%s.dat'%(i+1), grid1)
+    writeFile( np.column_stack([fullGrid, amat[:,i,:]]), '%s/Amat_Row_%s.dat'%(fol, i+1), grid1)

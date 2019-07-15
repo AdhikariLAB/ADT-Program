@@ -104,6 +104,14 @@ def mainFunction(logger, conFig, atomFile, *args):
     logger.info(txt+"\nCheck 'adt_molpro.log' for progress.\n")
     fls = jobRunner.runMolpro()
     txt = """Molpro jobs completed."""
+    typ, files = fls
+    enrFiles = []
+    n1Files  = []
+    n2Files  = []
+    # if typ=="2D":
+    #     for flls in files:
+
+
     # if len(fls)==3: # 2D case
     #     txt+="""
     #     NACT 1 file : {}
@@ -160,11 +168,7 @@ class Base(object):
 
     def irepChecks(self):
         # Checks everythings against the IREP numbers
-        try:
-            self.symmetry = scf.get('sysInfo', 'symmetry')
-        except KeyError: # no symmetry keyword is provided, use `nosym`
-            self.symmetry = 'nosym'
-        self.nIREPs = IREP_LIST[self.symmetry]
+
         
         self.nStateList = [int(i) for i in re.findall('(\d+)', self.eInfo['state'])]
 
@@ -208,40 +212,101 @@ class Base(object):
         # remove `core` from cas for mcscf
         cas = re.sub('[0-9a-zA-Z,;](core[0-9,]+;?)','', self.eInfo['cas'])
 
-        irepCard = ''
+        irepCards = []
         # crate the ptoper wf keyword 
         for nIrep, state in enumerate(self.nStateList, start=1):
             if(state):
-                irepCard += 'wf,{elec},{irep},{spin},{chrg};state,{stat};'.format(
+                irepCards.append( 'wf,{elec},{irep},{spin},{chrg};state,{stat}'.format(
                                 elec = self.eInfo['electron'],
                                 irep = nIrep,
                                 spin = self.eInfo['spin'],
                                 chrg = self.eInfo['charge'],
                                 stat = state
-                )
+                ))
 
 
         energyLine ='{{mcscf;{cas};{irepCard};start,2140.2; orbital,2140.2;{extra}}}\n'.format(
                             cas = cas,   # <<<----- the cas after stripping the `core` from the cas provided
-                            irepCard =  irepCard,
+                            irepCard =  ';'.join(irepCards)
                             extra= self.eInfo['multi_extra']
                             )
 
         # If mrci is provided or ddr is to be done then do the mrci line
-        # NOTE: The `dm` for mrci is not needed for cpmcscf nact but its written here for convenience
-        if (self.eInfo['method'] == 'mrci') or (self.nInfo['method']=='ddr'):
-            energyLine+='            {{mrci;{cas};{irepCard};save,6000.2;dm,8000.2;{extra}}}'.format(
-                                cas=self.eInfo['cas'],
-                                irepCard = irepCard,
-                                extra = self.eInfo['mrci_extra']
-                                )
+
+
+#################################################################################################
+# 1. If only mcscf has to be done then just add the energy line and add the save energy in the file, all ireps for mcscf is done in a single line
+# 2. If mrci but no ddr : then just add the mrci in loop of irep but dont save the dm and wf, mrci calculation has to be done in seperate for seperate ireps
+# 3. if ddr, then mrci is mandatory and saving the dm and save has to be done, some assumption in this case,
+#     a. save and dm for this case starts from 6000 and 8000, all irep are saved in successive orbital
+#     b. save and dm for the distorted geometry (for ddr) are saved from 6100 and 8100 and one irep is saved at one moment, next irep result replaces that 
+#     c. if some one is going to calculate ddr for more than 100 states for a single irep, this is going to fail, (i think no one is going to do that, at least not using this )
+
+        if (self.eInfo['method'] == 'mrci') and (self.nInfo['method']!='ddr') : #mrci but no ddr
+            for irepCard in irepCards:
+                irep = irepCard.split(',')[2]
+                energyLine+=textwrap.dedent('''
+                            {{mrci;{cas};{irepCard};{extra}}}
+
+                            show, energy
+                            table, energy
+                            save,enr_{irep}.res,new
+                            {table,____; noprint,heading}
+                            '''.format(
+                                    cas=self.eInfo['cas'],
+                                    irepCard = irepCard,
+                                    extra = self.eInfo['mrci_extra'],
+                                    irep = irep
+                                    ))
+
+        elif (self.nInfo['method']=='ddr') :
+            for irepCard in irepCards:
+                irep = irepCard.split(',')[2] # get the irep number from the irep card
+                # the saved orbital and dm depend on irep
+                energyLine+=textwrap.dedent('''
+                            {{mrci;{cas};{irepCard};{extra};save,60{irep:02}.2;dm,80{irep:02}.2;}}
+
+                            show, energy
+                            table, energy
+                            save,enr_{irep}.res,new
+                            {table,____; noprint,heading}
+                            '''.format(
+                                    cas=self.eInfo['cas'],
+                                    irepCard = irepCard,
+                                    extra = self.eInfo['mrci_extra'],
+                                    irep = irep
+                                    ))
+
+        else : # no ddr, no mrci
+            #! CAUTION: for this case structure of energy file is different, remember that while reading
+            energyLine += textwrap.dedent('''
+                        show, energy
+                        table, energy
+                        save,enr.res,new
+                        {table,____; noprint,heading}
+            ''')
+
+
+# #################################################################################################
+
+
+
+#         if (self.eInfo['method'] == 'mrci') or (self.nInfo['method']=='ddr'):
+#             for irep in irepCards:
+#                 energyLine+=textwrap.dedent('''
+#                             {{mrci;{cas};{wf};save,6000.2;dm,8000.2;{extra}}}
+#                             '''.format(
+#                                     cas=self.eInfo['cas'],
+#                                     wf = irep,
+#                                     extra = self.eInfo['mrci_extra']
+#                                     ))
 
 
         # proper template will be created from this, after removing the relavant parts
         baseTemplate = textwrap.dedent('''
             ***, Molpro template created from ADT program for analytical job
             memory,{memory}
-            file,2,molpro_init.wfu,new;
+            file,2,molpro.wfu;
 
             basis={basis};
 
@@ -251,12 +316,6 @@ class Base(object):
             !HF:{{hf}}
             {enrl}
 
-            show, energy
-            table, energy
-            !GRID:save,enr.res,new
-            !SCALE:save,scale.res,new
-            {{table,____; noprint,heading}}
-
             '''.format(memory = self.memory,
                        basis  = self.eInfo['basis'],
                        enrl   = energyLine,
@@ -265,16 +324,19 @@ class Base(object):
 
 
         # remove the proper wildcards for proper template 
-        initTemplate = re.sub("!HF:|!GRID:.*|!SCALE:.*", '', baseTemplate) + '\n---'
-        scaleTemplate= re.sub("!HF:.*|!GRID:.*|!SCALE:", '', baseTemplate) + '\n---'
-        gridTemplate = re.sub("!HF:.*|!GRID:|!SCALE:.*", '', baseTemplate)
+        scaleTemplate= baseTemplate.replace('molpro.wfu', 'molpro_init.wfu,new') + '\n---' # template for scaling job
+        initTemplate = scaleTemplate.replace('!HF', '')   # open the hf card for initial job
+
+        gridTemplate = re.sub("!HF:.*", '', baseTemplate) # remove hf card, not actually necessary, as its already commented
+
+
 
 
         # Crete nact calculation part of the template 
         if self.nInfo['method']=='ddr' :
-            gridTemplate += self.ddrTemplate(irepCard)
+            gridTemplate += self.ddrTemplate(irepCards)
         elif self.nInfo['method']=='cpmcscf':
-            gridTemplate += self.anaTemplate(irepCard)
+            gridTemplate += self.anaTemplate(irepCards)
         else:
             raise Exception("%s is not a valid NACT calculation method"%self.nInfo['method'])
 
@@ -284,17 +346,30 @@ class Base(object):
 
         with open('scale.com','w') as f: f.write(scaleTemplate)
 
-        with open('grid.com','w') as f: f.write(gridTemplate)
+        with open('grid.com', 'w') as f: f.write(gridTemplate)
 
 
-    def anaTemplate(self, irepCard):
+
+    def anaTemplate(self, irepCards):
         # Create NACT part of the template for mcscf nact calculation
         # remove `core` from cas for mcscf
         cas = re.sub('[0-9a-zA-Z,;](core[0-9,]+;?)','', self.eInfo['cas'])
 
         nactText = "\n\nbasis={}\n".format(self.nInfo['basis'])
+
+        # Here's the tricky part all mcscf has to be done in single line irrespective of the irep
+        # but cpmcscf can handle only 5 at a time
+
         # returns a list in chunks of 5 of the input sequence
         getChunk = lambda seq: [seq[i:i+5] for i in range(0, len(seq), 5)]
+
+
+        for icardChunk in getChunk(irepCards):
+            for irepCard in enumerate(icardChunk, start=1):
+                
+
+
+
 
         for nIrep, nactPairs in enumerate(self.nactPairsList, start=1):
             # nactPairs contain the list of nact pairs for the particular irep `nIrep`
@@ -458,6 +533,12 @@ class Base(object):
             self.proc = '1'
 
 
+        try:
+            self.symmetry = scf.get('sysInfo', 'symmetry')
+        except KeyError: # no symmetry keyword is provided, use `nosym`
+            self.symmetry = 'nosym'
+        self.nIREPs = self.IREP_LIST[self.symmetry]
+
 
         self.eInfo = dict(scf.items('eInfo'))
         self.nInfo = dict(scf.items('nInfo'))
@@ -502,19 +583,23 @@ class Base(object):
         grid1 = np.unique(data[:,0])   # numpy precision error
         grid2 = np.unique(data[:,1])
 
-        lim = data.shape[1]  # columns in data
-        res = np.array([], dtype=np.float64).reshape(0,lim)
+
+
+        nRows = grid2.shape[0]
+        nCols = data.shape[1]
+        res = np.array([], dtype=np.float64).reshape(0,nCols)
 
         for g1 in grid1:
-
             g1Block = data[data[:,0] == g1]
 
-            res1 = np.column_stack([np.full(grid2.shape, g1), grid2])
-            gx = g1Block[:,1]
-            for col in range(2, lim):
-                gy = g1Block[:,col]
-                gny = self.interpolate(gx,gy,grid2)
-                res1 = np.column_stack([res1, gny])
+            if g1Block.shape[0]==1:   # g1=0 case, only one value is present. interpolation cant be applied here, copy the one single value everywhere
+                res1 = np.full((nRows, nCols), g1Block)
+                res1[:,1] == grid2 
+            else:
+                res1 = np.column_stack([np.full((nRows,), g1), grid2])
+                for col in range(2, nCols):
+                    gny  = self.interpolate(g1Block[:,1], g1Block[:,col], grid2)
+                    res1 = np.column_stack([res1, gny])
             res = np.vstack([res, res1])
         return res
 
@@ -574,7 +659,7 @@ class Base(object):
         # a general function to run the molpro, 
         # this function is agnostic about system and runs molpro for the grid passed through the grid1, grid2 arguments
 
-        # subprocess calls blocks system I/O buffer, explicit I/O buffers are used to flush by force 
+        # subprocess calls blocks system I/O buffer, explicit I/O buffer counters are used to flush buffer
         self.logFile = open('adt_molpro.log', 'w')
         # open files to store result
         filee  = open(filEe, 'w', buffering=1)
@@ -613,8 +698,8 @@ class Base(object):
                 
                 # if g1 = 0 (i.e. rho/theta/q) is provided then run g1=g2=0 only once
                 # as for g1=0, all g2 will be same
-                #! does this work properly in interpolation ?????
-                if (g1==0) & (g2!=0) & (not done):
+
+                if (g1==0) & (g2!=0) & done:
                     continue # don't run the job for other rhos
                 else:
                     done = True
@@ -695,7 +780,7 @@ class Base(object):
             for nIrep, dat in enumerate(datas, start=1):
                 if not dat.size:        # balnk array, i.e this irep has no energy/nact calculation, skip
                     continue
-                oFile = iFile.replace('.dat', '.%s_mod.dat'%nIrep)
+                oFile = iFile.replace('.dat', '_irep_%s.dat'%nIrep)
                 dat = np.column_stack([grid,dat])
                 self.writeFile(oFile, dat)
 
@@ -907,12 +992,12 @@ class Spectroscopic(Base):
         fileList=[]
         for nIrep, (enr, tau) in enumerate(zip(self.nTau, self.nStateList), start=1):
             tmp = []
-            if not enr:   # If enr 0, means no energy is calculated for this IREP
-                tmp.append( "enrgy.{}_mod.dat".format(nIrep) )
-            if not tau:   # If enr 0, means no NACT is calculated for this IREP
-                tmp.append(
-                    "tau_rho.{}_mod.dat".format(nIrep) ,
-                    "tau_phi.{}_mod.dat".format(nIrep) 
+            if enr:   # If enr 0, means no energy is calculated for this IREP
+                tmp.append( "energy_irep_{}.dat".format(nIrep) )
+            if tau:   # If enr 0, means no NACT is calculated for this IREP
+                tmp.extend(
+                   ["tau_rho_irep_{}.dat".format(nIrep) ,
+                    "tau_phi_irep_{}.dat".format(nIrep) ]
                 )
             # when state is 0, this actually append an empty list
             fileList.append(tmp)
@@ -1176,13 +1261,10 @@ class Scattering(Base):
         fileList=[]
         for nIrep, (enr, tau) in enumerate(zip(self.nTau, self.nStateList), start=1):
             tmp = []
-            if not enr:   # If enr 0, means no energy is calculated for this IREP
-                tmp.append( "enrgy.{}_mod.dat".format(nIrep) )
-            if not tau:   # If enr 0, means no NACT is calculated for this IREP
-                tmp.append(
-                    "tau_{}.{}_mod.dat".format(tXt, nIrep) ,
-                    "tau_phi.{}_mod.dat".format(nIrep) 
-                )
+            if enr:   # If enr 0, means no energy is calculated for this IREP
+                tmp.append( "energy_irep_{}.dat".format(nIrep) )
+            if tau:   # If enr 0, means no NACT is calculated for this IREP
+                tmp +=  ["tau_{}_irep_{}.dat".format(tXt, nIrep), "tau_phi_irep_{}.dat".format(nIrep) ]
             fileList.append(tmp)
         return ("2D", fileList)
 
@@ -1372,12 +1454,11 @@ class Jacobi(Base):
         fileList=[]
         for nIrep, (enr, tau) in enumerate(zip(self.nTau, self.nStateList), start=1):
             tmp = []
-            if not enr:   # If enr 0, means no energy is calculated for this IREP
-                tmp.append( "enrgy.{}_mod.dat".format(nIrep) )
-            if not tau:   # If enr 0, means no NACT is calculated for this IREP
-                tmp.append(
-                    "tau_q.{}_mod.dat".format(nIrep) ,
-                    "tau_phi.{}_mod.dat".format(nIrep) 
+            if enr:   # If enr 0, means no energy is calculated for this IREP
+                tmp.append( "energy_irep_{}.dat".format(nIrep) )
+            if tau:   # If enr 0, means no NACT is calculated for this IREP
+                tmp.extend(
+                    ["tau_q_irep_{}.dat".format(nIrep), "tau_phi_irep_{}.dat".format(nIrep) ]
                 )
             fileList.append(tmp)
         return ("2D", fileList)
@@ -1467,19 +1548,17 @@ class Jacobi(Base):
 
             datas = np.split(data, ll[:-1], axis=1)
             for nIrep, dat in enumerate(datas, start=1):
-                oFile = iFile.replace('.dat', '.%s_mod.dat'%nIrep)
+                oFile = iFile.replace('.dat', '_irep_%s.dat'%nIrep)
                 dat = np.column_stack([grid,dat])
                 np.savetxt(oFile, dat, fmt=str("%.8f"), delimiter='\t')
 
         fileList=[]
         for nIrep, (enr, tau) in enumerate(zip(self.nTau, self.nStateList), start=1):
             tmp = []
-            if not enr:   # If enr 0, means no energy is calculated for this IREP
-                tmp.append( "enrgy.{}_mod.dat".format(nIrep) )
-            if not tau:   # If enr 0, means no NACT is calculated for this IREP
-                tmp.append(
-                    "tau_phi.{}_mod.dat".format(nIrep) 
-                )
+            if enr:   # If enr 0, means no energy is calculated for this IREP
+                tmp.append( "energy_irep_{}.dat".format(nIrep) )
+            if tau:   # If enr 0, means no NACT is calculated for this IREP
+                tmp.append("tau_phi_irep_{}.dat".format(nIrep) )
             fileList.append(tmp)
         return ("1D", fileList)
 
