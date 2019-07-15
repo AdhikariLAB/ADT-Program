@@ -200,6 +200,20 @@ class Base(object):
                         )
 
 
+    def getEnergy(self):
+        eList = np.array([])
+        if (self.eInfo['method'] == 'mrci') or (self.nInfo['method']=='ddr') :
+            for nIrep, state in enumerate(self.nStateList, start=1):
+                if(state):
+                    file = 'enr.{}.res'.format(nIrep)
+                    res = self.parseResult(file).flatten()
+                    np.append(eList, res)
+        else:
+            res = self.parseResult('enr.res').flatten()
+            np.append(eList, res)
+        return eList
+
+
 
 
 
@@ -234,13 +248,6 @@ class Base(object):
         # If mrci is provided or ddr is to be done then do the mrci line
 
 
-#################################################################################################
-# 1. If only mcscf has to be done then just add the energy line and add the save energy in the file, all ireps for mcscf is done in a single line
-# 2. If mrci but no ddr : then just add the mrci in loop of irep but dont save the dm and wf, mrci calculation has to be done in seperate for seperate ireps
-# 3. if ddr, then mrci is mandatory and saving the dm and save has to be done, some assumption in this case,
-#     a. save and dm for this case starts from 6000 and 8000, all irep are saved in successive orbital
-#     b. save and dm for the distorted geometry (for ddr) are saved from 6100 and 8100 and one irep is saved at one moment, next irep result replaces that 
-#     c. if some one is going to calculate ddr for more than 100 states for a single irep, this is going to fail, (i think no one is going to do that, at least not using this )
 
         if (self.eInfo['method'] == 'mrci') and (self.nInfo['method']!='ddr') : #mrci but no ddr
             for irepCard in irepCards:
@@ -250,7 +257,7 @@ class Base(object):
 
                             show, energy
                             table, energy
-                            save,enr_{irep}.res,new
+                            save,enr.{irep}.res,new
                             {table,____; noprint,heading}
                             '''.format(
                                     cas=self.eInfo['cas'],
@@ -258,6 +265,7 @@ class Base(object):
                                     extra = self.eInfo['mrci_extra'],
                                     irep = irep
                                     ))
+
 
         elif (self.nInfo['method']=='ddr') :
             for irepCard in irepCards:
@@ -268,7 +276,7 @@ class Base(object):
 
                             show, energy
                             table, energy
-                            save,enr_{irep}.res,new
+                            save,enr.{irep}.res,new
                             {table,____; noprint,heading}
                             '''.format(
                                     cas=self.eInfo['cas'],
@@ -286,20 +294,6 @@ class Base(object):
                         {table,____; noprint,heading}
             ''')
 
-
-# #################################################################################################
-
-
-
-#         if (self.eInfo['method'] == 'mrci') or (self.nInfo['method']=='ddr'):
-#             for irep in irepCards:
-#                 energyLine+=textwrap.dedent('''
-#                             {{mrci;{cas};{wf};save,6000.2;dm,8000.2;{extra}}}
-#                             '''.format(
-#                                     cas=self.eInfo['cas'],
-#                                     wf = irep,
-#                                     extra = self.eInfo['mrci_extra']
-#                                     ))
 
 
         # proper template will be created from this, after removing the relavant parts
@@ -355,47 +349,49 @@ class Base(object):
         # remove `core` from cas for mcscf
         cas = re.sub('[0-9a-zA-Z,;](core[0-9,]+;?)','', self.eInfo['cas'])
 
-        nactText = "\n\nbasis={}\n".format(self.nInfo['basis'])
-
-        # Here's the tricky part all mcscf has to be done in single line irrespective of the irep
-        # but cpmcscf can handle only 5 at a time
-
         # returns a list in chunks of 5 of the input sequence
         getChunk = lambda seq: [seq[i:i+5] for i in range(0, len(seq), 5)]
 
 
-        for icardChunk in getChunk(irepCards):
-            for irepCard in enumerate(icardChunk, start=1):
-                
-
-
-
-
+        # Here's the tricky part all mcscf has to be done in single line including all of the irep
+        # but cpmcscf can handle only 5 at a time, so create a list of irep and pairs and loop through
+        # 5 chunks at a time
+        cpmcList = []
         for nIrep, nactPairs in enumerate(self.nactPairsList, start=1):
-            # nactPairs contain the list of nact pairs for the particular irep `nIrep`
-            # MOLPRO cant calculate more than 5 state pair at a time, so get a chunk of 5 pairs
-            for pairs in getChunk(nactPairs):
-                nactText += "\n{{mcscf;{cas}; {irepCard}; start,2140.2;{extra};\n".format(
-                        cas=cas,
-                        irepCard = irepCard,
-                        extra= self.eInfo['multi_extra'])
+            for f,s in nactPairs:
+                cpmcList.append([ nIrep, f, s])
 
-                forceText = ''
-                for count, (f,s) in enumerate( pairs, start=1):
-                    nactText += "cpmcscf,nacm,{f}.{irep},{s}.{irep},record=51{n:02}.1,{extra};\n".format(
-                                f=f, s=s, 
-                                n=count, 
-                                irep = nIrep,
-                                extra=self.nInfo['nact_extra'])
 
-                    forceText +=textwrap.dedent("""
-                                force;nacm,51{n:02}.1;varsav
-                                table,gradx,grady,gradz;
-                                save,ananac_{a}.{r}_{b}.{r}.res,new;
-                                {{table,____;  noprint,heading}}
+        fullIrepCard = ';'.join(irepCards)
 
-                                """.format(a=f, b=s,r=nIrep, n=count))
-                nactText += "}\n\n" + forceText
+
+        nactText = "\n\nbasis={}\n".format(self.nInfo['basis'])
+
+        for pairChunk in getChunk(cpmcList):
+            # for this one chunk of 5 pairs, mcscf has to be done once, including all the ireps
+            # But those cpmcscf has to be done seperately, taking care of their ireps
+            nactText += "\n{{mcscf;{cas}; {irepCard}; start,2140.2;{extra};\n".format(
+                    cas=cas,
+                    irepCard = fullIrepCard,
+                    extra= self.eInfo['multi_extra'])
+
+
+            forceText = ''
+            for nIrep, f,s in pairChunk:
+                nactText += "cpmcscf,nacm,{f}.{irep},{s}.{irep},record=51{n:02}.1,{extra};\n".format(
+                            f=f, s=s, 
+                            n=count, 
+                            irep = nIrep,
+                            extra=self.nInfo['nact_extra'])
+
+                forceText +=textwrap.dedent("""
+                            force;nacm,51{n:02}.1;varsav
+                            table,gradx,grady,gradz;
+                            save,ananac_{a}.{r}_{b}.{r}.res,new;
+                            {{table,____;  noprint,heading}}
+
+                            """.format(a=f, b=s,r=nIrep, n=count))
+            nactText += "}\n\n" + forceText
 
         return nactText + '\n---\n'
 
@@ -412,55 +408,57 @@ class Base(object):
         # NOTE: a wild card `!N1D:` for the 1D ddr template purpose. 
         # When to create ddr nact template for 1D contour ab initio, 
         # we will just remove blocks following the wildcard
-        molproTemplate=textwrap.dedent('''
-
-            basis={basis}
 
 
-            !for +d1
-            symmetry,{sym}
-            geometry=geom2.xyz
-            {{multi;{cas1} ;{irepCard};start,2140.2;orbital,2241.2;{extra1}}}
-            {{mrci; {cas}; {irepCard};save,6001.2;{extra2}}}
-            {{ci;trans,6000.2,6001.2;dm,8001.2;{extra3}}}
+        # to be used inside mcscf
+        fullIrepCard = ';'.join(irepCard)
+
+        nactText = 'basis = {}\n'.format(self.nInfo['basis'])
+
+        # How this works?
+        # The index loop, loops through the cases +d1, -d1, +d2, -d2, associated with index value 0,1,2 and 3.
+        # for a specific index, load appropriate geometry, do mcscf once with all ireps and save at orbital 2241,2242,2243,2244
+        # for a specific index/geometry do mrci, in loop of irep and save the wavefunciotn and dm
+        # for +d1 save -> 6101 onwards, dm -> 8101 onwards
+        # for -d1 save -> 6126 onwards, dm -> 8126 onwards
+        # for +d2 save -> 6151 onwards, dm -> 8151 onwards
+        # for -d2 save -> 6176 onwards, dm -> 8176 onwards
+        # so clearly this approach doesn't work if anyone is doing ddr with more than 25 states for a specif irep
 
 
-            !for -d1
-            symmetry,{sym}
-            geometry=geom3.xyz
-            {{multi;{cas1}; {irepCard};start,2140.2;orbital,2242.2;{extra1}}}
-            {{mrci; {cas}; {irepCard};save,6002.2;{extra2}}}
-            {{ci;trans,6000.2,6002.2;dm,8002.2;{extra3}}}
+        for index in range(4):
+            # jsut adding an wildcard to easily delete the block in case of 1D ddr calculation
+            if (index==2) : nactText +="!N1DB\n"
 
-
-            !N1D:
-            !for +d2
-            symmetry,{sym}
-            geometry=geom4.xyz
-            {{multi;{cas1}; {irepCard};start,2140.2;orbital,2243.2;{extra1}}}
-            {{mrci; {cas}; {irepCard};save,6003.2;{extra2}}}
-            {{ci;trans,6000.2,6003.2;dm,8003.2;{extra3}}}
-
-
-            !N1D:
-            !for -d2
-            symmetry,{sym}
-            geometry=geom5.xyz
-            {{multi;{cas1}; {irepCard};start,2140.2;orbital,2244.2;{extra1}}}
-            {{mrci; {cas}; {irepCard};save,6004.2;{extra2}}}
-            {{ci;trans,6000.2,6004.2;dm,8004.2;{extra3}}}
-
-
-            '''.format( basis  = self.eInfo['basis'],
-                        irepCard = irepCard,
-                        cas    = self.eInfo['cas'],
-                        cas1   = cas,
+            nactText+=textwrap.dedent(''' 
+                        symmetry,{sym}
+                        geometry=geom{ge:1}.xyz
+                        {{multi;{cas};{irepCard};start,2140.2;orbital,224{ml:1}.2;{extra}}}
+            '''.format(
+                        irepCard = fullIrepCard,
+                        cas   = cas,
+                        ml = index+1,
+                        ge = index+2,
                         sym    = self.symmetry,
-                        extra1 = self.eInfo['multi_extra'],
-                        extra2 = self.eInfo['mrci_extra'],
-                        extra3 = self.nInfo['nact_extra']))
+                        extra = self.eInfo['multi_extra'],
+                    ))
 
+            for irepCard in irepCards:
+                irep = int(irepCad.split(',')[2])
+                nactText +=textwrap.dedent(''' 
+                        {{mrci;{cas};{irepCard};save,61{irep2:02}.2;{extra2}}}
+                        {{ci;trans,60{irep1:02}.2,61{irep2:02}.2;dm,81{irep2:02}.2;{extra3}}}
+                '''.format(
+                    cas = self.eInfo['cas'],
+                    irepCard = irepCard,
+                    extra2 = self.eInfo['mrci_extra'],
+                    extra3 = self.nInfo['nact_extra'],
+                    irep1 = irep,
+                    irep2 = irep + index*25
+                ))
 
+        # an wild card
+        nactText +="!N1DB\n"
 
         for nIrep, nactPairs in enumerate(self.nactPairsList, start=1):
             for i,j in nactPairs:
@@ -469,8 +467,8 @@ class Base(object):
                     !for taur     
                     {{ddr, 2*{d1}
                     orbital,2140.2,2141.2,2142.2;
-                    density,8000.2,8001.2,8002.2;
-                    state, {j}.{r},{i}.{r}
+                    density,80{irep:02}.2,81{irep1:02}.2,81{irep2:02}.2;
+                    state, {j}.{irep},{i}.{irep}
                     }}
                     nacmr = nacme
 
@@ -478,15 +476,24 @@ class Base(object):
                     !N1D:for taup
                     {{ddr, 2*{d2}
                     orbital,2140.2,2143.2,2144.2;
-                    density,8000.2,8003.2,8004.2;
-                    state, {j}.{r},{i}.{r}
+                    density,80{irep:02}.2,81{irep3:02}.2,81{irep4:02}.2;
+                    state, {j}.{irep},{i}.{irep}
                     }}
                     nacmp = nacme
 
                     table, nacmr,nacmp
-                    save,ddrnact_{i}.{r}_{j}.{r}.res,new;
+                    save,ddrnact_{i}.{irep}_{j}.{irep}.res,new;
 
-                    '''.format(d1=self.d1,d2=self.d2,i=i,j=j,r=nIrep))
+                    '''.format(
+                        d1=self.d1,
+                        d2=self.d2,
+                        i=i,j=j,
+                        irep=nIrep,
+                        irep1 = nIrep,
+                        irep2 = nIrep+25,
+                        irep3 = nIrep+50,
+                        irep4 = nIrep+75,
+                        ))
 
 
         return molproTemplate + '\n---\n'
@@ -724,7 +731,7 @@ class Base(object):
                     continue
 
 
-                enrData = self.parseResult('enr.res').flatten()
+                enrData = self.getEnergy()
                 # this getTau function is created inside the respective class depending, system, coordinate and nact calculation type
                 tau1, tau2 = self.getTau(g1, g2)
                 # [None] increase one ndarray dimension so that savetxt can save it as row
@@ -1340,6 +1347,7 @@ class Jacobi(Base):
         # remove 7 lines starting from !N1D and also remove the word ",nacmp"
         # regular expression on the rescue
         odTemplate = re.sub("!N1D:((.*\n){7})|,nacmp", '', template)
+        odTemplate = re.sub("!N1DB(.*)!N1DB", '', odTemplate, re.M)
 
         with open("grid.com","w") as f:
             f.write(odTemplate)
@@ -1517,7 +1525,7 @@ class Jacobi(Base):
                 self.moveFiles(path.replace('C', "Inc"))
                 continue 
             firstJobDone = True
-            enrData = self.parseResult('enr.res').flatten()
+            enrData = self.getEnergy()
             tau = self.getTau(phi)
             self.moveFiles(path)
             np.savetxt(filee,  np.append([phi],enrData)[None], fmt=str("%.8f"), delimiter='\t')
