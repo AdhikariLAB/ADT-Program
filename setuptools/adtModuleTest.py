@@ -11,9 +11,9 @@ def writeFile(data, file, xgrid):
 
 
 
-nact1    = np.loadtxt('../TEST_RUNS/NUMERICAL_CALCULATIONS/H3+/Tau_Rho.dat')
-nact2    = np.loadtxt('../TEST_RUNS/NUMERICAL_CALCULATIONS/H3+/Tau_Phi.dat')
-enr      = np.loadtxt('../TEST_RUNS/NUMERICAL_CALCULATIONS/H3+/Adiabatic_PES.dat')
+nact1    = np.load('../TEST_RUNS/NUMERICAL_CALCULATIONS/NO3/Tau_Rho.dat')
+nact2    = np.load('../TEST_RUNS/NUMERICAL_CALCULATIONS/NO3/Tau_Phi.dat')
+enr      = np.load('../TEST_RUNS/NUMERICAL_CALCULATIONS/NO3/Adiabatic_PES.dat')
 fullGrid = nact1[:,[0,1]]
 
 grid1  = np.unique(nact1[:,0])

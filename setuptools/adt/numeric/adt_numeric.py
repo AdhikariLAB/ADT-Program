@@ -28,6 +28,20 @@ try:
     h5NotAvail  = False
 except ImportError:
     h5NotAvail = True
+from contextlib import contextmanager
+
+
+
+@contextmanager
+def move2dir(newdir):
+    prevdir = os.getcwd()
+    os.chdir(newdir)
+    try:
+        yield
+    finally:
+        os.chdir(prevdir)
+
+
 
 #  This definition evaluates ADT angles, ADT matrix elements, diabatic potential energy matrix elements and residue of ADT angles
 
@@ -177,24 +191,24 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger, h5, txt, nb):
         outpath = outfile+"_%s"%path
         logger.info("Saving results in folder '%s'"%outpath)
         if not os.path.exists(outpath):os.makedirs(outpath)
-        os.chdir(outpath)
-        file = "Angles.dat"
-        logger.info("Writing ADT Angles in '%s'"%file)
-        file_write(file, adtAngle, fadt.gridr)
-        logger.info("Writing ADT Angles in 'Angle_residues.dat'")
-        np.savetxt('Angle_residues.dat', residue ,delimiter="\t", fmt=str("%.8f"))
+        with move2dir(outpath):
+            file = "Angles.dat"
+            logger.info("Writing ADT Angles in '%s'"%file)
+            file_write(file, adtAngle, fadt.gridr)
+            logger.info("Writing ADT Angles in 'Angle_residues.dat'")
+            np.savetxt('Angle_residues.dat', residue ,delimiter="\t", fmt=str("%.8f"))
 
 
-        for i in range(fadt.nstate):
-            file =  "Matrix_Row_%s.dat"%(i+1)
-            logger.info("Writing ADT Matrix elements in '%s'"%(file))
-            file_write(file, np.column_stack([rdat[:,[0,1]],amat[:,i,:]]), fadt.gridr )
-
-        if enrf != None:
             for i in range(fadt.nstate):
-                file =  "Diabatic_Row_%s.dat"%(i+1)
-                logger.info("Writing Diabatic Matrix elements in '%s'"%(file))
-                file_write(file, np.column_stack([rdat[:,[0,1]],db[:,i,:]]), fadt.gridr )
+                file =  "Matrix_Row_%s.dat"%(i+1)
+                logger.info("Writing ADT Matrix elements in '%s'"%(file))
+                file_write(file, np.column_stack([rdat[:,[0,1]],amat[:,i,:]]), fadt.gridr )
+
+            if enrf != None:
+                for i in range(fadt.nstate):
+                    file =  "Diabatic_Row_%s.dat"%(i+1)
+                    logger.info("Writing Diabatic Matrix elements in '%s'"%(file))
+                    file_write(file, np.column_stack([rdat[:,[0,1]],db[:,i,:]]), fadt.gridr )
 
 
     # Writing of numerical output in '.npy' files
@@ -202,24 +216,24 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger, h5, txt, nb):
         outpath = outfile+"_%s"%path
         logger.info("Saving results in folder '%s'"%outpath)
         if not os.path.exists(outpath):os.makedirs(outpath)
-        os.chdir(outpath)
-        file = "Angles"
-        logger.info("Writing ADT Angles in '%s.npy'"%file)
-        np.save(file, adtAngle)
-        logger.info("Writing ADT Angles in 'Angle_residues.npy'")
-        np.save('Angle_residues', residue)
+        with move2dir(outpath):
+            file = "Angles"
+            logger.info("Writing ADT Angles in '%s.npy'"%file)
+            np.save(file, adtAngle)
+            logger.info("Writing ADT Angles in 'Angle_residues.npy'")
+            np.save('Angle_residues', residue)
 
 
-        for i in range(fadt.nstate):
-            file =  "Matrix_Row_%s"%(i+1)
-            logger.info("Writing ADT Matrix elements in '%s.npy'"%(file))
-            np.save(file, np.column_stack([rdat[:,[0,1]],amat[:,i,:]]) )
-
-        if enrf != None:
             for i in range(fadt.nstate):
-                file =  "Diabatic_Row_%s"%(i+1)
-                logger.info("Writing Diabatic Matrix elements in '%s.npy'"%(file))
-                np.save(file, np.column_stack([rdat[:,[0,1]],db[:,i,:]]) )
+                file =  "Matrix_Row_%s"%(i+1)
+                logger.info("Writing ADT Matrix elements in '%s.npy'"%(file))
+                np.save(file, np.column_stack([rdat[:,[0,1]],amat[:,i,:]]) )
+
+            if enrf != None:
+                for i in range(fadt.nstate):
+                    file =  "Diabatic_Row_%s"%(i+1)
+                    logger.info("Writing Diabatic Matrix elements in '%s.npy'"%(file))
+                    np.save(file, np.column_stack([rdat[:,[0,1]],db[:,i,:]]) )
 
 
 
@@ -365,24 +379,24 @@ def adt_numerical1d(enrf, nstate, tauf, outfile, logger, h5, txt, nb):
         outpath = outfile+"_%s"%path
         logger.info("Saving results in folder '%s'"%outpath)
         if not os.path.exists(outpath):os.makedirs(outpath)
-        os.chdir(outpath)
-        file = "Angles.dat"
-        logger.info("Writing ADT Angles in '%s'"%file)
-        np.savetxt(file, adtAngle, delimiter="\t", fmt=str("%.8f"))
-        logger.info("Writing ADT Angles in 'Angle_residues.dat'")
-        np.savetxt('Angle_residues.dat', residue ,delimiter="\t", fmt=str("%.8f"))
+        with move2dir(outpath):
+            file = "Angles.dat"
+            logger.info("Writing ADT Angles in '%s'"%file)
+            np.savetxt(file, adtAngle, delimiter="\t", fmt=str("%.8f"))
+            logger.info("Writing ADT Angles in 'Angle_residues.dat'")
+            np.savetxt('Angle_residues.dat', residue ,delimiter="\t", fmt=str("%.8f"))
 
 
-        for i in range(fadt.nstate):
-            file =  "Matrix_Row_%s.dat"%(i+1)
-            logger.info("Writing ADT Matrix elements in '%s'"%(file))
-            np.savetxt(file,  np.column_stack([fadt.grid,amat[:,i,:]]), delimiter="\t", fmt=str("%.8f"))
-
-        if enrf != None:
             for i in range(fadt.nstate):
-                file =  "Diabatic_Row_%s.dat"%(i+1)
-                logger.info("Writing Diabatic Matrix elements in '%s'"%(file))
-                np.savetxt(file, np.column_stack([fadt.grid,db[:,i,:]]), delimiter="\t", fmt=str("%.8f"))
+                file =  "Matrix_Row_%s.dat"%(i+1)
+                logger.info("Writing ADT Matrix elements in '%s'"%(file))
+                np.savetxt(file,  np.column_stack([fadt.grid,amat[:,i,:]]), delimiter="\t", fmt=str("%.8f"))
+
+            if enrf != None:
+                for i in range(fadt.nstate):
+                    file =  "Diabatic_Row_%s.dat"%(i+1)
+                    logger.info("Writing Diabatic Matrix elements in '%s'"%(file))
+                    np.savetxt(file, np.column_stack([fadt.grid,db[:,i,:]]), delimiter="\t", fmt=str("%.8f"))
 
 
     # Writing of numerical output in '.npy' files
@@ -390,24 +404,24 @@ def adt_numerical1d(enrf, nstate, tauf, outfile, logger, h5, txt, nb):
         outpath = outfile+"_%s"%path
         logger.info("Saving results in folder '%s'"%outpath)
         if not os.path.exists(outpath):os.makedirs(outpath)
-        os.chdir(outpath)
-        file = "Angles"
-        logger.info("Writing ADT Angles in '%s.npy'"%file)
-        np.save(file, adtAngle)
-        logger.info("Writing ADT Angles in 'Angle_residues.npy'")
-        np.save('Angle_residues', residue)
+        with move2dir(outpath):
+            file = "Angles"
+            logger.info("Writing ADT Angles in '%s.npy'"%file)
+            np.save(file, adtAngle)
+            logger.info("Writing ADT Angles in 'Angle_residues.npy'")
+            np.save('Angle_residues', residue)
 
 
-        for i in range(fadt.nstate):
-            file =  "Matrix_Row_%s"%(i+1)
-            logger.info("Writing ADT Matrix elements in '%s.npy'"%(file))
-            np.save(file, np.column_stack([fadt.grid,amat[:,i,:]]) )
-
-        if enrf != None:
             for i in range(fadt.nstate):
-                file =  "Diabatic_Row_%s"%(i+1)
-                logger.info("Writing Diabatic Matrix elements in '%s.npy'"%(file))
-                np.save(file, np.column_stack([fadt.grid,db[:,i,:]]) )
+                file =  "Matrix_Row_%s"%(i+1)
+                logger.info("Writing ADT Matrix elements in '%s.npy'"%(file))
+                np.save(file, np.column_stack([fadt.grid,amat[:,i,:]]) )
+
+            if enrf != None:
+                for i in range(fadt.nstate):
+                    file =  "Diabatic_Row_%s"%(i+1)
+                    logger.info("Writing Diabatic Matrix elements in '%s.npy'"%(file))
+                    np.save(file, np.column_stack([fadt.grid,db[:,i,:]]) )
 
     logger.info("Program completed successfully in %.5f seconds\n"%(time()-start)+"-"*121)
 

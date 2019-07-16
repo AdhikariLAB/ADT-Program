@@ -22,6 +22,7 @@ import sys
 import logging
 import textwrap
 import argparse
+import glob
 from adt.analytic.adt_analytic import adt_analytical
 from adt.molpro.adt_molpro import mainFunction
 
@@ -383,22 +384,21 @@ def main():
                     if len(files) < 2: #only energy file or nothing
                         continue
                     # the number just after the `ADT_numeric` indicates the IREP number
-                    outfile += "_irep_{}".format(nIrep)
+                    outfilen = outfile+ "_irep_{}".format(nIrep)
                     if adtType == "2D":
                         logger.info('''Starting Numerical calculation
                     Integration Path   : {}
                     Output file/folder : {}
                     Output file format : {}
-                        '''.format(path, outfile, ffrmt))
-
-                        adt_numerical(files[0], None, files[1], files[2], path, outfile, logger, h5, txt, nb)
+                        '''.format(path, outfilen, ffrmt))
+                        adt_numerical(files[0], None, files[1], files[2], path, outfilen, logger, h5, txt, nb)
 
                     else :
                         logger.info('''Starting Numerical calculation
                     Output file/folder : {}
                     Output file format : {}
-                        '''.format(outfile, ffrmt))
-                        adt_numerical1d(files[0], None, files[1], outfile, logger, h5, txt, nb)
+                        '''.format(outfilen, ffrmt))
+                        adt_numerical1d(files[0], None, files[1], outfilen, logger, h5, txt, nb)
 
             except Exception as e:
                 logger.error("Program failed in numerical calculation. %s\n"%e+"-"*121)
