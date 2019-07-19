@@ -142,10 +142,11 @@ class Base(object):
     bohrtoang    = 0.529177
 
     # this dictionary keeps track of number of IREP for a particualr symmetry
-    # want to include new symmetry, just update this.
+    # want to include new symmetry, just update it.
     IREP_LIST = {
         "x": 2,
-        "nosym" : 1
+        "nosym" : 1,
+        "y,z":4
     }
 
 
@@ -573,7 +574,7 @@ class Base(object):
 
         try:
             self.symmetry = scf.get('sysInfo', 'symmetry')
-        except KeyError: # no symmetry keyword is provided, use `nosym`
+        except: # no symmetry keyword is provided, use `nosym`
             self.symmetry = 'nosym'
         self.nIREPs = self.IREP_LIST[self.symmetry]
 
@@ -1397,12 +1398,13 @@ class Jacobi(Base):
                 grads = self.parseResult(file)
                 if self.Jacobi1D:
                     phi = args[0] # 1D case only phi is passed
-                    tau = self.q*(-grads[2,0]*self.sin(phi) + grads[2,1]*self.cos(phi))
+                    # putting explicit index here, be careful when canging geometry structure
+                    tau = self.q*(grads[2,1]*self.cos(phi) - grads[2,2]*self.sin(phi))  
                     tauList.append(tau)
                 else :
                     q, phi = args # 2D case q,phi is passed
-                    tauphi = q*(-grads[2,0]*self.sin(phi) + grads[2,1]*self.cos(phi))
-                    tauq   = grads[2,0]*self.cos(phi) + grads[2,1]*self.sin(phi)
+                    tauphi = q*(grads[2,1]*self.cos(phi) - grads[2,2]*self.sin(phi))
+                    tauq   = grads[2,1]*self.sin(phi) + grads[2,2]*self.cos(phi)
                     tauList.append([tauphi, tauq])
         return np.abs(tauList).T   #! CAUTION about transposing in 1D case
 
@@ -1427,6 +1429,10 @@ class Jacobi(Base):
             [0.0, 0.0, -self.smallR/2.0],
             [0.0, 0.0, self.smallR/2.0],
             [0.0, self.capR*self.sin(self.gamma)+q*self.sin(phi), self.capR*self.cos(self.gamma)+q*self.cos(phi)]])
+        # curGeom  = self.bohrtoang*np.array([
+        #     [-self.smallR/2.0,   0.0,  0.0],
+        #     [self.smallR/2.0,   0.0,   0.0],
+        #     [self.capR*self.cos(self.gamma)+q*self.cos(phi),  self.capR*self.sin(self.gamma)+q*self.sin(phi), 0.0]])
 
 
         msg = 'for r = {}, R = {}, gamma = {}, Phi = {}, q= {}'.format(self.smallR, self.capR, self.gamma, phi, q)
@@ -1498,7 +1504,7 @@ class Jacobi(Base):
             tmp = []
             if enr:   # If enr 0, means no energy is calculated for this IREP
                 tmp.append( "energy_irep_{}.dat".format(nIrep) )
-            if tau:   # If enr 0, means no NACT is calculated for this IREP
+            if tau:   # If tau 0, means no NACT is calculated for this IREP
                 tmp.extend(
                     ["tau_q_irep_{}.dat".format(nIrep), "tau_phi_irep_{}.dat".format(nIrep) ]
                 )
@@ -1563,8 +1569,8 @@ class Jacobi(Base):
             tau = self.getTau(phi)
             self.moveFiles(path)
             np.savetxt(filee,  np.append([phi],enrData)[None], fmt=str("%.8f"), delimiter='\t')
-            np.savetxt(filen, np.append([phi],tau)[None],  fmt=str("%.8f"), delimiter='\t')
-        
+            np.savetxt(filen, np.append([phi],tau)[None], fmt=str("%.8f"), delimiter='\t')
+
         scalingVal = self.runScaleCalc()
 
         self.msg('All molpro jobs done.', cont=True)
@@ -1590,6 +1596,8 @@ class Jacobi(Base):
 
             datas = np.split(data, ll[:-1], axis=1)
             for nIrep, dat in enumerate(datas, start=1):
+                if not dat.size:        # balnk array, i.e this irep has no energy/nact calculation, skip
+                    continue
                 oFile = iFile.replace('.dat', '_irep_%s.dat'%nIrep)
                 dat = np.column_stack([grid,dat])
                 np.savetxt(oFile, dat, fmt=str("%.8f"), delimiter='\t')
@@ -1606,13 +1614,13 @@ class Jacobi(Base):
 
 
 
-
 if __name__ == "__main__":
     scf = ConfigParser()
     scf.optionxform = str               #<<<<<<==== Preserve  the case of keywords during configparser read
-    scf.read('./H3+_1D/molpro.config')
+    scf.read('./F+H2/molpro.config')
     sysType = scf.get('sysInfo', 'type')
     # jobRunner = Spectroscopic(scf, './NO2/atomfile.dat', './NO2/geomfile.dat', './NO2/frequency.dat', './NO2/wilson.dat')
     # jobRunner = Jacobi(scf, './NO2/atomfile.dat')
-    jobRunner = Jacobi(scf, './H3+_1D/atomfile.dat')
-    jobRunner.runMolpro()
+    jobRunner = Scattering(scf, './F+H2/atomfile.dat')
+    jobRunner.runScaleCalc()
+    # jobRunner.runMolpro()
