@@ -143,7 +143,8 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger, h5, txt, nb):
     # calculation of ADT angles
     logger.info("Calculating ADT Angles on path %s"%path)
     full_angle = fadt.get_angle(fadt.ngridr, fadt.ngridp, fadt.ntau, path)
-    residue    = full_angle[:,-1,:] # taking the last value of phi grid
+    # taking the difference between last and first value of the phi grid
+    residue    = full_angle[:,-1,:] - full_angle[:,0,:] 
 
     full_angle = full_angle.reshape(fadt.ngridr*fadt.ngridp, fadt.ntau)
     adtAngle   = np.column_stack([rdat[:,[0,1]], full_angle])
@@ -325,11 +326,11 @@ def adt_numerical1d(enrf, nstate, tauf, outfile, logger, h5, txt, nb):
     # calculation of ADT angles
     logger.info("Calculating ADT Angles")
     full_angle = fadt.get_angle1d(fadt.ngrid,fadt.ntau)
-    # no residue required
-
+    
+    residue = full_angle[-1] - full_angle[0]
+    residue = np.append(fadt.grid[-1], residue)[None]
 
     adtAngle   = np.column_stack([fadt.grid, full_angle])
-    residue    = adtAngle[-1, np.newaxis]
 
     # calculation of ADT matrix elements
     logger.info("Calculating ADT matrix elements")
@@ -432,6 +433,7 @@ def file_write(file, data, col):
     for r in col:
         np.savetxt( file, data[data[:,0]==r] ,delimiter="\t", fmt=str("%.8f"))
         file.write("\n")
+    file.flush()
 
 
 
@@ -498,7 +500,7 @@ def adt2d(grid1, grid2, nact1, nact2, energy=None, path = 1):
 
     # calculation of ADT angles
     full_angle = fadt.get_angle(fadt.ngridr, fadt.ngridp, fadt.ntau, path)
-    residue    = full_angle[:,-1,:]
+    residue    = full_angle[:,-1,:] - full_angle[:,0,:]
 
     # calculation of ADT matrix elements
 
@@ -562,15 +564,16 @@ def adt1d(grid, taudat, energy = None):
     full_angle = fadt.get_angle1d(fadt.ngrid,fadt.ntau)
 
     # calculation of ADT matrix elements
+    residue = full_angle[-1] - full_angle[0]
 
     amat = np.apply_along_axis(fadt.amat,1,full_angle,fadt.nstate)
 
 
     if energy is None :
-        return [full_angle, full_angle[-1], amat]
+        return [full_angle, residue, amat]
     else :
         db = np.einsum("ijk,ij,ijl->ikl",amat,energy,amat)
-        return [full_angle, full_angle[-1], amat, db]
+        return [full_angle, residue, amat, db]
 
 
 
