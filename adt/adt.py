@@ -343,7 +343,7 @@ def main():
         nb = args.nb
         mo = args.mo 
         threads = args.n
-        
+
         if (h5 == False and txt == False and nb == False): txt = True
 
         logger = make_logger("ADT Molpro Program")
@@ -355,7 +355,6 @@ def main():
         ffrmt = ', '.join(ffrmt)
 
 
-#! uncomment these
         try:
             adtType, fls = mainFunction(logger, configfile, atomfile, geomfile, freqfile, wilsonfile)
 
