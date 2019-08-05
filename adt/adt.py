@@ -268,7 +268,7 @@ def main():
         if enrf and not nstate : nstatet = 'All'
         else :nstatet = nstate
 
-        
+
         #as phifile is mandatory, presence of another nact file means 2D nact will be done
         adt2D = True if rhof else False
 

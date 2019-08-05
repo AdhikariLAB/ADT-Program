@@ -165,7 +165,7 @@ class Base(object):
 
 
     def getEnergy(self):
-        eList = np.array([])
+        eList = np.array([])    #mrci energies are written in seperate files wrt ireps
         if (self.eInfo['method'] == 'mrci') or (self.nInfo['method']=='ddr') :
             for nIrep, state in enumerate(self.nStateList, start=1):
                 if(state):
@@ -815,11 +815,12 @@ class Base(object):
                 cls.moveFiles('CompleteJobs/Scaling_point')
                 # now the scale has to be consistent with the IREPs, 
                 # so make the scale a 1D array with same IREPs having the same value, i.e. lowest state value
-                ll = np.split(scale, np.cumsum(cls.nStateList)[:-1])  #split energies in list of different IREPs
-                for i in ll:
-                    if not i.size: continue
-                    i[:] = i[0]                                        # subtract IREP from ground state
-                scale = np.append(*ll)                                 # stitch it up
+                if len(cls.nStateList)>1: # its being done with symmetry
+                    ll = np.split(scale, np.cumsum(cls.nStateList)[:-1])  #split energies in list of different IREPs
+                    for i in ll:
+                        if not i.size: continue
+                        i[:] = i[0]                                        # subtract IREP from ground state
+                    scale = np.append(*ll)                                 # stitch it up
                 return scale
             else:
                 cls.msg( ' Job failed', cont=True)
