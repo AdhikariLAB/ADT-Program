@@ -123,12 +123,12 @@ def main():
     #adding options for numerical jobs
     numeric_required.add_argument("-nfile",
                         type     = str,
-                        help     = "Specify the NACT file along first coordinate. \nThis one NACT file is sufficient for evaluating ADT for a 1D grid of geometries. \nBut for calulating a 2D ADT user must also provide another NACT file \n(usinf '-nfile2') along the other coordinate.",
+                        help     = "Need to specify the path of the input \nNACT file, which is required both for \n1D as well as 2D calculation. This file \nrepresents the component of NACT for \nthe circular coordinate (e.g. {0,2pi}).\n ",
                         metavar  = "FILE",
                         required = True)
     numeric.add_argument("-mfile",
                         type     = str,
-                        help     = "Specify the NACT file along second coordinate. \nRequired for calculating ADT over a 2D grid of geometries.",
+                        help     = "Specify the path of the input NACT file. \nrepresenting the component of NACT \nfor the non-circular coordinate \n(e.g. {0,pi/2} or {0,pi} or \n{0,infinity}).\n ",
                         metavar  = "FILE")
     numeric.add_argument("-intpath",
                         type    = int,
@@ -138,19 +138,19 @@ def main():
                         default = 1)
     numeric.add_argument("-efile",
                         type    = str,
-                        help    = "Specify the Energy file for calculating the diabatic potential energy matrix elements.\n ",
+                        help    = "Specify the path of the adiabatic PES file for \ncalculating the diabatic potential energy matrix \nelements.\n ",
                         metavar = "FILE")
     numeric.add_argument('-nstate',
                         type = int,
                         help = "Specify the number of states to do the calculation.\nBy default it includes all the data for calculation.\n  ")
     numeric.add_argument("-ofile",
                         type    = str,
-                        help    = "Specify the output folder/file name (w/o extension) (default: %(default)s).\n ",
+                        help    = "Specify the output folder/file name (w/o extension) \n(default: %(default)s).\n ",
                         metavar = "FILE",
                         default="'ADT_numeric'")
     numeric.add_argument("-n",
                         type    =str,
-                        help="Specify number of OpenMP threads to use for parallel calculation. \nApplicable only when installed using OpenMP support.\n(default: 1)\n ",
+                        help="Specify number of OpenMP threads for parallel jobs. \n(default: 1)\n ",
                         default= False)
     numeric.add_argument("-h5",
                         action = 'store_true',
@@ -179,17 +179,17 @@ def main():
                         type    = str,
                         metavar = "FILE",
                         default='geomfile.dat',
-                        help='Specify the geometry file containing the initial\ngrid point in "xyz" format (in Angstrom)\n(default: %(default)s). \n(Required for spectroscopic system). \n ')
+                        help='Specify the geometry file containing the initial\ngrid point in "xyz" format (in Angstrom)\n(default: %(default)s). \n(Ignore for scattering system). \n ')
     molpro.add_argument('-freqfile',
                         type    = str,
                         metavar = "FILE",
                         default = 'frequency.dat',
-                        help='Specify the frequency information file, where\nfrequencies of normal modes are written in cm-1\n(default: %(default)s). \n(Required for spectroscopic system). \n ')
+                        help='Specify the frequency information file, where\nfrequencies of normal modes are written in cm-1\n(default: %(default)s). \n(Ignore for scattering system). \n ')
     molpro.add_argument('-wilsonfile',
                         type    = str,
                         metavar = "FILE",
                         default = 'wilson.dat',
-                        help='Specify the filename containing the Wilson matrix\nof a molecular species (default: wilson.dat).\n(default: %(default)s).\n(Required for spectroscopic system). \n ')
+                        help='Specify the filename containing the Wilson matrix\nof a molecular species (default: wilson.dat).\n(default: %(default)s).\n(Ignore for scattering system). \n ')
     molpro.add_argument("-intpath",
                         type    = int,
                         help    = "Specify the path for calculation (default: %(default)s).\n ",
@@ -198,16 +198,16 @@ def main():
                         default = 1)
     molpro.add_argument("-ofile",
                         type    = str,
-                        help    = "Specify the output file name (w/o extension) (default: %(default)s).\n ",
+                        help    = "Specify the output file name (w/o extension) \n(default: %(default)s).\n ",
                         metavar = "FILE",
                         default="'ADT_numeric'")
     molpro.add_argument("-n",
                          type=str,
-                         help="Specify number of OpenMP threads to use for parallel calculation. \nApplicable only when installed using OpenMP support.\n(default: 1)\n ",
+                         help="Specify number of OpenMP threads to use for parallel calculation. \n(default: 1)\n ",
                          default=False)
     molpro.add_argument("-mo" ,
                         action = "store_true",
-                        help="Terminate the program after completion of MOLPRO jobs befor calculating the ADT quantities.\n ")
+                        help="Terminate the execution only after completion of MOLPRO jobs.\n ")
     molpro.add_argument("-h5",
                         action = 'store_true',
                         help   = "Write results in a HDF5 file (.h5).\nFast IO, smaller file size and hierarchical filesystem-like data format,\npreferable for saving and sharing large datasets in an organised way.\n " )

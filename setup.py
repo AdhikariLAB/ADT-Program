@@ -13,7 +13,7 @@ Or you can just install this in a python virtualenv.
 '''
 
 __authors__  = '''
-Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari
+Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Satyam Ravi, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari
 '''
 import setuptools
 from numpy.distutils.core import setup, Extension
