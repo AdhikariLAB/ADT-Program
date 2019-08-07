@@ -9,9 +9,6 @@ therefore, dynamical observables will be independent of integration paths. For n
 choose either 'HDF5' or 'text' formatted output, though the first one is fast and efficient due to low memory
 requirement.
 
-Written by Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit
-Adhikari
-
 '''
 
 __authors__  = '''

@@ -273,7 +273,7 @@ class Base(object):
             symmetry,{sym}
 
             geometry=geom.xyz
-            !HF:{hf}
+            !HF:{{{hf}}}
 
 
             '''.format(memory = self.memory,
@@ -756,7 +756,7 @@ class Base(object):
         # for all the other cases the first colum is an radial type coordinate, so not convert to radian
         # the attribute fixedRho exist only in scattering fixed rho case, so this check is enough
         # the second column is phi, so convert to radian anyway
-        radCols = [0, 1] if  hasattr(self, 'fixedRho') else [1]
+        radCols = [0, 1] if hasattr(self, 'fixedRho') else [1]
 
 
 
@@ -1561,7 +1561,7 @@ class Jacobi(Base):
 
             datas = np.split(data, ll[:-1], axis=1)
             for nIrep, dat in enumerate(datas, start=1):
-                if not dat.size:        # balnk array, i.e this irep has no energy/nact calculation, skip
+                if not dat.size:        # blank array, i.e this irep has no energy/nact calculation, skip
                     continue
                 oFile = iFile.replace('.dat', '_irep_%s.dat'%nIrep)
                 dat = np.column_stack([grid,dat])

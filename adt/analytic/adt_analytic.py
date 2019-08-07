@@ -1,13 +1,12 @@
 from __future__ import absolute_import, unicode_literals, division, print_function
 __doc__='''
 
-This python script is specifically implemented for devising analytic expressions of eight adiabatic to diabatic
+This python script is specifically implemented for devising analytic expressions of six adiabatic to diabatic
 transformation (ADT) quantities for any 'N' number of coupled electronic states.
 
-Short description of eight definitions:
+Short description of six definitions:
 
-adt1 :  gives elements of adiabatic potential energy matrix
-adt2 :  gives elements of nonadiabatic coupling matrix (NACM)
+
 adt3 :  gives elements of adiabatic to diabatic transformation (ADT) matrix
 adt4 :  gives partially substituted forms of ADT equations
 adt5 :  gives complete forms of ADT equations

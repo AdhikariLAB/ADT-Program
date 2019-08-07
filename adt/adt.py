@@ -14,7 +14,7 @@ jobs.
 
 '''
 __authors__  = '''
-Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Satyam Ravi Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari
+Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Satyam Ravi, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari
 '''
 
 import os
