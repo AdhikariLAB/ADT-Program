@@ -273,7 +273,7 @@ class Base(object):
             symmetry,{sym}
 
             geometry=geom.xyz
-            !HF:{{hf}}
+            !HF:{hf}
 
 
             '''.format(memory = self.memory,
@@ -557,6 +557,7 @@ class Base(object):
 
         # set up initial HF calculation according to 'restricted' parameter
         self.eInfo['hf'] = 'uhf'
+        # print (self.eInfo['restricted'].lower())
         try:
             # if restricted keyword is provided then do `hf` else do an `uhf`
             if self.eInfo['restricted'].lower() == 'true':

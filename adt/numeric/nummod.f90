@@ -558,6 +558,27 @@ module adt
     !   Delhi-110040, 2000.')
     !***********************************************************************************************************
 
+    subroutine locate(xx,n,x,jj)
+
+        integer(8), intent(in) :: n
+        real(8),    intent(in) :: xx(n),x
+        integer(8), intent(out):: jj
+        integer(8)             :: jl,ju,jm
+    
+        jl=0
+        ju=n+1
+        do while((ju-jl).gt.1)
+            jm=(ju+jl)/2
+            if((xx(n).gt.xx(1)).eqv.(x.ge.xx(jm)))then
+                jl=jm
+              else
+                ju=jm
+            endif
+        enddo
+        jj=jl
+    end subroutine locate
+    
+
     subroutine interpol(tau,x1,y1,tout,ngridr, ngridp, ntau)
 
         ! This subroutine is used to perform bi-cubic interpolation to evaluate the magnitude of nonadiabatic coupling terms
