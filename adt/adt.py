@@ -24,7 +24,7 @@ import textwrap
 import argparse
 import glob
 from adt.analytic.adt_analytic import adt_analytical
-from adt.molpro.adt_molpro import mainFunction
+# 
 
 
 class CustomParser(argparse.ArgumentParser):
@@ -272,6 +272,15 @@ def main():
         #as phifile is mandatory, presence of another nact file means 2D nact will be done
         adt2D = True if rhof else False
 
+        thLog = ''
+        if threads:
+            thLog+= '\n            OpenMP threads          : {}'.format(threads)
+        else: # if thread not specified then just spawn one thread
+            threads = str(1)
+
+        # importing it here, just so that `OMP_NUM_THREADS` can take effect
+        os.environ['OMP_NUM_THREADS'] = threads
+        from adt.numeric.adt_numeric import adt_numerical,adt_numerical1d
 
 
         if adt2D :
@@ -284,18 +293,9 @@ def main():
             Number of states        : {}
             Integration path        : {}
             Output file/folder      : {}
-            Output file format      : {}
-            '''.format(enrf, rhof, phif, nstatet, path, outfile, ffrmt)
-            if threads:
-                tmpLog += 'OpenMP threads       : {}'.format(threads)
-            else: # if thread not specified then just spawn one thread
-                threads = str(1)
+            Output file format      : {}'''.format(enrf, rhof, phif, nstatet, path, outfile, ffrmt)
+            tmpLog +=thLog
             logger.info(tmpLog)
-
-            # importing it here, just so that `OMP_NUM_THREADS` can take effect
-            os.environ['OMP_NUM_THREADS'] = threads
-            from adt.numeric.adt_numeric import adt_numerical
-
             try:
                 adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger, h5, txt, nb)
                 print("Log saved in 'ADT.log'.")
@@ -310,11 +310,8 @@ def main():
             NACT   File          : {}
             Number of states     : {}
             Output file/folder   : {}
-            Output file format   : {}
-            '''.format(enrf, phif, nstatet, outfile, ffrmt)
+            Output file format   : {}'''.format(enrf, phif, nstatet, outfile, ffrmt)
             logger.info(tmpLog)
-
-            from adt.numeric.adt_numeric import adt_numerical1d
 
             try:
                 adt_numerical1d(enrf, nstate, phif, outfile, logger, h5, txt, nb)
@@ -354,6 +351,18 @@ def main():
         if nb: ffrmt.append('Numpy Binary format')
         ffrmt = ', '.join(ffrmt)
 
+        thLog=''
+        if threads:
+            thLog= '\n                    OpenMP threads       : {}'.format(threads)
+        else: # if thread not specified then just spawn one thread
+            threads = str(1)
+
+        # importing it here, just so that `OMP_NUM_THREADS` can take effect
+        os.environ['OMP_NUM_THREADS'] = threads
+
+        from adt.molpro.adt_molpro import mainFunction
+        from adt.numeric.adt_numeric import adt_numerical,adt_numerical1d
+
 
         try:
             adtType, fls = mainFunction(logger, configfile, atomfile, geomfile, freqfile, wilsonfile)
@@ -366,15 +375,6 @@ def main():
 
         if not mo:
             try:
-                if threads:
-                    tmpLog += 'OpenMP threads       : {}'.format(threads)
-                else: # if thread not specified then just spawn one thread
-                    threads = str(1)
-                os.environ['OMP_NUM_THREADS'] = threads
-
-                from adt.numeric.adt_numeric import adt_numerical, adt_numerical1d
-
-
                 for nIrep, files in enumerate(fls, start=1):
                     # files is a list of energy and nact files for this particular IREP
                     # now if 0 is provided for this IREP in state keyword in the config file then this list is practically empty, 
@@ -384,18 +384,18 @@ def main():
                     # the number just after the `ADT_numeric` indicates the IREP number
                     outfilen = outfile+ "_irep_{}".format(nIrep)
                     if adtType == "2D":
-                        logger.info('''Starting Numerical calculation
+                        tmpLog = '''Starting Numerical calculation
                     Integration Path   : {}
                     Output file/folder : {}
-                    Output file format : {}
-                        '''.format(path, outfilen, ffrmt))
+                    Output file format : {}'''.format(path, outfilen, ffrmt)
+                        tmpLog +=thLog
+                        logger.info(tmpLog)
                         adt_numerical(files[0], None, files[1], files[2], path, outfilen, logger, h5, txt, nb)
 
                     else :
                         logger.info('''Starting Numerical calculation
                     Output file/folder : {}
-                    Output file format : {}
-                        '''.format(outfilen, ffrmt))
+                    Output file format : {}'''.format(outfilen, ffrmt))
                         adt_numerical1d(files[0], None, files[1], outfilen, logger, h5, txt, nb)
 
             except Exception as e:

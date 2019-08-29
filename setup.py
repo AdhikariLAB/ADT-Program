@@ -15,42 +15,40 @@ Or you can just install this in a python virtualenv.
 __authors__  = '''
 Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Satyam Ravi, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari
 '''
+import os
 import setuptools
 from numpy.distutils.core import setup, Extension
 from setuptools import find_packages
 
+F90 = os.getenv("F90")
 
+# if no envirnment variable sent then use gfortran by default
+if F90 == None or F90 == "":
+    F90 = 'gfortran'
+    print("NOTE: No 'F90' environment variable set. Using 'gfortran' by default")
 
+if F90 == "ifort":
+    f90_flags = ["-openmp","-O3", "-ipo", "-funroll-loops", "-heap-arrays", "-mcmodel=medium"]
+    omp_lib = ["-liomp5"]
 
+elif F90 == "gfortran":
+    f90_flags = ["-fopenmp", "-fPIC", "-O3", "-fbounds-check", "-mtune=native"]
+    omp_lib = ["-lgomp"]
 
+elif F90 in ["pgfortran", "pgf90", "pgf95"]:
+    f90_flags = ["-mp"]
+    omp_lib = [""]
 
-
-#uncomment one of the following blocks as your requirement
-
-#for default_fortran compiler(usually gfortran) without parallel
-# python setup.py install
-fort_args = []
-lib_links = []
-
-
-# for ifort with openmp parallel flags
-# python setup.py config_fc --fcompiler=intelem  install
-# fort_args = ['-qopenmp']
-# lib_links = ['-liomp5']
-
-
-
-#for gfortran with openmp parallel flags
-# python setup.py config_fc --fcompiler=gnu95  install
-#fort_args = ['-fopenmp']
-#lib_links = ['-lgomp']
+else:
+    ll = "Environment variable 'F90={}' not recognized.\n Configure 'setup.py' manually to set up proper OpenMP library links".format(F90)
+    raise RuntimeError( ll )
 
 
 
 lib = Extension(name='adt.numeric.adtmod', 
             sources=['adt/numeric/nummod.f90'],
-            extra_f90_compile_args=fort_args,
-            extra_link_args=lib_links)
+            extra_f90_compile_args=f90_flags,
+            extra_link_args=omp_lib)
 
 
 
