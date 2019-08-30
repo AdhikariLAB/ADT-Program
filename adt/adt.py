@@ -24,12 +24,12 @@ import textwrap
 import argparse
 import glob
 from adt.analytic.adt_analytic import adt_analytical
-# 
+#
 
 
 class CustomParser(argparse.ArgumentParser):
-    # subcommands are mandatory arguments in python 2 but not in python 3. 
-    # So, absence of any subcommand will throw an error in python 2 and thus 
+    # subcommands are mandatory arguments in python 2 but not in python 3.
+    # So, absence of any subcommand will throw an error in python 2 and thus
     # trigger this function to show the full manual but not in python 3
     def error(self, message):
         sys.stderr.write('\033[91mError: %s\n\033[0m' % message)
@@ -285,7 +285,7 @@ def main():
 
         if adt2D :
             logger = make_logger("ADT Numerical Program")
-            tmpLog = '''Starting Numerical program for 2D ADT. 
+            tmpLog = '''Starting Numerical program for 2D ADT.
 
             Energy File             : {}
             NACT File (non-circular): {}
@@ -304,7 +304,7 @@ def main():
                 print("Program failed. %s"%e)
         else :
             logger = make_logger("ADT Numerical Program")
-            tmpLog = '''Starting Numerical program for 1D ADT. 
+            tmpLog = '''Starting Numerical program for 1D ADT.
 
             Energy File          : {}
             NACT   File          : {}
@@ -324,7 +324,7 @@ def main():
 
 
     if args.choice == 'mol':
-        # arguments related to running molpro 
+        # arguments related to running molpro
         configfile = args.config
         atomfile   = args.atomfile
         geomfile   = args.geomfile
@@ -338,7 +338,7 @@ def main():
         h5      = args.h5
         txt     = args.txt
         nb = args.nb
-        mo = args.mo 
+        mo = args.mo
         threads = args.n
 
         if (h5 == False and txt == False and nb == False): txt = True
@@ -377,7 +377,7 @@ def main():
             try:
                 for nIrep, files in enumerate(fls, start=1):
                     # files is a list of energy and nact files for this particular IREP
-                    # now if 0 is provided for this IREP in state keyword in the config file then this list is practically empty, 
+                    # now if 0 is provided for this IREP in state keyword in the config file then this list is practically empty,
                     # but is here to easily keep track of the IREPs. Again when state is 1 this list just has one energy file so, adt has to done
                     if len(files) < 2: #only energy file or nothing
                         continue
