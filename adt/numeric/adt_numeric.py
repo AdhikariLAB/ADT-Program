@@ -125,6 +125,7 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger, h5, txt, nb):
     fadt.gridp  = np.unique(rdat[:,1])
     fadt.ngridr = fadt.gridr.shape[0]
     fadt.ngridp = fadt.gridp.shape[0]
+    fadt.order  = [1,2,3]
 
 
     # reshaping the nonadiabatic coupling terms (NACTs) according to the number of grid points
@@ -291,6 +292,17 @@ def adt_numerical1d(enrf, nstate, tauf, outfile, logger, h5, txt, nb):
 
     fadt.grid   = taudat[:,0]
     fadt.tau    = taudat[:,1:]
+
+
+
+
+    state = 3
+
+    userOrder = '23,12,13'
+    userOrderList = userOrder.split(',')
+    baseOrderList = ['{}{}'.format(i,j) for j in range(2,state+1)  for i in range(1,j)]
+    fadt.order  = [baseOrderList.index(i)+1 for i in userOrderList]
+    print( fadt.order)
 
     if not np.unique(taudat[:,0]).shape == taudat[:,0].shape:
         raise Exception("Provided file doesn't have a proper 1D grid on first column")

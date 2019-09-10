@@ -19,6 +19,7 @@ module adt
     ! 'e' means expanded
     real(8) ,allocatable, dimension(:,:,:) :: taur, taup, etaur, etaup
     real(8) ,allocatable, dimension(:)     :: gridr, gridp, egridr, egridp, grid
+    integer(8) ,allocatable, dimension(:)  :: order
     integer(8)                             :: ngridr, ngridp, ngrid, ntau, nstate
     real(8) ,allocatable, dimension(:,:)   :: tau
     ! tau and grid varaible are only here just for the 1D ADT case
@@ -960,7 +961,7 @@ module adt
         real(8), intent(out) :: f(ntau)
         integer(8) :: i,j,counter
         real(8) :: val(ntau),g(ntau,ntau),gi(ntau,ntau),amat(nstate,nstate),tmat(nstate,nstate),prod(nstate,nstate)
-        real(8) :: afor(0:ntau,nstate,nstate),aback(ntau+1,nstate,nstate)
+        real(8) :: afor(0:ntau,nstate,nstate),aback(ntau+1,nstate,nstate), tmp(ntau)
 
         call amatspl(ang,amat,afor,aback, ntau, nstate)
         call gradcomat(ang,afor,aback,g, ntau, nstate)
@@ -977,8 +978,11 @@ module adt
             enddo
         enddo
 
-        f = matmul(gi,val)
+        tmp = matmul(gi,val)
 
+        do i=1,ntau
+            f(order(i)) = tmp(i)
+        enddo
     end subroutine res
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1017,6 +1021,8 @@ module adt
             enddo
         enddo
 
+        call reordermatrix(a,ntau,nstate)
+
         do k = 1,ntau
             aa1 = matmul(aa1,a(k,:,:))
             afor(k,:,:) = aa1
@@ -1030,6 +1036,7 @@ module adt
     end subroutine amatspl
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 
     subroutine gradcomat(y,afor,aback,g, ntau, nstate)
 
@@ -1050,10 +1057,14 @@ module adt
                 k = k+1
                 adiff(k,i,i) = -dsin(y(k))
                 adiff(k,j,j) = -dsin(y(k))
-                adiff(k,i,j) = dcos(y(k))
+                adiff(k,i,j) =  dcos(y(k))
                 adiff(k,j,i) = -dcos(y(k))
             enddo
         enddo
+
+        write(*,*) adiff
+        ! call reordermatrix(adiff,ntau,nstate)
+        ! write(*,*) adiff
 
         do k = ntau,1,-1
             b1 = afor(k-1,:,:)
@@ -1069,7 +1080,7 @@ module adt
                 enddo
             enddo
         enddo
-
+        write(*,*) g
     end subroutine gradcomat
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1108,6 +1119,7 @@ module adt
 
                 if(j .eq. 0) then
                     write(*,*) "Inverse of the given matrix does not exist!"
+                    stop
                     gi = 0.0d0
                     return
                     else
@@ -1215,4 +1227,45 @@ module adt
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
-   end module adt
+    subroutine createrotmat(angle, mat, ntau, nstate)
+        real(8), intent(in) :: angle(ntau)
+        integer(8), intent(in):: ntau, nstate
+        real(8), intent(out) :: mat(ntau, nstate, nstate)
+        integer(8) :: i,j,k
+
+        ! for now lets take the angle arrey are in default order and
+        ! they are put into that after each ooperation
+        ! this creats the array of rotation matirx and then returns the reordered 
+        ! array of matrix in a given order
+
+        k=0
+        do j=2,nstate
+            do i=1,j-1
+                k=k+1
+                mat(k,i,i)= dcos(angle(k))
+                mat(k,j,j)= dcos(angle(k))
+                mat(k,i,j)= dsin(angle(k))
+                mat(k,j,i)=-dsin(angle(k))
+            enddo
+        enddo
+
+        call reordermatrix(mat, ntau, nstate)
+    end subroutine createrotmat
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+    subroutine reordermatrix(mat, m, n)
+        integer(8), intent(in):: m, n       !<<<--- m=ntau; n=nstate
+        real(8),intent(inout) :: mat(m,n,n)
+        real(8) ::  mattmp(m,n,n)
+        integer(8):: i
+        ! reorders the array of rotation matrix in a given order
+        
+        mattmp = mat
+        do i=1,m 
+            mat(order(i),:,:) = mattmp(i,:,:)
+        enddo
+    end subroutine reordermatrix
+
+
+end module adt
