@@ -298,11 +298,15 @@ def adt_numerical1d(enrf, nstate, tauf, outfile, logger, h5, txt, nb):
 
     state = 3
 
+    # userOrder = '12,13,23'
+    # userOrder = '12,23,13'
+    # userOrder = '13,12,23'
+    # userOrder = '13,23,12'
+    # userOrder = '23,13,12'
     userOrder = '23,12,13'
     userOrderList = userOrder.split(',')
     baseOrderList = ['{}{}'.format(i,j) for j in range(2,state+1)  for i in range(1,j)]
     fadt.order  = [baseOrderList.index(i)+1 for i in userOrderList]
-    print( fadt.order)
 
     if not np.unique(taudat[:,0]).shape == taudat[:,0].shape:
         raise Exception("Provided file doesn't have a proper 1D grid on first column")
@@ -382,11 +386,9 @@ def adt_numerical1d(enrf, nstate, tauf, outfile, logger, h5, txt, nb):
                 dbd.create_dataset("Row %s"%(i+1),data =np.column_stack([fadt.grid,db[:,i,:]]), compression="gzip")
 
 
-
-
     # Writing of numerical output in '.dat' files
     if txt:
-        outpath = outfile+"_%s"%path
+        outpath = outfile+"_%s"%path + userOrder
         logger.info("Saving results in folder '%s'"%outpath)
         if not os.path.exists(outpath):os.makedirs(outpath)
         with move2dir(outpath):
@@ -443,6 +445,16 @@ def file_write(file, data, col):
         np.savetxt( file, data[data[:,0]==r] ,delimiter="\t", fmt=str("%.8f"))
         file.write("\n")
     file.flush()
+    file.close()
+
+
+def getOrder(userOrder, state):
+    userOrderList = userOrder.split(',')
+    baseOrderList = ['{}{}'.format(i,j) for j in range(2,state+1)  for i in range(1,j)]
+    order = [baseOrderList.index(i)+1 for i in userOrderList]
+    return order
+    tmp = list(range(1,state+1))
+    reorder = [tmp.index(i) for i in order]
 
 
 

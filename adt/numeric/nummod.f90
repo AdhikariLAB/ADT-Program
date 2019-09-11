@@ -19,9 +19,9 @@ module adt
     ! 'e' means expanded
     real(8) ,allocatable, dimension(:,:,:) :: taur, taup, etaur, etaup
     real(8) ,allocatable, dimension(:)     :: gridr, gridp, egridr, egridp, grid
-    integer(8) ,allocatable, dimension(:)  :: order
     integer(8)                             :: ngridr, ngridp, ngrid, ntau, nstate
     real(8) ,allocatable, dimension(:,:)   :: tau
+    integer(8),allocatable,dimension(:)    :: order
     ! tau and grid varaible are only here just for the 1D ADT case
     real(8)                                :: wt(16,16), gridr_val, gridp_val, s,cx(3), cy(117)
 
@@ -978,14 +978,24 @@ module adt
             enddo
         enddo
 
-        tmp = matmul(gi,val)
-        ! f = tmp
-        ! do i=1,ntau
-        !     f(order(i)) = tmp(i)
-        ! enddo
-        f(1) = tmp(2)
-        f(2) = tmp(3)
-        f(3) = tmp(1)
+        f = matmul(gi,val)
+
+        tmp = f 
+        ! f(1) = tmp(3)
+        ! f(2) = tmp(2)
+        ! f(3) = tmp(1)
+
+        ! order the result in correct order
+        do i=1,ntau
+            do  j = 1,ntau 
+                if (order(j) .eq. i) then
+                    f(i) = tmp(j)
+                    exit
+                endif
+            enddo
+        enddo
+
+
     end subroutine res
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1024,7 +1034,7 @@ module adt
             enddo
         enddo
 
-        call reordermatrix(a,ntau,nstate)
+        call reordermatrix(a, ntau, nstate)
 
         do k = 1,ntau
             aa1 = matmul(aa1,a(k,:,:))
@@ -1040,7 +1050,6 @@ module adt
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-
     subroutine gradcomat(y,afor,aback,g, ntau, nstate)
 
         ! This subroutine returns the elements of coefficient matrix of gradient of ADT angles
@@ -1050,7 +1059,7 @@ module adt
         real(8), intent(out) :: g(ntau,ntau)
         integer(8) :: i,j,k,counter
         real(8) :: adiff(ntau,nstate,nstate),aa1(nstate,nstate),aa2(nstate,nstate),b1(nstate,nstate),b2(nstate,nstate),&
-                        &b3(nstate,nstate), tmp(ntau, ntau)
+                        &b3(nstate,nstate)
 
         adiff = 0.0d0
 
@@ -1060,13 +1069,12 @@ module adt
                 k = k+1
                 adiff(k,i,i) = -dsin(y(k))
                 adiff(k,j,j) = -dsin(y(k))
-                adiff(k,i,j) =  dcos(y(k))
+                adiff(k,i,j) = dcos(y(k))
                 adiff(k,j,i) = -dcos(y(k))
             enddo
         enddo
 
-        call reordermatrix(adiff,ntau,nstate)
-
+        call reordermatrix(adiff, ntau, nstate)
         do k = ntau,1,-1
             b1 = afor(k-1,:,:)
             b2 = adiff(k,:,:)
@@ -1076,19 +1084,12 @@ module adt
             counter = 0
             do i = 2,nstate
                 do j = 1,i-1
-                    counter = counter + 1
+                    counter = counter+1
                     g(counter,k) = aa2(i,j)
                 enddo
             enddo
         enddo
-        ! tmp = g 
-        ! g(1,:) = tmp(2,:)
-        ! g(2,:) = tmp(3,:)
-        ! g(3,:) = tmp(1,:)
-        ! write(*,*) g
-        ! do i=1,ntau
-        !     g(i,:) = tmp(order(i),:)
-        ! enddo
+
     end subroutine gradcomat
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1127,7 +1128,6 @@ module adt
 
                 if(j .eq. 0) then
                     write(*,*) "Inverse of the given matrix does not exist!"
-                    stop
                     gi = 0.0d0
                     return
                     else
@@ -1233,7 +1233,6 @@ module adt
     end subroutine amat
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
     subroutine reordermatrix(mat, m, n)
         integer(8), intent(in):: m, n       !<<<--- m=ntau; n=nstate
         real(8),intent(inout) :: mat(m,n,n)
@@ -1247,5 +1246,4 @@ module adt
         enddo
     end subroutine reordermatrix
 
-
-end module adt
+   end module adt
