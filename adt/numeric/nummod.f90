@@ -1225,7 +1225,7 @@ module adt
                 a(k,j,i)=-a(k,i,j)
             enddo
         enddo
-
+        call reordermatrix(a, ntau, nstate)
         do i=1,ntau
             aa = matmul(aa,a(i,:,:))
         enddo

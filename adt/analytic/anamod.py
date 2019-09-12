@@ -327,7 +327,7 @@ def inver(element,grad):
 
 
 
-def matelem(row,col):                   #argument changed
+def matelem(row,col): 
 
     '''This definition returns a particular element of a product matrix between two matrices.'''
 

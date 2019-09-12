@@ -143,6 +143,9 @@ def main():
     numeric.add_argument('-nstate',
                         type = int,
                         help = "Specify the number of states to do the calculation.\nBy default it includes all the data for calculation.\n  ")
+    numeric.add_argument('-order',
+                        type = str,
+                        help = "Specify the order of multiplication of ADT matrix.\nBy default it uses default order.\n  ")
     numeric.add_argument("-ofile",
                         type    = str,
                         help    = "Specify the output folder/file name (w/o extension) \n(default: %(default)s).\n ",
@@ -196,6 +199,9 @@ def main():
                         choices = range(1,9),
                         metavar = "[1-8]",
                         default = 1)
+    molpro.add_argument('-order',
+                        type = str,
+                        help = "Specify the order of multiplication of ADT matrix.\nBy default it uses default order.\n  ")
     molpro.add_argument("-ofile",
                         type    = str,
                         help    = "Specify the output file name (w/o extension) \n(default: %(default)s).\n ",
@@ -255,6 +261,7 @@ def main():
         txt     = args.txt
         nb = args.nb
         threads = args.n
+        order = args.order
 
         if (h5==False and txt== False and nb==False ) : txt=True
 
@@ -297,7 +304,7 @@ def main():
             tmpLog +=thLog
             logger.info(tmpLog)
             try:
-                adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger, h5, txt, nb)
+                adt_numerical(enrf, nstate, rhof, phif, path, order, outfile, logger, h5, txt, nb)
                 print("Log saved in 'ADT.log'.")
             except Exception as e:
                 logger.error("Program failed. %s\n"%e+"-"*121)
@@ -314,7 +321,7 @@ def main():
             logger.info(tmpLog)
 
             try:
-                adt_numerical1d(enrf, nstate, phif, outfile, logger, h5, txt, nb)
+                adt_numerical1d(enrf, nstate, phif,order, outfile, logger, h5, txt, nb)
                 print("Log saved in 'ADT.log'.")
             except Exception as e:
                 logger.error("Program failed. %s\n"%e+"-"*121)
@@ -340,6 +347,7 @@ def main():
         nb = args.nb
         mo = args.mo
         threads = args.n
+        order = args.order
 
         if (h5 == False and txt == False and nb == False): txt = True
 
@@ -390,13 +398,13 @@ def main():
                     Output file format : {}'''.format(path, outfilen, ffrmt)
                         tmpLog +=thLog
                         logger.info(tmpLog)
-                        adt_numerical(files[0], None, files[1], files[2], path, outfilen, logger, h5, txt, nb)
+                        adt_numerical(files[0], None, files[1], files[2], path, order, outfilen, logger, h5, txt, nb)
 
                     else :
                         logger.info('''Starting Numerical calculation
                     Output file/folder : {}
                     Output file format : {}'''.format(outfilen, ffrmt))
-                        adt_numerical1d(files[0], None, files[1], outfilen, logger, h5, txt, nb)
+                        adt_numerical1d(files[0], None, files[1], order, outfilen, logger, h5, txt, nb)
 
             except Exception as e:
                 logger.error("Program failed in numerical calculation. %s\n"%e+"-"*121)

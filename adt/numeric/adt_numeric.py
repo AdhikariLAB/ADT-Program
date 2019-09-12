@@ -42,7 +42,7 @@ def move2dir(newdir):
 
 #  This definition evaluates ADT angles, ADT matrix elements, diabatic potential energy matrix elements and residue of ADT angles
 
-def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger, h5, txt, nb):
+def adt_numerical(enrf, nstate, rhof, phif, path, order, outfile, logger, h5, txt, nb):
     """
         Used by the `adt` executable and shouldn't be called directly through module
     """
@@ -117,7 +117,10 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger, h5, txt, nb):
             # print fadt.nstate
     # evaluating number of grid points, number of electronic states and number of couplings
 
-
+    # set the order of the adt matrix from the provided order string if none then the default order is used
+    # the order is basically a list that corresponding to the default order
+    # i.e. 12,13,23 -> 1,2,3  i.e. default order
+    fadt.order = getOrder(order, fadt.nstate) if order else range(1,fadt.nstate+1)
 
     rdat   = rdat[:,:fadt.ntau+2]
     pdat   = pdat[:,:fadt.ntau+2]
@@ -234,15 +237,13 @@ def adt_numerical(enrf, nstate, rhof, phif, path, outfile, logger, h5, txt, nb):
                     logger.info("Writing Diabatic Matrix elements in '%s.npy'"%(file))
                     np.save(file, np.column_stack([rdat[:,[0,1]],db[:,i,:]]) )
 
-
-
     logger.info("Program completed successfully in %.5f seconds\n"%(time()-start)+"-"*121)
 
 
 # This definition is used to write the output data
 
 
-def adt_numerical1d(enrf, nstate, tauf, outfile, logger, h5, txt, nb):
+def adt_numerical1d(enrf, nstate, tauf, order, outfile, logger, h5, txt, nb):
     """
         Used by the `adt` executable and shouldn't be called directly through module
     """
@@ -293,24 +294,8 @@ def adt_numerical1d(enrf, nstate, tauf, outfile, logger, h5, txt, nb):
     fadt.grid   = taudat[:,0]
     fadt.tau    = taudat[:,1:]
 
-
-
-
-    state = 3
-
-    # userOrder = '12,13,23'
-    # userOrder = '12,23,13'
-    # userOrder = '13,12,23'
-    # userOrder = '13,23,12'
-    # userOrder = '23,13,12'
-    userOrder = '23,12,13'
-    userOrderList = userOrder.split(',')
-    baseOrderList = ['{}{}'.format(i,j) for j in range(2,state+1)  for i in range(1,j)]
-    fadt.order  = [baseOrderList.index(i)+1 for i in userOrderList]
-
     if not np.unique(taudat[:,0]).shape == taudat[:,0].shape:
         raise Exception("Provided file doesn't have a proper 1D grid on first column")
-
 
 
     if nstate !=None:
@@ -334,6 +319,7 @@ def adt_numerical1d(enrf, nstate, tauf, outfile, logger, h5, txt, nb):
             fadt.nstate = i
     # evaluating number of grid points, number of electronic states and number of couplings
 
+    fadt.order = getOrder(order, fadt.nstate) if order else range(1,fadt.nstate+1)
 
 
     # calculation of ADT angles
@@ -388,7 +374,7 @@ def adt_numerical1d(enrf, nstate, tauf, outfile, logger, h5, txt, nb):
 
     # Writing of numerical output in '.dat' files
     if txt:
-        outpath = outfile+"_%s"%path + userOrder
+        outpath = outfile+"_%s"%path
         logger.info("Saving results in folder '%s'"%outpath)
         if not os.path.exists(outpath):os.makedirs(outpath)
         with move2dir(outpath):
@@ -452,16 +438,18 @@ def getOrder(userOrder, state):
     userOrderList = userOrder.split(',')
     baseOrderList = ['{}{}'.format(i,j) for j in range(2,state+1)  for i in range(1,j)]
     order = [baseOrderList.index(i)+1 for i in userOrderList]
+    check = [ordr in baseOrderList for ordr in userOrderList]
+    assert all(check) , 'Something wrong with the provided order.'
     return order
-    tmp = list(range(1,state+1))
-    reorder = [tmp.index(i) for i in order]
+    # tmp = list(range(1,state+1))
+    # reorder = [tmp.index(i) for i in order]
 
 
 
 # These are python modular level APIs to the ADT software package
 # can be called from any python script after installation
 
-def adt2d(grid1, grid2, nact1, nact2, energy=None, path = 1):
+def adt2d(grid1, grid2, nact1, nact2, energy=None, path = 1, order=None):
     '''
     Calculates ADT quantities, namely, ADT angle, residue, ADT matrix and diabatic
     matrix elements
@@ -513,6 +501,8 @@ def adt2d(grid1, grid2, nact1, nact2, energy=None, path = 1):
         fadt.nstate = energy.shape[2] 
         assert fadt.nstate*(fadt.nstate-1)/2==fadt.ntau, "Mismatch in number of states and nacts"
 
+    fadt.order = getOrder(order, fadt.nstate) if order else range(1,fadt.nstate+1)
+
     # expanding the grid points
     fadt.etaur = np.pad(fadt.taur, ((1,1),(1,1),(0,0)), "edge")
     fadt.etaup = np.pad(fadt.taup, ((1,1),(1,1),(0,0)), "edge")
@@ -537,7 +527,7 @@ def adt2d(grid1, grid2, nact1, nact2, energy=None, path = 1):
         return [full_angle, residue, amat, db]
 
 
-def adt1d(grid, taudat, energy = None):
+def adt1d(grid, taudat,energy = None, order=None,):
     '''
     Calculates ADT quantities, namely, ADT angle, residue, ADT matrix and diabatic
     matrix elements
@@ -580,7 +570,10 @@ def adt1d(grid, taudat, energy = None):
     else:
         fadt.nstate = energy.shape[1]
         assert fadt.nstate*(fadt.nstate-1)/2==fadt.ntau, "Mismatch in number of states and nacts"
-    
+
+
+    fadt.order = getOrder(order, fadt.nstate) if order else range(1,fadt.nstate+1)
+
     # calculation of ADT angles
     full_angle = fadt.get_angle1d(fadt.ngrid,fadt.ntau)
 
