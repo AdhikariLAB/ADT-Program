@@ -134,13 +134,13 @@ def adt4(N,logger):
       for index2 in range(1,index1):
         count += 1
         txt +="""
-    c({c}) = cos(theta({i1},{i2}))
+    c({c}) = cos(theta({i2},{i1}))
 
-    s({c}) = sin(theta({i1},{i2}))
+    s({c}) = sin(theta({i2},{i1}))
 
-    ic({c})= sec(theta({i1},{i2}))
+    ic({c})= sec(theta({i2},{i1}))
 
-    is({c})= cosec(theta({i1},{i2}))
+    is({c})= cosec(theta({i2},{i1}))
     """.format(c=count, i1=index1, i2=index2)
 
 
@@ -157,19 +157,18 @@ def adt5(N,logger):
     logger.info("Deriving complete form of ADT equations")
     #formation of adiabatic to diabatic transformation (ADT) matrix
     A_Matrix = anamod.matman(N)
-
+    print(A_Matrix)
     #differentiating the relevant elements of ADT matrix
     LHSelems = anamod.elemgradselect(A_Matrix)
 
     #formation of nonadiabatic coupling matrix (NACM)
-    NACM = anamod.nacm(N)
+    nacm = anamod.nacm(N)
 
     #multiplication of negative of NACM and ADT matrix
-    R_Matrix =anamod.multiply(anamod.negative(NACM),A_Matrix)
+    R_Matrix =anamod.multiply(anamod.negative(nacm),A_Matrix)
 
     #collecting the relevant elements of the above product matrix
     RHSelems = anamod.elemtauselect(R_Matrix)
-
     #writing the completely substituted form of ADT equations
     txt = ""
     count = 0
@@ -177,13 +176,13 @@ def adt5(N,logger):
       for index2 in range(1,index1):
         count += 1
         txt +="""
-    c({c}) = cos(theta({i1},{i2}))
+    c({c}) = cos(theta({i2},{i1}))
 
-    s({c}) = sin(theta({i1},{i2}))
+    s({c}) = sin(theta({i2},{i1}))
 
-    ic({c})= sec(theta({i1},{i2}))
+    ic({c})= sec(theta({i2},{i1}))
 
-    is({c})= cosec(theta({i1},{i2}))
+    is({c})= cosec(theta({i2},{i1}))
     """.format(c=count, i1=index1, i2=index2)
 
     with open("ADT_EQUATIONS_COMPLETE.DAT", "w") as f:
@@ -198,12 +197,10 @@ def adt5(N,logger):
 def adt6(N,logger):
     logger.info("Deriving coefficient matrix of gradient of ADT angles")
     A_Matrix = anamod.matman(N)
-
     #collecting the relevant elements of ADT matrix
     Aelems = anamod.elemselect(A_Matrix)
 
     #differentiating the collected elements of ADT matrix
-
     LHSelems = [anamod.diff(el,N) for el in Aelems]
 
     #writing the coefficient matrix of the gradient of the ADT angles

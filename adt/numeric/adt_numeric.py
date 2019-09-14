@@ -439,7 +439,8 @@ def getOrder(userOrder, state):
     baseOrderList = ['{}{}'.format(i,j) for j in range(2,state+1)  for i in range(1,j)]
     order = [baseOrderList.index(i)+1 for i in userOrderList]
     check = [ordr in baseOrderList for ordr in userOrderList]
-    assert all(check) , 'Something wrong with the provided order.'
+    checkR= [ordr in userOrderList for ordr in baseOrderList]
+    assert all(check) and all(checkR), 'Something wrong with the provided order.'
     return order
     # tmp = list(range(1,state+1))
     # reorder = [tmp.index(i) for i in order]

@@ -971,8 +971,12 @@ module adt
         prod = matmul(tmat,amat)
 
         counter = 0
+        ! lowe triangular matrix
         do i=2,nstate
             do j=1,i-1
+        ! upper triangular matrix
+        ! do i=1,nstate
+        !     do j=i+1,nstate
                 counter = counter+1
                 val(counter) = prod(i,j)
             enddo
@@ -1082,8 +1086,12 @@ module adt
             aa1 = matmul(b1,b2)
             aa2 = matmul(aa1,b3)
             counter = 0
-            do i = 2,nstate
-                do j = 1,i-1
+            ! lowe triangular matrix
+            do i=2,nstate
+                do j=1,i-1
+            ! upper triangular matrix
+            ! do i=1,nstate
+            !     do j=i+1,nstate
                     counter = counter+1
                     g(counter,k) = aa2(i,j)
                 enddo

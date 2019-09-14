@@ -40,14 +40,11 @@ def diabatic(mat):
 def diff(elem,N):
 
     '''This definition returns the derivatives of any adiabatic to diabatic transformation (ADT) matrix elements.'''
-
     lltot = elem.split('+')
     convertlist=indextostate(N)
     final = []
-
     for i in lltot:
       llsub = i.split('*')
-
       for j in range(len(llsub)):
         el = llsub[j]
         ll = el[el.rfind('(')+1 : el.find(')')]
@@ -85,8 +82,7 @@ def elemgradselect(mat):
     '''Although implementation of ADT condition results into a differential matrix equation, we can obtain only
        ^{N}C_{2} number of independent equations (not N^{2}) by comparing the matrix elements. This routine
        gathers necessary matrix elements, takes their derivative using 'diff' definition and finally collects
-       the outcome of the differentiation in a dictionary. That dictionary is returned at the end of such
-       processes.'''
+       the outcome of the differentiation in a dictionary.'''
 
     ll = {}
     N = len(mat)
@@ -99,7 +95,7 @@ def elemgradselect(mat):
       for j in range(N-2,i,-1):
         a = 'G(%r,%r)' % (i+1,j+1)
         ll[a] = diff(mat[j][i],N)
-
+    print ll
     return ll
 
 
@@ -126,7 +122,6 @@ def elemsum(elem1,elem2):
 
     elem = []
 
-
     for i in l1:
       for j in l2:
         if i == '1':
@@ -136,7 +131,6 @@ def elemsum(elem1,elem2):
         else:
           elem.append(i + '*' + j)
       elemfinal = '+'.join(elem)
-
     return elemfinal
 
 
@@ -146,7 +140,7 @@ def elemtauselect(mat):
     '''Although implementation of ADT condition results into a differential matrix equation, we can obtain
        only ^{N}C_{2} number of independent equations (not N^{2}) by comparing the matrix elements. This
        definition fetches necessary matrix elements (product matrix of negative NACM and ADT matrix) and
-       store them in a dictionary. At the end of these processes, that dictionary is returned.'''
+       store them in a dictionary.'''
 
     ll = {}
     N = len(mat)
@@ -160,15 +154,15 @@ def elemtauselect(mat):
         a = 'G(%r,%r)' % (i+1,j+1)
         ll[a] = mat[j][i]
 
+    print ll
     return ll
 
 
 
 def equation_complete(lhs,rhs,N):
 
-    '''This definition is built to return the fully substituted forms of the ADT equations, but the major
-       demerit of this definition is high memory requirements, while constructing ADT equations for higher
-       dimensional sub-Hilbert spaces.'''
+    '''This definition is built to return the fully substituted forms of the ADT equations
+      while constructing ADT equations for higher dimensional sub-Hilbert spaces.'''
 
     fl = open('ADT_EQUATIONS_COMPLETE.DAT','a')
 
@@ -317,13 +311,9 @@ def inver(element,grad):
        inverse and finally, returns the modified version of 'grad'.'''
 
     ll = element.split('+')
-
     for i in ll:        #not sure if this approach is correct
       if grad in i:
-          return i.replace('c','ic')\
-                  .replace('s','is')\
-                  .replace(grad,'')\
-                  .strip("*")
+          return i.replace('c','ic').replace('s','is').replace(grad,'').strip("*").replace('**','*')
 
 
 
@@ -343,21 +333,49 @@ def matelem(row,col):
 
 
 
+def getOrder(state, userOrder='12,23,13'):
+    userOrderList = userOrder.split(',')
+    baseOrderList = ['{}{}'.format(i,j) for j in range(2,state+1)  for i in range(1,j)]
+    order = [baseOrderList.index(i) for i in userOrderList]   #<- this loop is different from the numerical one, as fortran array start from 1
+    check = [ordr in baseOrderList for ordr in userOrderList]
+    checkR= [ordr in userOrderList for ordr in baseOrderList]
+    assert all(check) and all(checkR), 'Something wrong with the provided order.'
+    return order
+
+
+
 def matman(N):
 
-    '''This produces the multiplied form of ADT matrix for any arbitrary number of coupled electronic
-       states.'''
-
     counter = 0
-    mat1 = unitmat(N)
+    lll = []
     for i in range(2,N+1):
       for j in range(1,i):
         counter += 1
-        mat2 = matrix(j,i,N,counter)
-        lmat = multiply(mat1,mat2)
-        mat1 = lmat
+        lll.append([j,i,N,counter])
 
-    return lmat
+    lll = [lll[i] for i in getOrder(N)]   # reorders the matrix in the provided user order
+    mat = unitmat(N)
+    for ijnc in lll:
+        mat = multiply(mat, matrix(*ijnc))
+    return mat
+
+# def matman(N):
+
+#     '''This produces the multiplied form of ADT matrix for any arbitrary number of coupled electronic
+#        states.'''
+
+#     counter = 0
+#     mat1 = unitmat(N)
+#     for i in range(2,N+1):
+#       for j in range(1,i):
+#         counter += 1
+#         mat2 = matrix(j,i,N,counter)
+#         lmat = multiply(mat1,mat2)
+#         mat1 = lmat
+
+#     return lmat
+
+
 
 
 
@@ -437,5 +455,3 @@ def unitmat(N):
     '''This definition returns an unit matrix of any dimension.'''
 
     return [['1' if i==j else '0' for j in range(N)] for i in range(N)]
-
-

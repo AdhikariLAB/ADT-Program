@@ -244,6 +244,7 @@ def main():
             adt_analytical(state, path, logger)
             print("Log saved in 'ADT.log'.")
         except Exception as e:
+            logger.exception('pp')
             logger.error("Program failed. %s\n"%e+"-"*121)
             print("Program failed. %s"%e)
 
