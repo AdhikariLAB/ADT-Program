@@ -145,7 +145,7 @@ def main():
                         help = "Specify the number of states to do the calculation.\nBy default it includes all the data for calculation.\n  ")
     numeric.add_argument('-order',
                         type = str,
-                        help = "Specify the order of multiplication of ADT matrix.\nBy default it uses default order.\n  ")
+                        help = "Write the order of multiplication of elementary rotation matrices.\n  ")
     numeric.add_argument("-ofile",
                         type    = str,
                         help    = "Specify the output folder/file name (w/o extension) \n(default: %(default)s).\n ",
@@ -201,7 +201,7 @@ def main():
                         default = 1)
     molpro.add_argument('-order',
                         type = str,
-                        help = "Specify the order of multiplication of ADT matrix.\nBy default it uses default order.\n  ")
+                        help = "Write the order of multiplication of elementary rotation matrices.\n  ")
     molpro.add_argument("-ofile",
                         type    = str,
                         help    = "Specify the output file name (w/o extension) \n(default: %(default)s).\n ",
