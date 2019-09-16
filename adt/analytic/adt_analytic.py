@@ -157,7 +157,6 @@ def adt5(N,logger):
     logger.info("Deriving complete form of ADT equations")
     #formation of adiabatic to diabatic transformation (ADT) matrix
     A_Matrix = anamod.matman(N)
-    print(A_Matrix)
     #differentiating the relevant elements of ADT matrix
     LHSelems = anamod.elemgradselect(A_Matrix)
 
