@@ -126,7 +126,6 @@ def adt_numerical(enrf, nstate, rhof, phif, path, order, outfile, logger, h5, tx
     fadt.gridp  = np.unique(rdat[:,1])
     fadt.ngridr = fadt.gridr.shape[0]
     fadt.ngridp = fadt.gridp.shape[0]
-    fadt.order  = [1,2,3]
 
 
     # reshaping the nonadiabatic coupling terms (NACTs) according to the number of grid points

@@ -155,7 +155,6 @@ module adt
             fangle(i,:) = angle
             gridp_val = gridp(i)
         enddo
-
         !$omp parallel do default(shared) private(angle, gridp_val, gridr_val, i,j)
         do i=1,ngridp
             angle = fangle(i,:)
@@ -529,6 +528,7 @@ module adt
         real(8) :: tau_val(ntau)
 
 
+
         call interpol(etaur, gridr_val, gridp_val, tau_val, ngridr, ngridp, ntau)
         call res(ini_angle,tau_val,output, ntau, nstate)
 
@@ -604,6 +604,7 @@ module adt
         jj2=jj1+1
         x2l=egridp(jj1)
         x2u=egridp(jj2)
+
 
 
         do k=1,ntau
@@ -714,7 +715,6 @@ module adt
             call bcuint(yf,yf1,yf2,yf12,x1l,x1u,x2l,x2u,x1,y1,ansy)
             tout(k)=ansy
         enddo
-
     end subroutine interpol
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -961,39 +961,24 @@ module adt
         real(8), intent(out) :: f(ntau)
         integer(8) :: i,j,counter
         real(8) :: val(ntau),g(ntau,ntau),gi(ntau,ntau),amat(nstate,nstate),tmat(nstate,nstate),prod(nstate,nstate)
-        real(8) :: afor(0:ntau,nstate,nstate),aback(ntau+1,nstate,nstate), tmp(ntau)
+        real(8) :: afor(0:ntau,nstate,nstate),aback(ntau+1,nstate,nstate)
 
         call amatspl(ang,amat,afor,aback, ntau, nstate)
         call gradcomat(ang,afor,aback,g, ntau, nstate)
         call inverse(g,gi,ntau)
         call negtau(nact,tmat, ntau, nstate)
-
         prod = matmul(tmat,amat)
 
         counter = 0
-        ! lowe triangular matrix
+
         do i=2,nstate
             do j=1,i-1
-        ! upper triangular matrix
-        ! do i=1,nstate
-        !     do j=i+1,nstate
                 counter = counter+1
                 val(counter) = prod(i,j)
             enddo
         enddo
 
         f = matmul(gi,val)
-
-        tmp = f 
-        ! f(1) = tmp(3)
-        ! f(2) = tmp(2)
-        ! f(3) = tmp(1)
-
-        ! order the result in correct order
-        ! do i=1,ntau
-        !     f(i) = tmp(order(i))
-        ! enddo
-
 
     end subroutine res
 
@@ -1035,16 +1020,18 @@ module adt
 
         call reordermatrix(a, ntau, nstate)
 
+
+
         do k = 1,ntau
             aa1 = matmul(aa1,a(k,:,:))
             afor(k,:,:) = aa1
         enddo
 
+
         do k = ntau,1,-1
             aa = matmul(a(k,:,:),aa)
             aback(k,:,:) = aa
         enddo
-
     end subroutine amatspl
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1072,7 +1059,6 @@ module adt
                 adiff(k,j,i) = -dcos(y(k))
             enddo
         enddo
-
         call reordermatrix(adiff, ntau, nstate)
         do k = ntau,1,-1
             b1 = afor(k-1,:,:)
@@ -1084,9 +1070,6 @@ module adt
             ! lowe triangular matrix
             do i=2,nstate
                 do j=1,i-1
-            ! upper triangular matrix
-            ! do i=1,nstate
-            !     do j=i+1,nstate
                     counter = counter+1
                     g(counter,k) = aa2(i,j)
                 enddo
@@ -1139,7 +1122,7 @@ module adt
                 if(j .eq. 0) then
                     write(*,*) "Inverse of the given matrix does not exist!"
                     gi = 0.0d0
-                    return
+                    stop
                     else
                     do i = 1,ntau
                         tmp = a(irow,i)
@@ -1249,101 +1232,11 @@ module adt
         real(8) ::  mattmp(m,n,n)
         integer(8):: i
         ! reorders the array of rotation matrix in a given order
-        
         mattmp = mat
         do i=1,m 
             mat(i,:,:) = mattmp(order(i),:,:)
         enddo
+
     end subroutine reordermatrix
 
    end module adt
-
-
-
-
-   subroutine gauss_2(a,b,x,n)
-    !===========================================================
-    ! Solutions to a system of linear equations A*x=b
-    ! Method: Gauss elimination (with scaling and pivoting)
-    ! Alex G. (November 2009)
-    !-----------------------------------------------------------
-    ! input ...
-    ! a(n,n) - array of coefficients for matrix A
-    ! b(n)   - array of the right hand coefficients b
-    ! n      - number of equations (size of matrix A)
-    ! output ...
-    ! x(n)   - solutions
-    ! coments ...
-    ! the original arrays a(n,n) and b(n) will be destroyed 
-    ! during the calculation
-    !===========================================================
-    implicit none 
-    integer n
-    double precision a(n,n), b(n), x(n)
-    double precision s(n)
-    double precision c, pivot, store
-    integer i, j, k, l
-    
-    ! step 1: begin forward elimination
-    do k=1, n-1
-    
-    ! step 2: "scaling"
-    ! s(i) will have the largest element from row i 
-      do i=k,n                       ! loop over rows
-        s(i) = 0.0
-        do j=k,n                    ! loop over elements of row i
-          s(i) = max(s(i),abs(a(i,j)))
-        end do
-      end do
-    
-    ! step 3: "pivoting 1" 
-    ! find a row with the largest pivoting element
-      pivot = abs(a(k,k)/s(k))
-      l = k
-      do j=k+1,n
-        if(abs(a(j,k)/s(j)) > pivot) then
-          pivot = abs(a(j,k)/s(j))
-          l = j
-        end if
-      end do
-    
-    ! Check if the system has a sigular matrix
-      if(pivot == 0.0) then
-        write(*,*) ' The matrix is sigular '
-        return
-      end if
-    
-    ! step 4: "pivoting 2" interchange rows k and l (if needed)
-    if (l /= k) then
-      do j=k,n
-         store = a(k,j)
-         a(k,j) = a(l,j)
-         a(l,j) = store
-      end do
-      store = b(k)
-      b(k) = b(l)
-      b(l) = store
-    end if
-    
-    ! step 5: the elimination (after scaling and pivoting)
-       do i=k+1,n
-          c=a(i,k)/a(k,k)
-          a(i,k) = 0.0
-          b(i)=b(i)- c*b(k)
-          do j=k+1,n
-             a(i,j) = a(i,j)-c*a(k,j)
-          end do
-       end do
-    end do
-    
-    ! step 6: back substiturion 
-    x(n) = b(n)/a(n,n)
-    do i=n-1,1,-1
-       c=0.0
-       do j=i+1,n
-         c= c + a(i,j)*x(j)
-       end do 
-       x(i) = (b(i)- c)/a(i,i)
-    end do
-    
-    end subroutine gauss_2
