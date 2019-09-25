@@ -2,9 +2,8 @@
 # ADT PROGRAM
 A generalised ADT program for analytical and numerical calculation. This is applicable for any
 'N' electronic state sub-Hilbert space. The analytical segment can be used to generate symbolic
-expressions of eight quantities related to adiabatic to diabatic transformation (ADT) and those 
-are: elements of adiabatic potential energy matrix, elements of nonadiabatic coupling matrix, 
-ADT matrix elements, partially substituted ADT equations, completely substituted ADT equations, 
+expressions of six quantities related to adiabatic to diabatic transformation (ADT) and those 
+are: ADT matrix elements, partially substituted ADT equations, completely substituted ADT equations, 
 elements of coefficient matrix of gradient of ADT angles, elements  of coefficient matrix of 
 nonadiabatic coupling terms (NACTs) and the diabatic potential energy matrix elements for any 
 arbitrary number of coupled electronic states. On the other hand, the numerical portion computes 
@@ -142,10 +141,7 @@ __Some key things to note here:__
 * The coordinates of grid points can be chosen from any coordinate system like 
     normal mode coordinate, hyperspherical coordinate and Jacobi coordinate.
 
-* ADT matrix is formed by multiplying the elementary rotation matrices in a 
-    particular order. they are arranged in increasing order of their second indeces
-    and then in ascending order of their first indeces keeping the second index fixed. 
-    [for four electronic states, the order is a(1,2)*a(1,3)*a(2,3)*a(1,4)*a(2,4)*a(3,4)] 
+* ADT matrix is formed by multiplying the elementary rotation matrices in any order. 
 
 * The ADT equations are numerically solved by 8th order Runge-Kutta method.
 

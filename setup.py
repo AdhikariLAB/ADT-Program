@@ -55,7 +55,7 @@ lib = Extension(name='adt.numeric.adtmod',
 
 setup(
     name='adt',
-    version='0.1.0',
+    version='0.0.1',
     description='Installer for the ADT_Program_Package.',
     author='Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari',
     author_email='pcsa@iacs.res.in',

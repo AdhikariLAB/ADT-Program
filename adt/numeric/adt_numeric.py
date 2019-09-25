@@ -119,7 +119,7 @@ def adt_numerical(enrf, nstate, rhof, phif, path, order, outfile, logger, h5, tx
     # set the order of the adt matrix from the provided order string if none then the default order is used
     # the order is basically a list that corresponding to the default order
     # i.e. 12,13,23 -> 1,2,3  i.e. default order
-    fadt.order = getOrder(order, fadt.nstate) if order else range(1,int(fadt.nstate*(fadt.nstate-1)/2+1))
+    fadt.order = getOrder(order, fadt.nstate)
     rdat   = rdat[:,:fadt.ntau+2]
     pdat   = pdat[:,:fadt.ntau+2]
     fadt.gridr  = np.unique(rdat[:,0])
@@ -316,7 +316,7 @@ def adt_numerical1d(enrf, nstate, tauf, order, outfile, logger, h5, txt, nb):
             fadt.nstate = i
     # evaluating number of grid points, number of electronic states and number of couplings
 
-    fadt.order = getOrder(order, fadt.nstate) if order else range(1,int(fadt.nstate*(fadt.nstate-1)/2+1))
+    fadt.order = getOrder(order, fadt.nstate)
 
 
     # calculation of ADT angles
@@ -430,17 +430,18 @@ def file_write(file, data, col):
     file.flush()
     file.close()
 
-
 def getOrder(userOrder, state):
+    if not userOrder: # no user order provided return the default
+        return list(range(1,int(fadt.nstate*(fadt.nstate-1)/2+1)))
+
     userOrderList = userOrder.split(',')
     baseOrderList = ['{}{}'.format(i,j) for j in range(2,state+1)  for i in range(1,j)]
-    order = [baseOrderList.index(i)+1 for i in userOrderList]
     check = [ordr in baseOrderList for ordr in userOrderList]
     checkR= [ordr in userOrderList for ordr in baseOrderList]
-    assert all(check) and all(checkR), 'Something wrong with the provided order.'
+    assert all(check) and all(checkR), 'Provided order is not valid.'
+    order = [baseOrderList.index(i)+1 for i in userOrderList]
     return order
-    # tmp = list(range(1,state+1))
-    # reorder = [tmp.index(i) for i in order]
+
 
 
 
@@ -499,7 +500,7 @@ def adt2d(grid1, grid2, nact1, nact2, energy=None, path = 1, order=None):
         fadt.nstate = energy.shape[2] 
         assert fadt.nstate*(fadt.nstate-1)/2==fadt.ntau, "Mismatch in number of states and nacts"
 
-    fadt.order = getOrder(order, fadt.nstate) if order else range(1,int(fadt.nstate*(fadt.nstate-1)/2+1))
+    fadt.order = getOrder(order, fadt.nstate)
 
     # expanding the grid points
     fadt.etaur = np.pad(fadt.taur, ((1,1),(1,1),(0,0)), "edge")
@@ -570,7 +571,7 @@ def adt1d(grid, taudat,energy = None, order=None,):
         assert fadt.nstate*(fadt.nstate-1)/2==fadt.ntau, "Mismatch in number of states and nacts"
 
 
-    fadt.order = getOrder(order, fadt.nstate) if order else range(1,int(fadt.nstate*(fadt.nstate-1)/2+1))
+    fadt.order = getOrder(order, fadt.nstate)
 
     # calculation of ADT angles
     full_angle = fadt.get_angle1d(fadt.ngrid,fadt.ntau)

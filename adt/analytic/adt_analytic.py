@@ -1,4 +1,5 @@
 from __future__ import absolute_import, unicode_literals, division, print_function
+
 __doc__='''
 
 This python script is specifically implemented for devising analytic expressions of six adiabatic to diabatic

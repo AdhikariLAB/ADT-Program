@@ -961,7 +961,7 @@ module adt
         real(8), intent(out) :: f(ntau)
         integer(8) :: i,j,counter
         real(8) :: val(ntau),g(ntau,ntau),gi(ntau,ntau),amat(nstate,nstate),tmat(nstate,nstate),prod(nstate,nstate)
-        real(8) :: afor(0:ntau,nstate,nstate),aback(ntau+1,nstate,nstate)
+        real(8) :: afor(0:ntau,nstate,nstate),aback(ntau+1,nstate,nstate), tmp(ntau)
 
         call amatspl(ang,amat,afor,aback, ntau, nstate)
         call gradcomat(ang,afor,aback,g, ntau, nstate)
@@ -978,7 +978,10 @@ module adt
             enddo
         enddo
 
-        f = matmul(gi,val)
+        tmp = matmul(gi,val)
+        do i=1,ntau
+            f(order(i)) = tmp(i)
+        enddo
 
     end subroutine res
 
@@ -1045,7 +1048,7 @@ module adt
         real(8), intent(out) :: g(ntau,ntau)
         integer(8) :: i,j,k,counter
         real(8) :: adiff(ntau,nstate,nstate),aa1(nstate,nstate),aa2(nstate,nstate),b1(nstate,nstate),b2(nstate,nstate),&
-                        &b3(nstate,nstate), gtmp(ntau,ntau)
+                        &b3(nstate,nstate)!, gtmp(ntau,ntau)
 
         adiff = 0.0d0
 
@@ -1078,10 +1081,10 @@ module adt
 
         ! generated augmented matrix is of new order
         ! so reorder to get solution in a particular manner
-        gtmp = g
-        do i=1,ntau
-            g(:,i) = gtmp(:,order(i))
-        enddo
+        ! gtmp = g
+        ! do i=1,ntau
+        !     g(:,i) = gtmp(:,order(i))
+        ! enddo
 
     end subroutine gradcomat
 
