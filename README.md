@@ -85,16 +85,16 @@ ADT/
 │   │   ├── __init__.py
 │   │   ├── adt_analytic.py         # script for analytic formulation
 │   │   └── anamod.py               # collection of necessary python functions
-|   |
+│   │
 │   ├── numeric/
 │   │   ├── __init__.py
 │   │   ├── adt_numeric.py          # script for numerical calculation
 │   │   └── nummod.f90              # collection of necessary fortran subroutines
-|   |
+│   │
 │   └── molpro/
 │       ├── __init__.py
 │       └── adt_molpro.py           # script for ab initio calculations by MOLPRO
-| 
+│ 
 ├── test_runs/                      # folder containing sample calculations
 ├── LICENSE                         # license information
 ├── user_manual.pdf                 # detailed instructions for users
