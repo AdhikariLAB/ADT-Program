@@ -21,7 +21,7 @@ Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Satyam Ravi, Saikat Mukherjee
 
 ## Requirements: 
 1. Fortran compiler
-2. Python 2.7  
+2. Python 2.7 or 3.x  
 
 ### Python dependencies required:
 1. NumPy >= 1.13.0
