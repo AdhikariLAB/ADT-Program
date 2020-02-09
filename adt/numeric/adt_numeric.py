@@ -353,7 +353,7 @@ def adt_numerical1d(enrf, nstate, tauf, order, outfile, logger, h5, txt, nb):
         ang.create_dataset("Angles",data=adtAngle, compression="gzip")
 
         ang = file.create_group("ADT Angles Residues")
-        res.create_dataset("Angles Residues",data=residue, compression="gzip")
+        ang.create_dataset("Angles Residues",data=residue, compression="gzip")
         # logger.info('Writing ADT Angle residues')
         # ang.create_dataset("Residue", data= residue, compression="gzip")
 
