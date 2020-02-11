@@ -1,0 +1,12 @@
+{
+    "files.exclude": {
+        ".gitignore": true,
+        ".vscode": true,
+	"**/__init__.py": true,
+	"**/*.pyc": true,
+	"**/__pycache__": true,
+	"**/*.so": true,
+	"**/adt.egg*":true,
+	"**/build":true
+    }
+}

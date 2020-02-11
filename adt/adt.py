@@ -1,4 +1,12 @@
 from __future__ import absolute_import, unicode_literals,division, print_function
+import os
+import sys
+import logging
+import textwrap
+import argparse
+from adt.analytic.adt_analytic import adt_analytical
+from adt.optimization.optimize import Gaussianoptg
+
 __doc__='''
 
 This python file parses the command line arguments associated with 'adt' command. It uses subparser either to
@@ -17,14 +25,7 @@ __authors__  = '''
 Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Satyam Ravi, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari
 '''
 
-import os
-import sys
-import logging
-import textwrap
-import argparse
-import glob
-from adt.analytic.adt_analytic import adt_analytical
-#
+
 
 
 class CustomParser(argparse.ArgumentParser):
@@ -55,23 +56,24 @@ def make_logger(log_name):
     return logger
 
 
-def main():
+
+def creatParser():
     #main parser
     parser = CustomParser(
         prog="adt",
         formatter_class=argparse.RawTextHelpFormatter,
         description = textwrap.dedent('''
-    A generalised ADT program for analytical and numerical calculation. This is applicable for any
-    'N' electronic state sub-Hilbert space. The analytical segment can be used to generate symbolic
-    expressions of eigth adiabatic to diabatic transformation (ADT) quantities (elements of adiabatic
-    potential energy matrix, elements of nonadiabatic coupling matrix, ADT matrix elements, partially
-    substituted ADT equations, completely substituted ADT equations, elements of coefficient matrix of
-    gradient of ADT angles, elements  of coefficient matrix of nonadiabatic coupling terms (NACTs) and
-    the diabatic potential energy matrix elements) for any arbitrary number of coupled electronic
-    states. On the other hand, the numerical portion computes ADT angles, ADT matrix elements, diabatic
-    potential energy matrix elements and residue of ADT angles for any 'N' coupled electronic states
-    with multiple degrees of freedom. Any user can solve the differential equations along eight
-    different paths over the nuclear configuration space (CS).''')
+        A generalised ADT program for analytical and numerical calculation. This is applicable for any
+        'N' electronic state sub-Hilbert space. The analytical segment can be used to generate symbolic
+        expressions of eigth adiabatic to diabatic transformation (ADT) quantities (elements of adiabatic
+        potential energy matrix, elements of nonadiabatic coupling matrix, ADT matrix elements, partially
+        substituted ADT equations, completely substituted ADT equations, elements of coefficient matrix of
+        gradient of ADT angles, elements  of coefficient matrix of nonadiabatic coupling terms (NACTs) and
+        the diabatic potential energy matrix elements) for any arbitrary number of coupled electronic
+        states. On the other hand, the numerical portion computes ADT angles, ADT matrix elements, diabatic
+        potential energy matrix elements and residue of ADT angles for any 'N' coupled electronic states
+        with multiple degrees of freedom. Any user can solve the differential equations along eight
+        different paths over the nuclear configuration space (CS).''')
         )
 
     #adding subparsers
@@ -82,7 +84,7 @@ def main():
     analytical = subparsers.add_parser("ana",
         formatter_class=argparse.RawTextHelpFormatter,
         description = textwrap.dedent('''
-    Devise analytical expressions of any one of the ADT quantities for a given number of states'''),
+        Devise analytical expressions of any one of the ADT quantities for a given number of states'''),
         help ="Formulate analytical expressions")
     analytical_required = analytical.add_argument_group("Required arguments")
 
@@ -92,8 +94,8 @@ def main():
     numeric = subparsers.add_parser("num",
         formatter_class=argparse.RawTextHelpFormatter,
         description = textwrap.dedent('''
-    Calculate ADT angle and diabatic potential energy matrix for a given number of electronic states along a specific path.
-    '''),
+        Calculate ADT angle and diabatic potential energy matrix for a given number of electronic states along a specific path.
+        '''),
         help= "Calculate ADT angle and diabatic potential energy matrix")
     numeric_required = numeric.add_argument_group("Required arguments")
 
@@ -101,10 +103,29 @@ def main():
     molpro = subparsers.add_parser('mol',
         formatter_class=argparse.RawTextHelpFormatter,
         description = textwrap.dedent('''
-    Calculate the Adiabatic potential energy surfaces(PESs) and noadiabatic coupling matrix(NACM)
-    and subsequently calculate the Numerical quantities using the numerical section.'''),
+        Calculate the Adiabatic potential energy surfaces(PESs) and noadiabatic coupling matrix(NACM)
+        and subsequently calculate the Numerical quantities using the numerical section.'''),
         help= "Run MOLPRO and calculate ADT angles and diabatic surfaces and couplings")
     molpro_required = molpro.add_argument_group("Required arguments")
+
+
+
+    optimize = subparsers.add_parser('opt',
+        formatter_class=argparse.RawTextHelpFormatter,
+        description = textwrap.dedent('''
+        Calculate the optimized geometry, frequencies and wilson matrix required for the
+        ab-initio calculation of Spectroscopic systems
+        '''),
+        help= "Run MOLPRO or Gaussian etc. to calculate the optimized geometry,\
+             \nfrequencies and wilson matrix of Spectroscopic systems")
+    optimize_required = optimize.add_argument_group("Required arguments")
+
+    optimize_required.add_argument('-config',
+                                type=str,
+                                metavar="FILE",
+                                required=True,
+                                help='Specify the configuration file \ncontaining the necessary keywords for optimization.\n ')
+
 
 
     #adding options for analytical jobs
@@ -113,7 +134,8 @@ def main():
                                     help="Number of states", required=True)
     analytical         .add_argument("-anajob",
                                     type=int,
-                                    help="Specify the type of expression (default: %(default)s - completely substituted ADT equation) ",
+                                    help="Specify the type of expression (default: %(default)s - completely substituted ADT \
+                                    equation) ",
                                     choices=range(1,9),
                                     metavar="[1-6]",
                                     default=3)
@@ -123,12 +145,15 @@ def main():
     #adding options for numerical jobs
     numeric_required.add_argument("-nfile",
                         type     = str,
-                        help     = "Need to specify the path of the input \nNACT file, which is required both for \n1D as well as 2D calculation. This file \nrepresents the component of NACT for \nthe circular coordinate (e.g. {0,2pi}).\n ",
+                        help     = "Need to specify the path of the input \nNACT file, which is required both for \n1D as well as \
+                                   2D calculation. This file \nrepresents the component of NACT for \nthe circular coordinate \
+                                   (e.g. {0,2pi}).\n ",
                         metavar  = "FILE",
                         required = True)
     numeric.add_argument("-mfile",
                         type     = str,
-                        help     = "Specify the path of the input NACT file. \nrepresenting the component of NACT \nfor the non-circular coordinate \n(e.g. {0,pi/2} or {0,pi} or \n{0,infinity}).\n ",
+                        help     = "Specify the path of the input NACT file. \nrepresenting the component of NACT \nfor the \
+                                    non-circular coordinate \n(e.g. {0,pi/2} or {0,pi} or \n{0,infinity}).\n ",
                         metavar  = "FILE")
     numeric.add_argument("-intpath",
                         type    = int,
@@ -138,11 +163,13 @@ def main():
                         default = 1)
     numeric.add_argument("-efile",
                         type    = str,
-                        help    = "Specify the path of the adiabatic PES file for \ncalculating the diabatic potential energy matrix \nelements.\n ",
+                        help    = "Specify the path of the adiabatic PES file for \ncalculating the diabatic potential energy \
+                                  matrix \nelements.\n ",
                         metavar = "FILE")
     numeric.add_argument('-nstate',
                         type = int,
-                        help = "Specify the number of states to do the calculation.\nBy default it includes all the data for calculation.\n  ")
+                        help = "Specify the number of states to do the calculation.\nBy default it includes all the data for\
+                             calculation.\n  ")
     numeric.add_argument('-order',
                         type = str,
                         help = "Write the order of multiplication of elementary rotation matrices.\n  ")
@@ -157,10 +184,12 @@ def main():
                         default= False)
     numeric.add_argument("-h5",
                         action = 'store_true',
-                        help   = "Write results in a HDF5 file (.h5). \nFast IO, smaller file size and hierarchical filesystem-like data format,\npreferable for saving and sharing large datasets in an organised way.\n " )
+                        help   = "Write results in a HDF5 file (.h5). \nFast IO, smaller file size and hierarchical filesystem-like \
+                            data format,\npreferable for saving and sharing large datasets in an organised way.\n " )
     numeric.add_argument("-nb",
                         action = 'store_true',
-                        help   = 'Write results in Numpy binary file (.npy). \nPreferable when working with numpy for its much faster IO and easy portability.\n ')
+                        help   = 'Write results in Numpy binary file (.npy). \nPreferable when working with numpy for its much \
+                            faster IO and easy portability.\n ')
     numeric.add_argument("-txt" ,
                         action = "store_true",
                          help="Write results in a text file.(default behaviour).")
@@ -182,17 +211,20 @@ def main():
                         type    = str,
                         metavar = "FILE",
                         default='geomfile.dat',
-                        help='Specify the geometry file containing the initial\ngrid point in "xyz" format (in Angstrom)\n(default: %(default)s). \n(Ignore for scattering system). \n ')
+                        help='Specify the geometry file containing the initial\ngrid point in "xyz" format (in Angstrom)\n\
+                            (default: %(default)s). \n(Ignore for scattering system). \n ')
     molpro.add_argument('-freqfile',
                         type    = str,
                         metavar = "FILE",
                         default = 'frequency.dat',
-                        help='Specify the frequency information file, where\nfrequencies of normal modes are written in cm-1\n(default: %(default)s). \n(Ignore for scattering system). \n ')
+                        help='Specify the frequency information file, where\nfrequencies of normal modes are written in cm-1\
+                            \n(default: %(default)s). \n(Ignore for scattering system). \n ')
     molpro.add_argument('-wilsonfile',
                         type    = str,
                         metavar = "FILE",
                         default = 'wilson.dat',
-                        help='Specify the filename containing the Wilson matrix\nof a molecular species (default: wilson.dat).\n(default: %(default)s).\n(Ignore for scattering system). \n ')
+                        help='Specify the filename containing the Wilson matrix\nof a molecular species (default: wilson.dat).\n\
+                            (default: %(default)s).\n(Ignore for scattering system). \n ')
     molpro.add_argument("-intpath",
                         type    = int,
                         help    = "Specify the path for calculation (default: %(default)s).\n ",
@@ -216,204 +248,239 @@ def main():
                         help="Terminate the execution only after completion of MOLPRO jobs.\n ")
     molpro.add_argument("-h5",
                         action = 'store_true',
-                        help   = "Write results in a HDF5 file (.h5).\nFast IO, smaller file size and hierarchical filesystem-like data format,\npreferable for saving and sharing large datasets in an organised way.\n " )
+                        help   = "Write results in a HDF5 file (.h5).\nFast IO, smaller file size and hierarchical filesystem-like \
+                                 data format,\npreferable for saving and sharing large datasets in an organised way.\n " )
     molpro.add_argument("-nb",
                         action = 'store_true',
-                        help   = 'Write results in Numpy binary file (.npy). \nPreferable when working with numpy for its much faster IO and easy portability.\n ')
+                        help   = 'Write results in Numpy binary file (.npy). \nPreferable when working with numpy for its much \
+                                 faster IO and easy portability.\n ')
     molpro.add_argument("-txt" ,
                         action = "store_true",
                         help="Write results in a text file. (default behaviour).")
     molpro.set_defaults(h5=False,txt=False, nb = False, mo = False)
 
+    return parser
 
-    args = parser.parse_args()
 
 
-    #generation of analytic expressions according to command line arguments
-    if args.choice =="ana":
-        state  = args.nstate
-        path   = args.anajob
-        logger = make_logger("ADT Analytical program")
+def runAnalytic(args):
+    state  = args.nstate
+    path   = args.anajob
+    logger = make_logger("ADT Analytical program")
 
-        logger.info('''Starting Analytical program.
+    logger.info('''Starting Analytical program.
 
-        Number of states   : {}
-        Integration path   : {}
-        '''.format(state, path))
+    Number of states   : {}
+    Integration path   : {}
+    '''.format(state, path))
+    try:
+        adt_analytical(state, path, logger)
+        print("Log saved in 'ADT.log'.")
+    except Exception as e:
+        logger.error("Program failed. %s\n"%e+"-"*121)
+        print("Program failed. %s"%e)
+
+
+
+def runNumerical(args):
+    path    = args.intpath
+    enrf    = args.efile
+    nstate  = args.nstate
+    rhof    = args.mfile
+    phif    = args.nfile
+    outfile = args.ofile.strip("'")
+    h5      = args.h5
+    txt     = args.txt
+    nb = args.nb
+    threads = args.n
+    order = args.order
+
+    if (h5==False and txt== False and nb==False ) : txt=True
+
+    ffrmt = []
+    if h5: ffrmt.append('HDF5')
+    if txt: ffrmt.append('Plain txt')
+    if nb: ffrmt.append('Numpy Binary format')
+    ffrmt = ', '.join(ffrmt)
+
+    if not enrf : nstatet = None
+    if enrf and not nstate : nstatet = 'All'
+    else :nstatet = nstate
+
+
+    #as phifile is mandatory, presence of another nact file means 2D nact will be done
+    adt2D = True if rhof else False
+
+    thLog = ''
+    if threads:
+        thLog+= '\n            OpenMP threads          : {}'.format(threads)
+    else: # if thread not specified then just spawn one thread
+        threads = str(1)
+
+    # importing it here, just so that `OMP_NUM_THREADS` can take effect
+    os.environ['OMP_NUM_THREADS'] = threads
+    from adt.numeric.adt_numeric import adt_numerical,adt_numerical1d
+
+
+    if adt2D :
+        logger = make_logger("ADT Numerical Program")
+        tmpLog = '''Starting Numerical program for 2D ADT.
+
+        Energy File             : {}
+        NACT File (non-circular): {}
+        NACT File (circular)    : {}
+        Number of states        : {}
+        Integration path        : {}
+        Output file/folder      : {}
+        Output file format      : {}'''.format(enrf, rhof, phif, nstatet, path, outfile, ffrmt)
+        tmpLog +=thLog
+        logger.info(tmpLog)
         try:
-            adt_analytical(state, path, logger)
+            adt_numerical(enrf, nstate, rhof, phif, path, order, outfile, logger, h5, txt, nb)
             print("Log saved in 'ADT.log'.")
         except Exception as e:
-            logger.exception('pp')
+            logger.error("Program failed. %s\n"%e+"-"*121)
+            print("Program failed. %s"%e)
+    else :
+        logger = make_logger("ADT Numerical Program")
+        tmpLog = '''Starting Numerical program for 1D ADT.
+
+        Energy File          : {}
+        NACT   File          : {}
+        Number of states     : {}
+        Output file/folder   : {}
+        Output file format   : {}'''.format(enrf, phif, nstatet, outfile, ffrmt)
+        logger.info(tmpLog)
+
+        try:
+            adt_numerical1d(enrf, nstate, phif,order, outfile, logger, h5, txt, nb)
+            print("Log saved in 'ADT.log'.")
+        except Exception as e:
             logger.error("Program failed. %s\n"%e+"-"*121)
             print("Program failed. %s"%e)
 
 
-
-    #calculation of ADT quantities according to command line arguments
-    if args.choice == "num":
-        path    = args.intpath
-        enrf    = args.efile
-        nstate  = args.nstate
-        rhof    = args.mfile
-        phif    = args.nfile
-        outfile = args.ofile.strip("'")
-        h5      = args.h5
-        txt     = args.txt
-        nb = args.nb
-        threads = args.n
-        order = args.order
-
-        if (h5==False and txt== False and nb==False ) : txt=True
-
-        ffrmt = []
-        if h5: ffrmt.append('HDF5')
-        if txt: ffrmt.append('Plain txt')
-        if nb: ffrmt.append('Numpy Binary format')
-        ffrmt = ', '.join(ffrmt)
-
-        if not enrf : nstatet = None
-        if enrf and not nstate : nstatet = 'All'
-        else :nstatet = nstate
+def runMolpro(args):
+    # arguments related to running molpro
+    configfile = args.config
+    atomfile   = args.atomfile
+    geomfile   = args.geomfile
+    freqfile   = args.freqfile
+    wilsonfile = args.wilsonfile
 
 
-        #as phifile is mandatory, presence of another nact file means 2D nact will be done
-        adt2D = True if rhof else False
+    # arguments related to numerical calculation
+    path       = args.intpath
+    outfile = args.ofile.strip("'")
+    h5      = args.h5
+    txt     = args.txt
+    nb = args.nb
+    mo = args.mo
+    threads = args.n
+    order = args.order
 
-        thLog = ''
-        if threads:
-            thLog+= '\n            OpenMP threads          : {}'.format(threads)
-        else: # if thread not specified then just spawn one thread
-            threads = str(1)
+    if (h5 == False and txt == False and nb == False): txt = True
 
-        # importing it here, just so that `OMP_NUM_THREADS` can take effect
-        os.environ['OMP_NUM_THREADS'] = threads
-        from adt.numeric.adt_numeric import adt_numerical,adt_numerical1d
+    logger = make_logger("ADT Molpro Program")
 
+    ffrmt = []
+    if h5: ffrmt.append('HDF5')
+    if txt: ffrmt.append('Plain txt')
+    if nb: ffrmt.append('Numpy Binary format')
+    ffrmt = ', '.join(ffrmt)
 
-        if adt2D :
-            logger = make_logger("ADT Numerical Program")
-            tmpLog = '''Starting Numerical program for 2D ADT.
+    thLog=''
+    if threads:
+        thLog= '\n                    OpenMP threads       : {}'.format(threads)
+    else: # if thread not specified then just spawn one thread
+        threads = str(1)
 
-            Energy File             : {}
-            NACT File (non-circular): {}
-            NACT File (circular)    : {}
-            Number of states        : {}
-            Integration path        : {}
-            Output file/folder      : {}
-            Output file format      : {}'''.format(enrf, rhof, phif, nstatet, path, outfile, ffrmt)
-            tmpLog +=thLog
-            logger.info(tmpLog)
-            try:
-                adt_numerical(enrf, nstate, rhof, phif, path, order, outfile, logger, h5, txt, nb)
-                print("Log saved in 'ADT.log'.")
-            except Exception as e:
-                logger.error("Program failed. %s\n"%e+"-"*121)
-                print("Program failed. %s"%e)
-        else :
-            logger = make_logger("ADT Numerical Program")
-            tmpLog = '''Starting Numerical program for 1D ADT.
+    # importing it here, just so that `OMP_NUM_THREADS` can take effect
+    os.environ['OMP_NUM_THREADS'] = threads
 
-            Energy File          : {}
-            NACT   File          : {}
-            Number of states     : {}
-            Output file/folder   : {}
-            Output file format   : {}'''.format(enrf, phif, nstatet, outfile, ffrmt)
-            logger.info(tmpLog)
-
-            try:
-                adt_numerical1d(enrf, nstate, phif,order, outfile, logger, h5, txt, nb)
-                print("Log saved in 'ADT.log'.")
-            except Exception as e:
-                logger.error("Program failed. %s\n"%e+"-"*121)
-                print("Program failed. %s"%e)
+    from adt.molpro.adt_molpro import mainFunction
+    from adt.numeric.adt_numeric import adt_numerical,adt_numerical1d
 
 
+    try:
+        adtType, fls = mainFunction(logger, configfile, atomfile, geomfile, freqfile, wilsonfile)
 
 
-    if args.choice == 'mol':
-        # arguments related to running molpro
-        configfile = args.config
-        atomfile   = args.atomfile
-        geomfile   = args.geomfile
-        freqfile   = args.freqfile
-        wilsonfile = args.wilsonfile
+    except Exception as e:
+        logger.error("Program failed in molpro job. %s\n"%e+"-"*121)
+        sys.exit(1)
 
 
-        # arguments related to numerical calculation
-        path       = args.intpath
-        outfile = args.ofile.strip("'")
-        h5      = args.h5
-        txt     = args.txt
-        nb = args.nb
-        mo = args.mo
-        threads = args.n
-        order = args.order
-
-        if (h5 == False and txt == False and nb == False): txt = True
-
-        logger = make_logger("ADT Molpro Program")
-
-        ffrmt = []
-        if h5: ffrmt.append('HDF5')
-        if txt: ffrmt.append('Plain txt')
-        if nb: ffrmt.append('Numpy Binary format')
-        ffrmt = ', '.join(ffrmt)
-
-        thLog=''
-        if threads:
-            thLog= '\n                    OpenMP threads       : {}'.format(threads)
-        else: # if thread not specified then just spawn one thread
-            threads = str(1)
-
-        # importing it here, just so that `OMP_NUM_THREADS` can take effect
-        os.environ['OMP_NUM_THREADS'] = threads
-
-        from adt.molpro.adt_molpro import mainFunction
-        from adt.numeric.adt_numeric import adt_numerical,adt_numerical1d
-
-
+    if not mo:
         try:
-            adtType, fls = mainFunction(logger, configfile, atomfile, geomfile, freqfile, wilsonfile)
+            for nIrep, files in enumerate(fls, start=1):
+                # files is a list of energy and nact files for this particular IREP
+                # now if 0 is provided for this IREP in state keyword in the config file then this list is practically empty,
+                # but is here to easily keep track of the IREPs. Again when state is 1 this list just has one energy file so,
+                #  adt has to done
+                if len(files) < 2: #only energy file or nothing
+                    continue
+                # the number just after the `ADT_numeric` indicates the IREP number
+                outfilen = outfile+ "_irep_{}".format(nIrep)
+                if adtType == "2D":
+                    tmpLog = '''Starting Numerical calculation
+                Integration Path   : {}
+                Output file/folder : {}
+                Output file format : {}'''.format(path, outfilen, ffrmt)
+                    tmpLog +=thLog
+                    logger.info(tmpLog)
+                    adt_numerical(files[0], None, files[1], files[2], path, order, outfilen, logger, h5, txt, nb)
 
+                else :
+                    logger.info('''Starting Numerical calculation
+                Output file/folder : {}
+                Output file format : {}'''.format(outfilen, ffrmt))
+                    adt_numerical1d(files[0], None, files[1], order, outfilen, logger, h5, txt, nb)
 
         except Exception as e:
-            logger.error("Program failed in molpro job. %s\n"%e+"-"*121)
-            sys.exit(1)
+            logger.error("Program failed in numerical calculation. %s\n"%e+"-"*121)
+    else:
+        logger.info("'-mo' flag specified, exiting program.")
 
 
-        if not mo:
-            try:
-                for nIrep, files in enumerate(fls, start=1):
-                    # files is a list of energy and nact files for this particular IREP
-                    # now if 0 is provided for this IREP in state keyword in the config file then this list is practically empty,
-                    # but is here to easily keep track of the IREPs. Again when state is 1 this list just has one energy file so, adt has to done
-                    if len(files) < 2: #only energy file or nothing
-                        continue
-                    # the number just after the `ADT_numeric` indicates the IREP number
-                    outfilen = outfile+ "_irep_{}".format(nIrep)
-                    if adtType == "2D":
-                        tmpLog = '''Starting Numerical calculation
-                    Integration Path   : {}
-                    Output file/folder : {}
-                    Output file format : {}'''.format(path, outfilen, ffrmt)
-                        tmpLog +=thLog
-                        logger.info(tmpLog)
-                        adt_numerical(files[0], None, files[1], files[2], path, order, outfilen, logger, h5, txt, nb)
+def runOptimization(args):
+    config = args.config
+    logger = make_logger("ADT - Optimization program")
+    logger.info('''Starting System Optimization with Gaussian 16.
 
-                    else :
-                        logger.info('''Starting Numerical calculation
-                    Output file/folder : {}
-                    Output file format : {}'''.format(outfilen, ffrmt))
-                        adt_numerical1d(files[0], None, files[1], order, outfilen, logger, h5, txt, nb)
-
-            except Exception as e:
-                logger.error("Program failed in numerical calculation. %s\n"%e+"-"*121)
-        else:
-            logger.info("'-mo' flag specified, exiting program.")
+    Configuration File   : {}
+    '''.format(config))
+    try:
+        gau = Gaussianoptg(config)
+        logger.info('Running Gaussing for geometry optimization.')
+        gau.runGauss()
+        logger.info("Optimization Complete.")
+        gau.getResults()
+        logger.info('Result saved in respective files.')
+    except Exception as e:
+        # logger.exception('few')
+        logger.error("Program failed: %s\n"%e+"-"*121)
+        print("Program failed. %s"%e)
 
 
-    #######################################################################################################################
+def main():
+    args = creatParser().parse_args()
 
+    #generation of analytic expressions according to command line arguments
+    if args.choice =="ana":
+        runAnalytic(args)
+
+    #calculation of ADT quantities according to command line arguments
+    elif args.choice == "num":
+        runNumerical(args)
+
+    elif args.choice == 'mol':
+        runMolpro(args)
+
+    elif args.choice == 'opt':
+        runOptimization(args)
+
+
+#######################################################################################################################
 if __name__ == "__main__":
     main()

@@ -133,8 +133,8 @@ class Base(object):
     def irepChecks(self):
         # Checks everythings against the IREP numbers
 
-        
-        self.nStateList = [int(i) for i in re.findall('(\d+)', self.eInfo['state'])]
+
+        self.nStateList = [int(i) for i in re.findall(r'(\d+)', self.eInfo['state'])]
 
         #* sanity checks for state
         assert len(self.nStateList)==self.nIREPs, (
@@ -155,7 +155,7 @@ class Base(object):
         for substring in self.eInfo['cas'].split(';'):
             for item in ['occ', 'closed', 'core']:
                 if item in substring:
-                    assert len(re.findall('(\d+)', substring)) == self.nIREPs, (
+                    assert len(re.findall(r'(\d+)', substring)) == self.nIREPs, (
                         "{a} number of {b} required for {a} IREPs of {c} symmetry".format(
                                                     a = self.nIREPs,
                                                     b = item,
@@ -191,7 +191,7 @@ class Base(object):
         cas = re.sub('[0-9a-zA-Z,;](core[0-9,]+;?)','', self.eInfo['cas'])
 
         irepCards = []
-        # crate the ptoper wf keyword 
+        # crate the ptoper wf keyword
         for nIrep, state in enumerate(self.nStateList, start=1):
             if(state):
                 irepCards.append( 'wf,{elec},{irep},{spin},{chrg};state,{stat}'.format(
@@ -213,7 +213,8 @@ class Base(object):
 
 
         # if basis is changed before nact during ddr then another mrci has to be done so fon't save the dm
-        if ((self.eInfo['method'] == 'mrci') and (self.nInfo['method']!='ddr')) or((self.nInfo['method']=='ddr') and (self.nInfo['basis'] !=self.eInfo['basis'])) : #mrci but no ddr
+        if ((self.eInfo['method'] == 'mrci') and (self.nInfo['method']!='ddr')) or \
+            ((self.nInfo['method']=='ddr') and (self.nInfo['basis'] !=self.eInfo['basis'])) : #mrci but no ddr
             for irepCard in irepCards:
                 irep = irepCard.split(',')[2]
                 energyLine+=textwrap.dedent('''
@@ -223,7 +224,7 @@ class Base(object):
                             table, energy
                             save,enr.{irep}.res,new
                             {{table,____; noprint,heading}}
-                            
+
                             '''.format(
                                     cas=self.eInfo['cas'],
                                     irepCard = irepCard,
@@ -242,7 +243,7 @@ class Base(object):
                             table, energy
                             save,enr.{irep}.res,new
                             {{table,____; noprint,heading}}
-                            
+
                             '''.format(
                                     cas=self.eInfo['cas'],
                                     irepCard = irepCard,
@@ -257,7 +258,7 @@ class Base(object):
                         table, energy
                         save,enr.res,new
                         {table,____; noprint,heading}
-            
+
             ''')
 
 
@@ -283,7 +284,7 @@ class Base(object):
 
         baseTemplate += energyLine
 
-        # remove the proper wildcards for proper template 
+        # remove the proper wildcards for proper template
         scaleTemplate= baseTemplate.replace('molpro.wfu', 'molpro_init.wfu,new') + '\n---' # template for scaling job
         initTemplate = scaleTemplate.replace('!HF:', '')   # open the hf card for initial job
 
@@ -292,7 +293,7 @@ class Base(object):
 
 
 
-        # Crete nact calculation part of the template 
+        # Crete nact calculation part of the template
         if self.nInfo['method']=='ddr' :
             gridTemplate += self.ddrTemplate(irepCards)
         elif self.nInfo['method']=='cpmcscf':
@@ -345,8 +346,8 @@ class Base(object):
             forceText = ''
             for count, (nIrep, f,s) in enumerate(pairChunk):
                 nactText += "cpmcscf,nacm,{f}.{irep},{s}.{irep},record=51{n:02}.1,{extra};\n".format(
-                            f=f, s=s, 
-                            n=count, 
+                            f=f, s=s,
+                            n=count,
                             irep = nIrep,
                             extra=self.nInfo['nact_extra'])
 
@@ -371,8 +372,8 @@ class Base(object):
         # remove `core` from cas for mcscf
         cas = re.sub('[0-9a-zA-Z,;](core[0-9,]+;?)','', self.eInfo['cas'])
 
-        # NOTE: a wild card `!N1D:` for the 1D ddr template purpose. 
-        # When to create ddr nact template for 1D contour ab initio, 
+        # NOTE: a wild card `!N1D:` for the 1D ddr template purpose.
+        # When to create ddr nact template for 1D contour ab initio,
         # we will just remove blocks following the wildcard
 
 
@@ -423,7 +424,7 @@ class Base(object):
         for index in range(4):
             nactText += indexText[index]
 
-            nactText+=textwrap.dedent(''' 
+            nactText+=textwrap.dedent('''
                         symmetry,{sym}
                         geometry=geom{ge:1}.xyz
                         {{multi;{cas};{irepCard};start,{mcOrb};orbital,214{ml:1}.2;{extra}}}
@@ -439,7 +440,7 @@ class Base(object):
 
             for irepCard in irepCards:
                 irep = int(irepCard.split(',')[2])
-                nactText +=textwrap.dedent(''' 
+                nactText +=textwrap.dedent('''
                         {{mrci;{cas};{irepCard};save,61{irep2:02}.2;{extra2}}}
                         {{ci;trans,60{irep1:02}.2,61{irep2:02}.2;dm,81{irep2:02}.2;{extra3}}}
                 '''.format(
@@ -457,8 +458,8 @@ class Base(object):
         for nIrep, nactPairs in enumerate(self.nactPairsList, start=1):
             for i,j in nactPairs:
                 #implementing three point cebtral difference for ddr nact calculation
-                nactText+=textwrap.dedent(''' 
-                    !for taur     
+                nactText+=textwrap.dedent('''
+                    !for taur
                     {{ddr, 2*{d1}
                     orbital,{mcOrb},2141.2,2142.2;
                     density,80{irep:02}.2,81{irep1:02}.2,81{irep2:02}.2;
@@ -500,33 +501,33 @@ class Base(object):
             Create grid from a given list
         """
         # ll is the list of [start, end, step]
-        # easiest way may be to use arange of numpy, 
+        # easiest way may be to use arange of numpy,
         # but due to precison error, arange sometimes cant handle this properly and
-        # sometimes skip a value the following is just a workaround to prevent that, 
+        # sometimes skip a value the following is just a workaround to prevent that,
         # don't know if this can circumvent that problem all the time
         bl = int(round((ll[1]-ll[0])/ll[2]+1))
         return np.linspace(ll[0], ll[1], bl)
 
 
     def parseData(self, atomFile):
-        ''' 
+        '''
             Parse atom names and masses from data file
         '''
-        atomData = np.loadtxt(atomFile, 
+        atomData = np.loadtxt(atomFile,
             dtype={'names': ('names', 'mass'),'formats': ('U1', 'f8')})
         self.atomNames = atomData['names']
         self.atomMass  = atomData['mass']
 
 
     def parseCommonConfig(self, scf):
-        """        
-        Parses configuration for running molpro from the provided molpro config file 
-        and sets up different methods and attributes relavant to the configuration 
+        """
+        Parses configuration for running molpro from the provided molpro config file
+        and sets up different methods and attributes relavant to the configuration
         """
         # this just parses common configuration used in all the case. Systema and coordinate specific
-        # configuration (like grid info) will be parsed in their respective inctances 
+        # configuration (like grid info) will be parsed in their respective inctances
         molInfo =  dict(scf.items('molInfo'))
-        
+
         self.scrdir = molInfo['scrdir']
         self.memory = molInfo['memory']
         try:
@@ -595,9 +596,10 @@ class Base(object):
         for g1 in grid1:
             g1Block = data[data[:,0] == g1]
 
-            if g1Block.shape[0]==1:   # g1=0 case, only one value is present. interpolation cant be applied here, copy the one single value everywhere
+            # g1=0 case, only one value is present. interpolation cant be applied here, copy the one single value everywhere
+            if g1Block.shape[0]==1:
                 res1 = np.full((nRows, nCols), g1Block)
-                res1[:,1] = grid2 
+                res1[:,1] = grid2
             else:
                 res1 = np.column_stack([np.full((nRows,), g1), grid2])
                 for col in range(2, nCols):
@@ -610,7 +612,7 @@ class Base(object):
 
     def msg(self, m, cont=False):
         ''' Writes info in the log files'''
-        if not cont : 
+        if not cont :
             m = '{:.<90}'.format(datetime.now().strftime("[%d-%m-%Y %I:%M:%S %p]     ") + m)
         else:
             m+='\n'
@@ -662,7 +664,7 @@ class Base(object):
     def runThisMolpro(self, grid1, gridn1, grid2, gridn2, filEe, fileN1, fileN2):
         '''Runs the molpro for each gridpoints '''
 
-        # a general function to run the molpro, 
+        # a general function to run the molpro,
         # this function is agnostic about system and runs molpro for the grid passed through the grid1, grid2 arguments
 
         # subprocess calls blocks system I/O buffer, explicit I/O buffer counters are used to flush buffer
@@ -696,12 +698,12 @@ class Base(object):
         # run the initial point and save the wavefunction
         self.equiRun()
 
-        done = False 
+        done = False
 
         for g2 in grid2:
             shutil.copy('molpro_init.wfu', 'molpro.wfu')      # copy the wfu from the initial/equilibrium job
-            for g1 in grid1: 
-                
+            for g1 in grid1:
+
                 # if g1 = 0 (i.e. rho/theta/q) is provided then run g1=g2=0 only once
                 # as for g1=0, all g2 will be same
 
@@ -731,7 +733,7 @@ class Base(object):
 
 
                 enrData = self.getEnergy()
-                # this getTau function is created inside the respective class depending, system, coordinate and nact calculation type
+                # this getTau function is created inside the respective class depending, system, coordinate and nact calculation
                 tau1, tau2 = self.getTau(g1, g2)
                 # [None] increase one ndarray dimension so that savetxt can save it as row
                 np.savetxt(filee, np.append([g1,g2],enrData)[None], fmt=str("%.8f"), delimiter='\t')
@@ -769,7 +771,7 @@ class Base(object):
             # split after second column
             grid, data = np.split(dat, [2], axis=1)
 
-            grid[:,radCols] = np.deg2rad(grid[:,radCols]) 
+            grid[:,radCols] = np.deg2rad(grid[:,radCols])
 
             # split the outputfiles according to their respective IRPEs
             # structure of enrgy file will be different that nacts, so handle that seperately
@@ -799,9 +801,9 @@ class Base(object):
     def scaleWrapper(cls, func):
         def innerFunc(cls):
             if 'scale' not in cls.eInfo.keys():
-                # Just returning a 0 for the non scaled calculation 
+                # Just returning a 0 for the non scaled calculation
                 # NOTE: in case of non sacled case only a single number is returned
-                # while in sacled case, a array of number is returned 
+                # while in sacled case, a array of number is returned
                 # but numpy handle both cases equaly during substraction.
                 return 0
             func(cls)
@@ -810,11 +812,11 @@ class Base(object):
             exitcode = subprocess.call(
                 ['molpro', '-n', cls.proc, "-d", cls.scrdir, '-W .', 'scale.com']
                 )
-            if exitcode==0: 
+            if exitcode==0:
                 cls.msg( ' Job successful.', cont=True)
                 scale = cls.getEnergy()
                 cls.moveFiles('CompleteJobs/Scaling_point')
-                # now the scale has to be consistent with the IREPs, 
+                # now the scale has to be consistent with the IREPs,
                 # so make the scale a 1D array with same IREPs having the same value, i.e. lowest state value
                 if len(cls.nStateList)>1: # its being done with symmetry
                     ll = np.split(scale, np.cumsum(cls.nStateList)[:-1])  #split energies in list of different IREPs
@@ -839,7 +841,7 @@ class Base(object):
             exitcode = subprocess.call(
                 ['molpro', '-n', cls.proc, "-d", cls.scrdir, '-W .', 'init.com']
                 )
-            if exitcode==0: 
+            if exitcode==0:
                 cls.msg( ' Job successful.', cont=True)
                 cls.moveFiles('CompleteJobs/Equilibrium_point')
             else:
@@ -937,7 +939,7 @@ class Spectroscopic(Base):
 
     def getTauAna(self,rho,phi):
         # So this will ultimately return two list one for taurho and another for tauphi
-        # each list will be ordered as 12,13,23...(IREP1),12,13,23...(IREP2) etc. 
+        # each list will be ordered as 12,13,23...(IREP1),12,13,23...(IREP2) etc.
         # the same order in the list self.nactPairList will be maintaned everywhere
         rotoMat = np.array([[self.cos(phi), self.sin(phi)], [-rho*self.sin(phi), rho*self.cos(phi)]])
         tauList = []
@@ -990,9 +992,9 @@ class Spectroscopic(Base):
     def runMolpro(self):
         file = ['energy.dat','tau_rho.dat','tau_phi.dat']
         self.runThisMolpro(
-            self.rhoGrid, 
-            'Rho', 
-            self.phiGrid, 
+            self.rhoGrid,
+            'Rho',
+            self.phiGrid,
             'Phi', *file )
 
         # len(nTau) = len(nstate) = number of IREPs
@@ -1056,7 +1058,7 @@ class Scattering(Base):
                 raise Exception("%s keyword as geometry increment is required for ddr NACT calculation"%str(key))
             self.createGridGeom = self.createAllGeom
             self.getTau = self.getTauDdr
-    
+
         self.createTemplate()
 
 
@@ -1071,7 +1073,7 @@ class Scattering(Base):
         return ar
 
     def toJacobi(self,rho, theta,phi):
-       #! do this in more short way?
+        #! do this in more short way?
         """ returns jacobi coordinates """
         m1, m2, m3 = self.atomMass
 
@@ -1084,9 +1086,9 @@ class Scattering(Base):
         eps2 = 2 * np.arctan(m3/mu)
         eps3 = np.rad2deg(eps3)
         eps2 = np.rad2deg(eps2)
-        R1 = (1.0/np.sqrt(2.0))*rho*d3*np.sqrt(1.0+ self.sin(theta)*self.cos(phi+eps3)) 
-        R2 = (1.0/np.sqrt(2.0))*rho*d1*np.sqrt(1.0+ self.sin(theta)*self.cos(phi))      
-        R3 = (1.0/np.sqrt(2.0))*rho*d2*np.sqrt(1.0+ self.sin(theta)*self.cos(phi-eps2)) 
+        R1 = (1.0/np.sqrt(2.0))*rho*d3*np.sqrt(1.0+ self.sin(theta)*self.cos(phi+eps3))
+        R2 = (1.0/np.sqrt(2.0))*rho*d1*np.sqrt(1.0+ self.sin(theta)*self.cos(phi))
+        R3 = (1.0/np.sqrt(2.0))*rho*d2*np.sqrt(1.0+ self.sin(theta)*self.cos(phi-eps2))
 
         if R1 < 1e-10:
             R1 = 0.0
@@ -1099,9 +1101,9 @@ class Scattering(Base):
         x = R2*R2 + R3*R3 - R1*R1
         y = 4.0*area
         Ang123 = np.arctan2(y,x)
-        x2 = (0.0,0.0)
-        x3 = (R2,0.0)
-        x1 = (R3*np.cos(Ang123),R3*np.sin(Ang123))
+        # x2 = (0.0,0.0)
+        # x3 = (R2,0.0)
+        # x1 = (R3*np.cos(Ang123),R3*np.sin(Ang123))
         # these are non-mass scaled jacobi coords
         # r : (x3-x2)
         # R : x1 - com(x3,x2)
@@ -1157,7 +1159,7 @@ class Scattering(Base):
             f.write(tmp)
 
 
-    # following function is used when fixed theta and rho is varying 
+    # following function is used when fixed theta and rho is varying
     def createAllGeom(self, rhoTheta, phi):
         ''' Creates 5 different geometry files for using in molpro ddr calculation '''
         self.createOneGeom(rhoTheta,    phi,    'geom.xyz')
@@ -1172,7 +1174,7 @@ class Scattering(Base):
         '''Used in Analytical NACT calculation'''
 
         # the analytical nact is calculated by numercally differentiating the grid with an increment of 1/100 of grid spacing
-        #  as cartesian to hepersphercial conversion is ? 
+        #  as cartesian to hepersphercial conversion is ?
         if self.fixedRho:
             rho = self.rho
             theta = rhoTheta
@@ -1191,7 +1193,7 @@ class Scattering(Base):
         dPhi = (self.phiGrid[1]-self.phiGrid[0])/100.0
         gradPhiPlus  = self.hyperToCart(rho, theta, phi+dPhi)
         gradPhiMinus = self.hyperToCart(rho, theta, phi-dPhi)
-        gradPhi      = (gradPhiPlus - gradPhiMinus)/2*dPhi 
+        gradPhi      = (gradPhiPlus - gradPhiMinus)/2*dPhi
 
 
 
@@ -1242,7 +1244,7 @@ class Scattering(Base):
         else:
             self.theta = theta
             self.createOneGeom(rho,phi)
-        
+
 
 
 
@@ -1250,17 +1252,17 @@ class Scattering(Base):
         if self.fixedRho:
             file = ['energy.dat','tau_theta.dat','tau_phi.dat']
             self.runThisMolpro(
-                self.thetaGrid, 
-                'Theta', 
-                self.phiGrid, 
+                self.thetaGrid,
+                'Theta',
+                self.phiGrid,
                 'Phi', *file )
             tXt="theta"
         else :
             file = ['energy.dat','tau_rho.dat','tau_phi.dat']
             self.runThisMolpro(
-                self.rhoGrid, 
-                'Rho', 
-                self.phiGrid, 
+                self.rhoGrid,
+                'Rho',
+                self.phiGrid,
                 'Phi', *file )
             tXt = 'phi'
 
@@ -1338,7 +1340,7 @@ class Jacobi(Base):
     def createDdrTemplate1D(self):
         # this ddr template is  done by a creating a 2D ddr template and modifying it
         self.d2 = self.d1
-        # self.createTemplate called above is actually refers to this function for 1D ddr case 
+        # self.createTemplate called above is actually refers to this function for 1D ddr case
         # The following calls the createTemplate from the parent class, which actually creates ddr template for 2D case
         super(Jacobi, self).createTemplate()   #! <<<<==== CAUTION: ordering of the inheritence methods
 
@@ -1364,7 +1366,7 @@ class Jacobi(Base):
                 if self.Jacobi1D:
                     phi = args[0] # 1D case only phi is passed
                     # putting explicit index here, be careful when canging geometry structure
-                    tau = self.q*(grads[2,1]*self.cos(phi) - grads[2,2]*self.sin(phi))  
+                    tau = self.q*(grads[2,1]*self.cos(phi) - grads[2,2]*self.sin(phi))
                     tauList.append(tau)
                 else :
                     q, phi = args # 2D case q,phi is passed
@@ -1459,9 +1461,9 @@ class Jacobi(Base):
     def runMolpro(self):
         file = ['energy.dat','tau_q.dat','tau_phi.dat']
         self.runThisMolpro(
-            self.qGrid, 
-            'q', 
-            self.phiGrid, 
+            self.qGrid,
+            'q',
+            self.phiGrid,
             'Phi', *file )
         # now len(nTau) = len(nstate) = number of IREPs
         fileList=[]
@@ -1480,7 +1482,7 @@ class Jacobi(Base):
     def runMolpro1D(self):
         '''Runs the molpro for each gridpoints '''
         # this here is only for 1d jacobi
-        # subprocess calls blocks system I/O buffer, so the I/Os (sometimes) have to be flushed out explicitely 
+        # subprocess calls blocks system I/O buffer, so the I/Os (sometimes) have to be flushed out explicitely
 
 
         self.logFile = open('adt_molpro.log', 'w')
@@ -1528,8 +1530,8 @@ class Jacobi(Base):
             else:
                 self.msg(' Job failed.', cont=True)
                 self.moveFiles(path.replace('C', "Inc"))
-                continue 
-            firstJobDone = True
+                continue
+            # firstJobDone = True
             enrData = self.getEnergy()
             tau = self.getTau(phi)
             self.moveFiles(path)
