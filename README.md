@@ -15,7 +15,7 @@ space (CS).
 
 ## *Authors:*
 
-Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Satyam Ravi, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari (corresponding author)
+Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Satyam Ravi, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari
 
 ---
 
@@ -24,50 +24,53 @@ Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Satyam Ravi, Saikat Mukherjee
 2. Python 2.7 or 3.x  
 
 ### Python dependencies required:
-1. NumPy >= 1.13.0
-2. h5py (only if you need HDF5 file I/O)
-3. setuptools
+1. setuptools
+2. NumPy >= 1.13.0
+3. h5py (only if you need HDF5 file I/O)
 
 ---
 
 ## Installation: 
 For installing the package with the default parameters just run:  
 
-`python setup.py install`  
+```
+python setup.py install
+```
 
 This will install the package in the root of the system, so you may need to run this with admin privilages. If you don't have root privilages or don't want to install the package in the root of the system, user can install this package in home of the local user site-packages folder for python by 
 running  
 
-`python setup.py install --user` 
+```
+python setup.py install --user
+```
 
 Alternatively, if `pip` is available, user can install the package by executing the following command inside the source directory
 
-`pip install .` 
+```
+pip install .
+```
 
 On successfull installation of the package, a command line utility `adt` will be created, which will be used to run the package directly from terminal.
 
-A quick help about the installation can be found by running 
-
-`python setup.py -h`
+A quick help about the installation can be found by running `python setup.py -h`  
 
 To know more about installation and building distribution, please refer to the user manual of the package.   
 
-#### Installing with parallelization support:
+#### Setting Fortran compiler for installation:
 
-By default the package will be installed using the default fortran compiler and without any parallelization support. OpenMP parallelization is 
-implemented in this package and to take benefit of it user has to pass proper compiler flag during the installation.
+To correctly install the package with OpenMP enabled one has to let the build system know what Fortran compiler to use by setting the proper `F90` environment variable. 
+To install using `gfortran` compiler run (in Bash)
 
-To install with parallelization using gfortran, user has to run  
+```bash
+export F90=gfortran
+```
+or to use Intel Fortran compiler:
 
-`python setup.py config_fc --fcompiler=gnu95  install`
-  
-while to use Intel fortran compiler, run
-  
-`python setup.py config_fc --fcompiler=intelem  install`  
+```bash
+export F90=ifort
+```
+If no `F90` environment variable is specified then the program is installed using `gfortran` compiler. To use other compilers or to fine tune the installation process, modify the `setup.py` script.
 
-In addition to this, to properly link the OpenMP libraries, user has to set the `fort_args` and `lib_links` variable, appropriate for the compiler, 
-inside the setup.py script. Those variable, for gfortran and ifort are available in the script, and just uncomment the relevant lines to set them. 
-For any other fortran compiler, user has to find correct linker flags appropriate for that compiler.
 
 
 ---
@@ -91,9 +94,13 @@ ADT/
 │   │   ├── adt_numeric.py          # script for numerical calculation
 │   │   └── nummod.f90              # collection of necessary fortran subroutines
 │   │
-│   └── molpro/
+│   ├── molpro/
+│   │   ├── __init__.py
+│   │   └── adt_molpro.py           # script for ab initio calculations by MOLPRO
+│   │
+│   └── optimization/
 │       ├── __init__.py
-│       └── adt_molpro.py           # script for ab initio calculations by MOLPRO
+│       └── optimize.py             # script for geometry optimization
 │ 
 ├── test_runs/                      # folder containing sample calculations
 ├── LICENSE                         # license information
@@ -112,6 +119,7 @@ types of calculation, namely,
 2. __num__ : Subcommand `num` can be used to calculate different [numerical quantities](#numerical).
 3. __mol__ : Use subcommand 'mol' to calculate _ab-initio_ PESs and NACTs for a molecular species using [MOLPRO](#molpro) and subsequently, calculate 
 the numerical quantities.
+4. __opt__ : The `opt` subcommand is used to calculate [optimized geometry](#optimization), frequencies and wilson matrix of a Spectroscopic system, required for the _ab-initio_.
 
 Description for each of the above segments can be found in detail in the user manual. At any step of using this package, user can see the 
 help menu by using the help flag `-h` or `--help`. During the runtime of any of the above sections, all the relevant information and progress
@@ -157,3 +165,10 @@ __Some key things to note here:__
 If the adiabatic PESs and NACTs are not available, user can directly calculate those interfacing the MOLPRO providing the information about 
 the molecular species.
 
+### Optimization:
+Perform geometry optimization to calculate optimized geometry, frequencies and wilson matrix of a Spectroscopic system, required for the _ab-initio_. Presently only Molpro and Gaussian 16 can be used for this purpose.
+
+## Citation:
+This work is published in [Journal of Chemical Theory and Computation](https://pubs.acs.org/journal/jctcce) in paper :  
+**ADT : A Generalized Algorithm and Program for Beyond Born-Oppenheimer Equations of 'N' Dimensional Sub-Hilbert Space** (DOI : [https://doi.org/10.1021/acs.jctc.9b00948](https://doi.org/10.1021/acs.jctc.9b00948))  
+Consider citing this paper if you use this package 

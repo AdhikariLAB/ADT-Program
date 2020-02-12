@@ -98,7 +98,8 @@ def adt_numerical(enrf, nstate, rhof, phif, path, order, outfile, logger, h5, tx
     if nstate !=None:
         fadt.nstate = nstate
         fadt.ntau   = fadt.nstate*(fadt.nstate-1)/2
-        if enrf != None: assert enr.shape[1]-2 >= fadt.nstate, 'Not enough data in energy file for %s states calculation.'%fadt.nstate
+        if enrf != None: assert enr.shape[1]-2 >= fadt.nstate, \
+            'Not enough data in energy file for %s states calculation.'%fadt.nstate
         assert rdat.shape[1]-2>= fadt.ntau, 'Not enough NACT data for %s states calculation.'%fadt.nstate
 
     else:
@@ -298,7 +299,8 @@ def adt_numerical1d(enrf, nstate, tauf, order, outfile, logger, h5, txt, nb):
     if nstate !=None:
         fadt.nstate = nstate
         fadt.ntau   = fadt.nstate*(fadt.nstate-1)/2
-        if enrf != None: assert enr.shape[1]-1 >= fadt.nstate, 'Not enough data in energy file for %s states calculation.'%fadt.nstate
+        if enrf != None: assert enr.shape[1]-1 >= fadt.nstate, \
+        'Not enough data in energy file for %s states calculation.'%fadt.nstate
         assert taudat.shape[1]-1>= fadt.ntau, 'Not enough NACT data for %s states calculation.'%fadt.nstate
 
     else:

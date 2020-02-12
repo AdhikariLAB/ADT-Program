@@ -5,7 +5,7 @@ import logging
 import textwrap
 import argparse
 from adt.analytic.adt_analytic import adt_analytical
-from adt.optimization.optimize import Gaussianoptg
+from adt.optimization.optimize import GaussianOptg, MolproOptg
 
 __doc__='''
 
@@ -125,7 +125,10 @@ def creatParser():
                                 metavar="FILE",
                                 required=True,
                                 help='Specify the configuration file \ncontaining the necessary keywords for optimization.\n ')
-
+    pack = optimize_required.add_mutually_exclusive_group(required=True)
+    pack.add_argument('-mol', help='Optimize using Molpro', action='store_true')
+    pack.add_argument('-gauss',help='Optimize using Gaussian 16', action='store_true')
+    # pack.add_argument('-games',help='Optimize using Gamess', action='store_true')
 
 
     #adding options for analytical jobs
@@ -295,7 +298,8 @@ def runNumerical(args):
     threads = args.n
     order = args.order
 
-    if (h5==False and txt== False and nb==False ) : txt=True
+    # if (h5==False and txt== False and nb==False ) : txt=True
+    if not all([h5,txt,nb]) : txt=True
 
     ffrmt = []
     if h5: ffrmt.append('HDF5')
@@ -446,16 +450,22 @@ def runMolpro(args):
 def runOptimization(args):
     config = args.config
     logger = make_logger("ADT - Optimization program")
-    logger.info('''Starting System Optimization with Gaussian 16.
+    if args.mol:
+        Opt = MolproOptg
+        nam = 'Molpro'
+    elif args.gauss:
+        Opt = GaussianOptg
+        nam = 'Gaussian 16'
+    logger.info('''Starting System Optimization using {}.
 
     Configuration File   : {}
-    '''.format(config))
+    '''.format(nam, config))
     try:
-        gau = Gaussianoptg(config)
-        logger.info('Running Gaussing for geometry optimization.')
-        gau.runGauss()
+        opt = Opt(config)
+        logger.info('Running {} for geometry optimization.'.format(nam))
+        opt.runOpt()
         logger.info("Optimization Complete.")
-        gau.getResults()
+        opt.getResults()
         logger.info('Result saved in respective files.')
     except Exception as e:
         # logger.exception('few')
