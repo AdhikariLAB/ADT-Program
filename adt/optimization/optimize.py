@@ -1,3 +1,4 @@
+from __future__ import absolute_import, unicode_literals, division, print_function
 import re
 import sys
 import textwrap
@@ -60,19 +61,19 @@ class GaussianOptg():
         optGeom = re.findall(r' Optimization completed.(?:(?:.*\n){{9}})((?:.*\n){{{}}})'.format(atomNo), txt)
         optGeom = [i.split() for i in filter(None,optGeom[0].split('\n'))]
         optGeom = np.array(optGeom,dtype=np.float64)[:,3:]
-        np.savetxt('equigeom.dat', optGeom, fmt='%.10f', delimiter='\t')
+        np.savetxt('equigeom.dat', optGeom, fmt=str('%.10f'), delimiter='\t')
         
         freDat= re.findall(r' Frequencies --(.*)(?:(?:.*\n){{5}})((?:.*\n){{{}}})'.format(atomNo),txt)
         freq = np.array( [j for i,_ in freDat for j in i.split() ], dtype=np.float)
         # freq = np.array( [i.split() for i,_ in freDat], dtype=np.float64).reshape(-1)
-        np.savetxt('frequency.dat', freq[None,:], fmt='%.10f', delimiter='\t')
+        np.savetxt('frequency.dat', freq[None,:], fmt=str('%.10f'), delimiter='\t')
 
         # # remove columns regarding the atom number and atom type (one row for one atom)
         tmp= [[i.split()[2:] for i in filter(None,j.split('\n')) ] for _,j in freDat ]
         wilson = np.asarray(np.column_stack(tmp), dtype=np.float)
         # structure the array, as required by the ADT code
         res = np.vstack(np.transpose(wilson.reshape(atomNo,-1,3),(0,2,1)))
-        np.savetxt('wilson.dat', res, fmt='%.10f', delimiter='\t')
+        np.savetxt('wilson.dat', res, fmt=str('%.10f'), delimiter='\t')
 
 
 
@@ -142,17 +143,17 @@ class MolproOptg(object):
 
         optGeom = [i.split()[1:] for i in filter(None, optGeom.split('\n'))]
         optGeom = np.array(optGeom, dtype=np.float)
-        np.savetxt('equigeom.dat', optGeom, fmt='%.10f', delimiter='\t')
+        np.savetxt('equigeom.dat', optGeom, fmt=str('%.10f'), delimiter='\t')
 
         freDat= re.findall(r' Wavenumbers \[cm-1\](.*)(?:(?:.*\n){{3}})((?:.*\n){{{}}})'.format(3*nAtoms),txt)
 
         freqs = np.array([j for i,_ in freDat for j in i.split() ], dtype=np.float)
         freqs = freqs[freqs!=0] # take the vibrational freqs only i.e. non zero
-        np.savetxt('frequency.dat', freqs[None,:], fmt='%.10f', delimiter='\t')
+        np.savetxt('frequency.dat', freqs[None,:], fmt=str('%.10f'), delimiter='\t')
 
         tmp= [[i.split()[1:] for i in filter(None,j.split('\n')) ] for _,j in freDat ]
         wilson = np.asarray(np.column_stack(tmp), dtype=np.float)[:,:freqs.shape[0]]
-        np.savetxt('wilson.dat', wilson, fmt='%.10f', delimiter='\t')
+        np.savetxt('wilson.dat', wilson, fmt=str('%.10f'), delimiter='\t')
 
 
 

@@ -15,6 +15,7 @@ __authors__  = '''
 Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Satyam Ravi, Saikat Mukherjee, Subhankar Sardar and Satrajit Adhikari
 '''
 
+#TODO: This code is too much scattered, reduce the complexity : C901
 
 import os,sys
 import numpy as np
@@ -40,7 +41,7 @@ def move2dir(newdir):
 
 
 
-#  This definition evaluates ADT angles, ADT matrix elements, diabatic potential energy matrix elements and residue of ADT angles
+# This definition evaluates ADT angles, ADT matrix elements, diabatic potential energy matrix elements and residue of ADT angles
 
 def adt_numerical(enrf, nstate, rhof, phif, path, order, outfile, logger, h5, txt, nb):
     """
