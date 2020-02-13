@@ -6,3 +6,5 @@ build
 *.mod
 *.so
 *.log
+.vscode
+opt
