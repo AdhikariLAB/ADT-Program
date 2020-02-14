@@ -81,7 +81,7 @@ class GaussianOptg():
 class MolproOptg(object):
 
     def __init__(self, config):
-        scf = ConfigParser({'symmetry':'nosym','processor':'1'})
+        scf = ConfigParser({'symmetry':'nosym','processor':'1','charge':'0'})
         scf.read(config)
 
         self.optInfo  = dict(scf.items('optInfo'))
@@ -91,7 +91,7 @@ class MolproOptg(object):
         try:
             self.geomFile = scf.get('gInfo','file')
         except:
-            raise KeyError('Initial geometry file not found in config')
+            raise Exception('Initial geometry file not found in config')
         self.CreateTemplate()
 
     def CreateTemplate(self):
@@ -105,7 +105,8 @@ class MolproOptg(object):
 
         molproTemplate = textwrap.dedent('''
             memory,{memory}
-
+            
+            set,charge={charge}
             basis={basis}
 
             symmetry,{sym}
@@ -118,6 +119,7 @@ class MolproOptg(object):
 
             ---
             '''.format(exmeth = meth,
+                       charge = self.optInfo['charge'],
                        memory = self.optInfo['memory'],
                        basis  = self.optInfo['basis'],
                        sym    = self.optInfo['symmetry'],
