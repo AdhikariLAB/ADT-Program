@@ -27,7 +27,7 @@ class GaussianOptg():
         self.CreateTemplate()
 
     def CreateTemplate(self):
-        GaussianTemplate = textwrap.dedent('''            %nprocshared={proc}
+        gaussianTemplate = textwrap.dedent('''            %nprocshared={proc}
             %chk=optg.chk
             %Mem={memory}
             #opt=cartesian freq {method}/{basis} scf=qc {sym}
@@ -44,9 +44,9 @@ class GaussianOptg():
                        charge = self.optInfo['charge']))
 
         with open(self.geomFile) as f: geomDat = f.read()
-        GaussianTemplate += geomDat + '\n'
-        with open('optg.inp', 'w') as f: f.write(GaussianTemplate)
-    
+        gaussianTemplate += geomDat + '\n'
+        with open('optg.inp', 'w') as f: f.write(gaussianTemplate)
+
     def runOpt(self):
         try:
             rungaussian = subprocess.call(['g16','optg.inp'])
@@ -62,7 +62,7 @@ class GaussianOptg():
         optGeom = [i.split() for i in filter(None,optGeom[0].split('\n'))]
         optGeom = np.array(optGeom,dtype=np.float64)[:,3:]
         np.savetxt('equigeom.dat', optGeom, fmt=str('%.10f'), delimiter='\t')
-        
+
         freDat= re.findall(r' Frequencies --(.*)(?:(?:.*\n){{5}})((?:.*\n){{{}}})'.format(atomNo),txt)
         freq = np.array( [j for i,_ in freDat for j in i.split() ], dtype=np.float)
         # freq = np.array( [i.split() for i,_ in freDat], dtype=np.float64).reshape(-1)
@@ -95,7 +95,15 @@ class MolproOptg(object):
         self.CreateTemplate()
 
     def CreateTemplate(self):
-        GaussianTemplate = textwrap.dedent('''            
+        meth = ''
+        if self.optInfo['method'] in ['ump2','uccsd']:
+            meth = 'uhf'
+        elif self.optInfo['method'] in ['mp2','ccsd']:
+            meth = 'hf'
+        elif self.optInfo['method']=='b3lyp':
+            self.optInfo['method'] = 'ks,' + self.optInfo['method']
+
+        molproTemplate = textwrap.dedent('''
             memory,{memory}
 
             basis={basis}
@@ -103,13 +111,14 @@ class MolproOptg(object):
             symmetry,{sym}
 
             geometry=geom.xyz
-            
+            {exmeth}
             {{{method}}}
             optg;
             {{frequencies;print,hessian}}
 
             ---
-            '''.format(memory = self.optInfo['memory'],
+            '''.format(exmeth = meth,
+                       memory = self.optInfo['memory'],
                        basis  = self.optInfo['basis'],
                        sym    = self.optInfo['symmetry'],
                        method = self.optInfo['method']))
@@ -120,12 +129,12 @@ class MolproOptg(object):
         with open('geom.xyz','w') as f:
             f.write(
                 "{}\ngeometry file created for optimization\n{}".format(
-                        self.nAtoms, 
+                        self.nAtoms,
                         re.sub('[ \t]+',',',geomDat)
                         )
                     )
 
-        with open('optg_mol.inp', 'w') as f: f.write(GaussianTemplate)
+        with open('optg_mol.inp', 'w') as f: f.write(molproTemplate)
 
     def runOpt(self):
         try:
@@ -154,13 +163,6 @@ class MolproOptg(object):
         tmp= [[i.split()[1:] for i in filter(None,j.split('\n')) ] for _,j in freDat ]
         wilson = np.asarray(np.column_stack(tmp), dtype=np.float)[:,:freqs.shape[0]]
         np.savetxt('wilson.dat', wilson, fmt=str('%.10f'), delimiter='\t')
-
-
-
-
-
-
-
 
 
 
