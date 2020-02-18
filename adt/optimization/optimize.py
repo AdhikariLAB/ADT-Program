@@ -76,7 +76,86 @@ class GaussianOptg():
         np.savetxt('wilson.dat', res, fmt=str('%.10f'), delimiter='\t')
 
 
+class GamessOptg():
 
+    def __init__(self, config):
+        scf = ConfigParser({'symmetry':'c1','processor':'1'})
+        scf.read(config)
+
+        self.optInfo  = dict(scf.items('optInfo'))
+        for key in ['memory', 'basis', 'method', 'spin', 'charge', 'symmetry']:
+            if key not in self.optInfo:
+                raise Exception('Option "%s" not found in config'%key)
+        try:
+            self.geomFile = scf.get('gInfo','file')
+        except:
+            raise KeyError('Initial geometry file not found in config')
+        self.CreateTemplate()
+
+    def CreateTemplate(self):
+        hfmeth = 'NONE'
+        mplevel = 'NONE'
+        ccorder = 'NONE'
+        if self.optInfo['method'] =='ump2':
+            mplevel = '2'
+            hfmeth  = 'UHF'
+        elif self.optInfo['method'] =='mp2':
+            mplevel = '2'
+            hfmeth = 'RHF'
+        elif self.optInfo['method'] == 'ccsd':
+            hfmeth = 'hf'
+            ccorder = 'ccsd'
+        elif self.optInfo['method'] == 'ccsd':
+            hfmeth = 'hf'
+            ccorder = 'ccsd'
+        gamessTemplate = textwrap.dedent('''  
+                                          $CONTRL SCFTYP={scfmeth} MPLEVL={mplevel} CCTYP={ccorder} RUNTYP=OPTIMIZE ICHARG={charge} COORD=CART
+                                           MULT={spin} MAXIT=200 ISPHER=1 $END                                                                 
+                                          $SYSTEM MWORDS={memory} $END       
+                                          $STATPT OPTTOL=1.0E-5  HSSEND=.T. $END
+                                          $BASIS  GBASIS={basis} $END       
+                                          $GUESS  GUESS=HUCKEL $END
+                                          $DATA'''.format(mplevel = mplevel,
+                                                        ccorder = ccorder,
+                                                        scfmeth = hfmeth,
+                                                        charge = self.optInfo['charge'],
+                                                        spin = self.optInfo['spin'],    
+                                                        memory = self.optInfo['memory'],
+                                                        basis  = self.optInfo['basis']))
+                                                
+        indent = lambda txt:'\n'.join([' '+i for i in txt.strip().split('\n')])
+        with open(self.geomFile) as f: geomDat = f.read()
+        self.nAtoms = len(filter(None,geomDat.split('\n')))
+        gamessTemplate += textwrap.dedent(''' 
+                                 optg and freq
+                                 C1
+                                 {geom}
+                                $END''').format(geom=geomDat.rstrip())
+        with open('optg.inp', 'w') as f: f.write(indent(gamessTemplate))
+    def runOpt(self):
+        try:
+            rungamess = subprocess.call("rungms optg.inp >& optg.log",shell = True)
+        except:
+            raise Exception('Can not run gamess')
+        if rungamess:
+            raise Exception(' Optimization failed.')
+
+    def getResults(self):
+         with open('./exam01.log') as f : txt = f.read()
+         ind= int((re.findall(r' MODE\(?S\)?\s+\d+ TO\s+(\d+) ARE TAKEN AS ROTATIONS AND TRANSLATIONS.',txt))[0])
+	 optGeom = re.findall(r' EQUILIBRIUM GEOMETRY LOCATED.(?:(?:.*\n){{4}})((?:.*\n){{{}}})'.format(self.nAtoms), txt) # self.natoms
+	 optGeom = [i.split()[2:] for i in filter(None,optGeom[0].split('\n'))]
+         optGeom = np.array(optGeom,dtype=np.float64)
+         np.savetxt('equigeom.dat', optGeom, fmt=str('%.10f'), delimiter='\t')
+         freq = [ float(j)  for i in re.findall('FREQUENCY:(.*)',txt) for j in i.replace('I','').split() ][ind:]
+         freq = np.asarray(freq,dtype=np.float)
+         np.savetxt('frequency.dat', freq[None,:], fmt=str('%.10f'), delimiter='\t')
+         pat1 = r'FREQUENCY:\s+(.*)(?:(?:.*\n){{5}})((?:.*\n){{{}}})'.format(3*self.nAtoms) # 3*nAtoms
+         pat2 = r'(?:\s+\d+\s+\w+)?\s+[X|Y|Z](.*)'
+         freDat = re.findall(pat1,txt)
+         arr =np.column_stack([ np.vstack([j.split() for j in re.findall(pat2,i)]) for _,i in freDat])
+         wilson = np.array(arr, dtype=np.float)[:,ind:]
+         np.savetxt('wilson.dat', wilson, fmt=str('%.10f'), delimiter='\t')
 
 class MolproOptg(object):
 
@@ -150,7 +229,7 @@ class MolproOptg(object):
         with open('./optg_mol.out') as f : txt = f.read()
 
         nAtoms = self.nAtoms # int(re.findall(r' END OF GEOMETRY OPTIMIZATION.(?:(?:.*\n){4})\s+(\d+)', txt)[0])
-        optGeom,= re.findall(r' END OF GEOMETRY OPTIMIZATION.(?:(?:.*\n){{6}})((?:.*\n){{{}}})'.format(nAtoms), txt)
+        optGeom = re.findall(r' END OF GEOMETRY OPTIMIZATION.(?:(?:.*\n){{6}})((?:.*\n){{{}}})'.format(nAtoms), txt)[0]
 
         optGeom = [i.split()[1:] for i in filter(None, optGeom.split('\n'))]
         optGeom = np.array(optGeom, dtype=np.float)
@@ -171,4 +250,4 @@ class MolproOptg(object):
 
 
 if __name__ == "__main__":
-    p = GaussianOptg('gaussian.config')
+    p = GamessOptg('gms.config')

@@ -116,7 +116,7 @@ def creatParser():
         Calculate the optimized geometry, frequencies and wilson matrix required for the
         ab-initio calculation of Spectroscopic systems
         '''),
-        help= "Run MOLPRO or Gaussian etc. to calculate the optimized geometry,\
+        help= "Run MOLPRO, Gaussian and Gamess to calculate the optimized geometry,\
              \nfrequencies and wilson matrix of Spectroscopic systems")
     optimize_required = optimize.add_argument_group("Required arguments")
 
@@ -128,7 +128,7 @@ def creatParser():
     pack = optimize_required.add_mutually_exclusive_group(required=True)
     pack.add_argument('-mol', help='Optimize using Molpro', action='store_true')
     pack.add_argument('-gauss',help='Optimize using Gaussian 16', action='store_true')
-    # pack.add_argument('-games',help='Optimize using Gamess', action='store_true')
+    pack.add_argument('-gamess',help='Optimize using Gamess', action='store_true')
 
 
     #adding options for analytical jobs
@@ -456,6 +456,9 @@ def runOptimization(args):
     elif args.gauss:
         Opt = GaussianOptg
         nam = 'Gaussian 16'
+    elif args.gamess:
+        Opt = GamessOptg
+        nam = 'Gamess'
     logger.info('''Starting System Optimization using {}.
 
     Configuration File   : {}
@@ -468,7 +471,7 @@ def runOptimization(args):
         opt.getResults()
         logger.info('Result saved in respective files.')
     except Exception as e:
-        # logger.exception('few')
+        logger.exception('few')
         logger.error("Program failed: %s\n"%e+"-"*121)
         print("Program failed. %s"%e)
 
