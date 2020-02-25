@@ -5,7 +5,7 @@ import logging
 import textwrap
 import argparse
 from adt.analytic.adt_analytic import adt_analytical
-from adt.optimization.optimize import GaussianOptg, MolproOptg
+from adt.optimization.optimize import GaussianOptg, MolproOptg, GamessOptg
 
 __doc__='''
 

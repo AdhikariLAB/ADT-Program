@@ -1,0 +1,15 @@
+
+memory,50,m
+
+set,charge=0
+basis=cc-pVDZ
+
+symmetry,nosym
+
+geometry=geom.xyz
+hf
+{mp2}
+optg;
+{frequencies;print,hessian}
+
+---

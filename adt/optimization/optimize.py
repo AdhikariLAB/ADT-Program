@@ -1,5 +1,6 @@
 from __future__ import absolute_import, unicode_literals, division, print_function
 import re
+import os
 import sys
 import textwrap
 import subprocess
@@ -13,7 +14,7 @@ else :
 class GaussianOptg():
 
     def __init__(self, config):
-        scf = ConfigParser({'symmetry':'nosym','processor':'1'})
+        scf = ConfigParser({'version':'g16','symmetry':'nosym','processor':'1'})
         scf.read(config)
 
         self.optInfo  = dict(scf.items('optInfo'))
@@ -30,7 +31,7 @@ class GaussianOptg():
         gaussianTemplate = textwrap.dedent('''            %nprocshared={proc}
             %chk=optg.chk
             %Mem={memory}
-            #opt=cartesian freq {method}/{basis} scf=qc {sym}
+            #opt=(cartesian,maxcycles=50) freq {method}/{basis} scf=qc {sym}
 
             title name
 
@@ -49,7 +50,7 @@ class GaussianOptg():
 
     def runOpt(self):
         try:
-            rungaussian = subprocess.call(['g16','optg.inp'])
+            rungaussian = subprocess.call([self.optInfo['version'],'optg.inp'])
         except:
             raise Exception('Can not run Gaussian 16')
         if rungaussian:
@@ -79,11 +80,11 @@ class GaussianOptg():
 class GamessOptg():
 
     def __init__(self, config):
-        scf = ConfigParser({'symmetry':'c1','processor':'1'})
+        scf = ConfigParser({'path':'rungms','symmetry':'c1','processor':'1'})
         scf.read(config)
 
         self.optInfo  = dict(scf.items('optInfo'))
-        for key in ['memory', 'basis', 'method', 'spin', 'charge', 'symmetry']:
+        for key in ['memory', 'memddi', 'basis', 'method', 'spin', 'charge', 'symmetry']:
             if key not in self.optInfo:
                 raise Exception('Option "%s" not found in config'%key)
         try:
@@ -94,54 +95,107 @@ class GamessOptg():
 
     def CreateTemplate(self):
         hfmeth = 'NONE'
-        mplevel = 'NONE'
+        if self.optInfo['spin']=='1':
+            hfmeth='RHF'
+        else:
+            hfmeth ='ROHF'
+        
+	mplevel = 'NONE'
         ccorder = 'NONE'
-        if self.optInfo['method'] =='ump2':
+        if self.optInfo['method'] in ['mp2','ump2']:
             mplevel = '2'
-            hfmeth  = 'UHF'
-        elif self.optInfo['method'] =='mp2':
-            mplevel = '2'
-            hfmeth = 'RHF'
         elif self.optInfo['method'] == 'ccsd':
-            hfmeth = 'hf'
             ccorder = 'ccsd'
-        elif self.optInfo['method'] == 'ccsd':
-            hfmeth = 'hf'
+        elif self.optInfo['method'] == 'uccsd':
             ccorder = 'ccsd'
-        gamessTemplate = textwrap.dedent('''  
-                                          $CONTRL SCFTYP={scfmeth} MPLEVL={mplevel} CCTYP={ccorder} RUNTYP=OPTIMIZE ICHARG={charge} COORD=CART
-                                           MULT={spin} MAXIT=200 ISPHER=1 $END                                                                 
-                                          $SYSTEM MWORDS={memory} $END       
-                                          $STATPT OPTTOL=1.0E-5  HSSEND=.T. $END
+        
+	gamessTemplate1 = textwrap.dedent('''  
+                                          $CONTRL SCFTYP={scfmeth} MPLEVL={mplevel} RUNTYP=OPTIMIZE ICHARG={charge} 
+                                           COORD=UNIQUE MULT={spin} MAXIT=200 ISPHER=1 $END                                                                 
+                                          $SYSTEM MWORDS={memory} MEMDDI ={memddi} $END       
+                                          $STATPT NSTEP=100 HSSEND=.T. $END
                                           $BASIS  GBASIS={basis} $END       
                                           $GUESS  GUESS=HUCKEL $END
                                           $DATA'''.format(mplevel = mplevel,
-                                                        ccorder = ccorder,
-                                                        scfmeth = hfmeth,
-                                                        charge = self.optInfo['charge'],
-                                                        spin = self.optInfo['spin'],    
-                                                        memory = self.optInfo['memory'],
-                                                        basis  = self.optInfo['basis']))
+                                                          scfmeth = hfmeth,
+                                                          charge = self.optInfo['charge'],
+                                                          spin = self.optInfo['spin'],    
+                                                          memory = self.optInfo['memory'],
+                                                          memddi = self.optInfo['memddi'],
+                                                          basis  = self.optInfo['basis']))
                                                 
+        gamessTemplate2 = textwrap.dedent('''  
+                                          $CONTRL SCFTYP={scfmeth} CCTYP={ccorder} RUNTYP=OPTIMIZE ICHARG={charge} 
+                                           COORD=UNIQUE MULT={spin} MAXIT=200 ISPHER=1 $END                                                                 
+                                          $SYSTEM MWORDS={memory} MEMDDI ={memddi} $END       
+                                          $STATPT NSTEP=100 HSSEND=.T. $END
+                                          $CCINP MAXCC =100 $END
+                                          $FORCE METHOD=FULLNUM $END
+                                          $BASIS  GBASIS={basis} $END       
+                                          $GUESS  GUESS=HUCKEL $END
+                                          $DATA'''.format(ccorder = ccorder,
+                                                          scfmeth = hfmeth,
+                                                          charge  = self.optInfo['charge'],
+                                                          spin    = self.optInfo['spin'],    
+                                                          memory  = self.optInfo['memory'],
+                                                          memddi  = self.optInfo['memddi'],
+                                                          basis   = self.optInfo['basis']))
+        hfdft =  'NONE'
+        if self.optInfo['method'] =='b3lyp' and self.optInfo['spin']=='1':
+              hfdft = 'RHF'
+        elif self.optInfo['method'] =='b3lyp' and self.optInfo['spin']!='1':
+              hfdft = 'UHF'
+
+	gamessTemplate3 = textwrap.dedent('''  
+                                          $CONTRL SCFTYP={scfmeth} DFTTYP={method} RUNTYP=OPTIMIZE ICHARG={charge} 
+                                           COORD=UNIQUE MULT={spin} MAXIT=200 ISPHER=1 $END                                                                 
+                                          $SYSTEM MWORDS={memory} MEMDDI ={memddi} $END       
+                                          $SCF DIRSCF=.TRUE. $END       
+                                          $CPHF CPHF=AO $END       
+                                          $STATPT NSTEP=100 HSSEND=.T. $END
+                                          $BASIS  GBASIS={basis} $END       
+                                          $GUESS  GUESS=HUCKEL $END
+                                          $DATA'''.format(method     = self.optInfo['method'], 
+                                                          scfmeth = hfdft,
+                                                          charge = self.optInfo['charge'],
+                                                          spin = self.optInfo['spin'],    
+                                                          memory = self.optInfo['memory'],
+                                                          memddi = self.optInfo['memddi'],
+                                                          basis  = self.optInfo['basis']))
+        
+        gamessTemplate = ''	
+	if self.optInfo['method'] in ['mp2','ump2']:
+              gamessTemplate = gamessTemplate1                                  
+        elif self.optInfo['method'] in ['ccsd','uccsd']:
+              gamessTemplate = gamessTemplate2                                  
+        elif self.optInfo['method'] =='b3lyp':
+              gamessTemplate = gamessTemplate3
+
         indent = lambda txt:'\n'.join([' '+i for i in txt.strip().split('\n')])
         with open(self.geomFile) as f: geomDat = f.read()
         self.nAtoms = len(filter(None,geomDat.split('\n')))
-        gamessTemplate += textwrap.dedent(''' 
+
+        gamessTemplate4 = textwrap.dedent(''' 
                                  optg and freq
                                  C1
                                  {geom}
                                 $END''').format(geom=geomDat.rstrip())
+  
+        gamessTemplate += gamessTemplate4 
         with open('optg.inp', 'w') as f: f.write(indent(gamessTemplate))
+
     def runOpt(self):
+        gmspath = self.optInfo['path']
+        os.system("export PATH=gmspath:$PATH")
         try:
-            rungamess = subprocess.call("rungms optg.inp >& optg.log",shell = True)
+            rungamess = subprocess.call('rungms optg.inp >& optg.log', shell = True)
         except:
             raise Exception('Can not run gamess')
         if rungamess:
             raise Exception(' Optimization failed.')
 
     def getResults(self):
-         with open('./exam01.log') as f : txt = f.read()
+         with open('./optg.log') as f : txt = f.read()
          ind= int((re.findall(r' MODE\(?S\)?\s+\d+ TO\s+(\d+) ARE TAKEN AS ROTATIONS AND TRANSLATIONS.',txt))[0])
 	 optGeom = re.findall(r' EQUILIBRIUM GEOMETRY LOCATED.(?:(?:.*\n){{4}})((?:.*\n){{{}}})'.format(self.nAtoms), txt) # self.natoms
 	 optGeom = [i.split()[2:] for i in filter(None,optGeom[0].split('\n'))]
@@ -176,7 +230,7 @@ class MolproOptg(object):
     def CreateTemplate(self):
         meth = ''
         if self.optInfo['method'] in ['ump2','uccsd']:
-            meth = 'uhf'
+            meth = 'rhf'
         elif self.optInfo['method'] in ['mp2','ccsd']:
             meth = 'hf'
         elif self.optInfo['method']=='b3lyp':

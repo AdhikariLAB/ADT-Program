@@ -94,21 +94,18 @@ ADT/
 │   │   ├── adt_numeric.py          # script for numerical calculation
 │   │   └── nummod.f90              # collection of necessary fortran subroutines
 │   │
-│   ├── molpro/
+│   ├── optimization/
 │   │   ├── __init__.py
-│   │   └── adt_molpro.py           # script for ab initio calculations by MOLPRO
-│   │
-│   └── optimization/
+│   │   └── optimize.py             # script for geometry optimization, frequency and wilson matrix by MOLPRO or Gaussian or │   │                                 Gamess package   
+│   └── molpro/
 │       ├── __init__.py
-│       └── optimize.py             # script for geometry optimization
+│       └── adt_molpro.py           # script for ab initio PESs and NACTs calculations by MOLPRO  
 │ 
 ├── test_runs/                      # folder containing sample calculations
 ├── LICENSE                         # license information
 ├── user_manual.pdf                 # detailed instructions for users
 └── README.md                       # readme file
 ```
-
-
 
 ## Usage:
 
@@ -117,13 +114,10 @@ types of calculation, namely,
   
 1. __ana__ : Calculate different [analytic expressions](#analytic) by using the subcommand `ana`.
 2. __num__ : Subcommand `num` can be used to calculate different [numerical quantities](#numerical).
-3. __mol__ : Use subcommand 'mol' to calculate _ab-initio_ PESs and NACTs for a molecular species using [MOLPRO](#molpro) and subsequently, calculate 
-the numerical quantities.
-4. __opt__ : The `opt` subcommand is used to calculate [optimized geometry](#optimization), frequencies and wilson matrix of a Spectroscopic system, required for the _ab-initio_.
+3. __opt__ : The `opt` subcommand is used to calculate [optimized geometry](#optimization), frequencies and wilson matrix of a Spectroscopic system, required for the _ab-initio_.
+4. __mol__ : Use subcommand 'mol' to calculate _ab-initio_ PESs and NACTs for a molecular species using [MOLPRO](#molpro) and subsequently, calculate the numerical quantities
 
-Description for each of the above segments can be found in detail in the user manual. At any step of using this package, user can see the 
-help menu by using the help flag `-h` or `--help`. During the runtime of any of the above sections, all the relevant information and progress
-is saved in a logfile named 'ADT.log'.
+Description for each of the above segments can be found in detail in the user manual. At any step of using this package, user can see the help menu by using the help flag `-h` or `--help`. During the runtime of any of the above sections, all the relevant information and progress is saved in a logfile named 'ADT.log'.
 
 
 ### Analytic:
@@ -160,13 +154,11 @@ __Some key things to note here:__
 * The magnitude of adt angle residue will be meaningful only if the second coordinate
      (supplied by the user) is bound that is it must form a closed contour. 
 
+### Optimization:
+Perform geometry optimization to calculate optimized geometry, frequencies and wilson matrix of a Spectroscopic system, required for the _ab-initio_. Presently Molpro Gamess and Gamess can be used for this purpose.
 
 ### Molpro:
-If the adiabatic PESs and NACTs are not available, user can directly calculate those interfacing the MOLPRO providing the information about 
-the molecular species.
-
-### Optimization:
-Perform geometry optimization to calculate optimized geometry, frequencies and wilson matrix of a Spectroscopic system, required for the _ab-initio_. Presently only Molpro and Gaussian 16 can be used for this purpose.
+If the adiabatic PESs and NACTs are not available, user can directly calculate those interfacing the MOLPRO providing the information about the molecular species
 
 ## Citation:
 This work is published in [Journal of Chemical Theory and Computation](https://pubs.acs.org/journal/jctcce) in paper :  
