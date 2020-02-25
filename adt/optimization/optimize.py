@@ -1,6 +1,5 @@
 from __future__ import absolute_import, unicode_literals, division, print_function
 import re
-import os
 import sys
 import textwrap
 import subprocess
@@ -14,7 +13,7 @@ else :
 class GaussianOptg():
 
     def __init__(self, config):
-        scf = ConfigParser({'version':'g16','symmetry':'nosym','processor':'1'})
+        scf = ConfigParser({'path':'g16','symmetry':'nosym','processor':'1'})
         scf.read(config)
 
         self.optInfo  = dict(scf.items('optInfo'))
@@ -50,9 +49,9 @@ class GaussianOptg():
 
     def runOpt(self):
         try:
-            rungaussian = subprocess.call([self.optInfo['version'],'optg.inp'])
+            rungaussian = subprocess.call([self.optInfo['path'],'optg.inp'])
         except:
-            raise Exception('Can not run Gaussian 16')
+            raise Exception('Can not run Gaussian.')
         if rungaussian:
             raise Exception(' Optimization failed.')
 
@@ -94,127 +93,71 @@ class GamessOptg():
         self.CreateTemplate()
 
     def CreateTemplate(self):
-        hfmeth = 'NONE'
-        if self.optInfo['spin']=='1':
-            hfmeth='RHF'
-        else:
-            hfmeth ='ROHF'
-        
-	mplevel = 'NONE'
-        ccorder = 'NONE'
-        if self.optInfo['method'] in ['mp2','ump2']:
-            mplevel = '2'
-        elif self.optInfo['method'] == 'ccsd':
-            ccorder = 'ccsd'
-        elif self.optInfo['method'] == 'uccsd':
-            ccorder = 'ccsd'
-        
-	gamessTemplate1 = textwrap.dedent('''  
-                                          $CONTRL SCFTYP={scfmeth} MPLEVL={mplevel} RUNTYP=OPTIMIZE ICHARG={charge} 
-                                           COORD=UNIQUE MULT={spin} MAXIT=200 ISPHER=1 $END                                                                 
-                                          $SYSTEM MWORDS={memory} MEMDDI ={memddi} $END       
-                                          $STATPT NSTEP=100 HSSEND=.T. $END
-                                          $BASIS  GBASIS={basis} $END       
-                                          $GUESS  GUESS=HUCKEL $END
-                                          $DATA'''.format(mplevel = mplevel,
-                                                          scfmeth = hfmeth,
-                                                          charge = self.optInfo['charge'],
-                                                          spin = self.optInfo['spin'],    
-                                                          memory = self.optInfo['memory'],
-                                                          memddi = self.optInfo['memddi'],
-                                                          basis  = self.optInfo['basis']))
-                                                
-        gamessTemplate2 = textwrap.dedent('''  
-                                          $CONTRL SCFTYP={scfmeth} CCTYP={ccorder} RUNTYP=OPTIMIZE ICHARG={charge} 
-                                           COORD=UNIQUE MULT={spin} MAXIT=200 ISPHER=1 $END                                                                 
-                                          $SYSTEM MWORDS={memory} MEMDDI ={memddi} $END       
-                                          $STATPT NSTEP=100 HSSEND=.T. $END
-                                          $CCINP MAXCC =100 $END
-                                          $FORCE METHOD=FULLNUM $END
-                                          $BASIS  GBASIS={basis} $END       
-                                          $GUESS  GUESS=HUCKEL $END
-                                          $DATA'''.format(ccorder = ccorder,
-                                                          scfmeth = hfmeth,
-                                                          charge  = self.optInfo['charge'],
-                                                          spin    = self.optInfo['spin'],    
-                                                          memory  = self.optInfo['memory'],
-                                                          memddi  = self.optInfo['memddi'],
-                                                          basis   = self.optInfo['basis']))
-        hfdft =  'NONE'
-        if self.optInfo['method'] =='b3lyp' and self.optInfo['spin']=='1':
-              hfdft = 'RHF'
-        elif self.optInfo['method'] =='b3lyp' and self.optInfo['spin']!='1':
-              hfdft = 'UHF'
-
-	gamessTemplate3 = textwrap.dedent('''  
-                                          $CONTRL SCFTYP={scfmeth} DFTTYP={method} RUNTYP=OPTIMIZE ICHARG={charge} 
-                                           COORD=UNIQUE MULT={spin} MAXIT=200 ISPHER=1 $END                                                                 
-                                          $SYSTEM MWORDS={memory} MEMDDI ={memddi} $END       
-                                          $SCF DIRSCF=.TRUE. $END       
-                                          $CPHF CPHF=AO $END       
-                                          $STATPT NSTEP=100 HSSEND=.T. $END
-                                          $BASIS  GBASIS={basis} $END       
-                                          $GUESS  GUESS=HUCKEL $END
-                                          $DATA'''.format(method     = self.optInfo['method'], 
-                                                          scfmeth = hfdft,
-                                                          charge = self.optInfo['charge'],
-                                                          spin = self.optInfo['spin'],    
-                                                          memory = self.optInfo['memory'],
-                                                          memddi = self.optInfo['memddi'],
-                                                          basis  = self.optInfo['basis']))
-        
-        gamessTemplate = ''	
-	if self.optInfo['method'] in ['mp2','ump2']:
-              gamessTemplate = gamessTemplate1                                  
-        elif self.optInfo['method'] in ['ccsd','uccsd']:
-              gamessTemplate = gamessTemplate2                                  
-        elif self.optInfo['method'] =='b3lyp':
-              gamessTemplate = gamessTemplate3
-
-        indent = lambda txt:'\n'.join([' '+i for i in txt.strip().split('\n')])
+        indent = lambda txt:'\n'.join([' '+i.strip() for i in filter(None,txt.split('\n'))])
         with open(self.geomFile) as f: geomDat = f.read()
         self.nAtoms = len(filter(None,geomDat.split('\n')))
 
-        gamessTemplate4 = textwrap.dedent(''' 
-                                 optg and freq
-                                 C1
-                                 {geom}
-                                $END''').format(geom=geomDat.rstrip())
-  
-        gamessTemplate += gamessTemplate4 
+        gamessTemplate = textwrap.dedent('''
+                                            $CONTRL SCFTYP={scfmeth} {lvl} RUNTYP=OPTIMIZE ICHARG={charge}
+                                            COORD=UNIQUE MULT={spin} MAXIT=200 ISPHER=1 $END
+                                            $SYSTEM MWORDS={memory} MEMDDI ={memddi} $END
+                                            {pre}
+                                            $STATPT NSTEP=100 HSSEND=.T. $END
+                                            {post}
+                                            $BASIS  GBASIS={basis} $END
+                                            $GUESS  GUESS=HUCKEL $END
+                                            $DATA
+                                            optg and freq
+                                            C1
+                                            {geom}
+                                            $END
+                                            '''.format( scfmeth = 'RHF' if self.optInfo['spin'] =='1' else
+                                                                  'UHF' if self.optInfo['method'] =='b3lyp' else 'ROHF',
+                                                        lvl     = {'mp2':'MPLEVL=2','ump2':'MPLEVL=2',
+                                                                  'ccsd':'CCTYP=ccsd','uccsd':'CCTYP=ccsd',
+                                                                  'b3lyp':'DFTTYP=b3lyp'}.get(self.optInfo['method']),
+                                                        charge  = self.optInfo['charge'],
+                                                        spin    = self.optInfo['spin'],
+                                                        memory  = self.optInfo['memory'],
+                                                        memddi  = self.optInfo['memddi'],
+                                                        pre     = '$SCF DIRSCF=.TRUE. $END\n$CPHF CPHF=AO $END'
+                                                                  if self.optInfo['method'] == 'b3lyp' else '',
+                                                        post    = '$CCINP MAXCC =100 $END\n$FORCE METHOD=FULLNUM $END'
+                                                                  if self.optInfo['method'] in ['ccsd','uccsd'] else '',
+                                                        basis   = self.optInfo['basis'],
+                                                        geom    = geomDat.strip()))
+
         with open('optg.inp', 'w') as f: f.write(indent(gamessTemplate))
 
     def runOpt(self):
-        gmspath = self.optInfo['path']
-        os.system("export PATH=gmspath:$PATH")
         try:
-            rungamess = subprocess.call('rungms optg.inp >& optg.log', shell = True)
+            rungamess = subprocess.call('{} optg.inp >& optg.log'.format(self.optInfo['path']), shell = True)
         except:
             raise Exception('Can not run gamess')
         if rungamess:
             raise Exception(' Optimization failed.')
 
     def getResults(self):
-         with open('./optg.log') as f : txt = f.read()
-         ind= int((re.findall(r' MODE\(?S\)?\s+\d+ TO\s+(\d+) ARE TAKEN AS ROTATIONS AND TRANSLATIONS.',txt))[0])
-	 optGeom = re.findall(r' EQUILIBRIUM GEOMETRY LOCATED.(?:(?:.*\n){{4}})((?:.*\n){{{}}})'.format(self.nAtoms), txt) # self.natoms
-	 optGeom = [i.split()[2:] for i in filter(None,optGeom[0].split('\n'))]
-         optGeom = np.array(optGeom,dtype=np.float64)
-         np.savetxt('equigeom.dat', optGeom, fmt=str('%.10f'), delimiter='\t')
-         freq = [ float(j)  for i in re.findall('FREQUENCY:(.*)',txt) for j in i.replace('I','').split() ][ind:]
-         freq = np.asarray(freq,dtype=np.float)
-         np.savetxt('frequency.dat', freq[None,:], fmt=str('%.10f'), delimiter='\t')
-         pat1 = r'FREQUENCY:\s+(.*)(?:(?:.*\n){{5}})((?:.*\n){{{}}})'.format(3*self.nAtoms) # 3*nAtoms
-         pat2 = r'(?:\s+\d+\s+\w+)?\s+[X|Y|Z](.*)'
-         freDat = re.findall(pat1,txt)
-         arr =np.column_stack([ np.vstack([j.split() for j in re.findall(pat2,i)]) for _,i in freDat])
-         wilson = np.array(arr, dtype=np.float)[:,ind:]
-         np.savetxt('wilson.dat', wilson, fmt=str('%.10f'), delimiter='\t')
+        with open('./optg.log') as f : txt = f.read()
+        ind= int((re.findall(r' MODE\(?S\)?\s+\d+ TO\s+(\d+) ARE TAKEN AS ROTATIONS AND TRANSLATIONS.',txt))[0])
+        optGeom = re.findall(r' EQUILIBRIUM GEOMETRY LOCATED.(?:(?:.*\n){{4}})((?:.*\n){{{}}})'.format(self.nAtoms), txt)
+        optGeom = [i.split()[2:] for i in filter(None,optGeom[0].split('\n'))]
+        optGeom = np.array(optGeom,dtype=np.float64)
+        np.savetxt('equigeom.dat', optGeom, fmt=str('%.10f'), delimiter='\t')
+        freq = [ float(j)  for i in re.findall('FREQUENCY:(.*)',txt) for j in i.replace('I','').split() ][ind:]
+        freq = np.asarray(freq,dtype=np.float)
+        np.savetxt('frequency.dat', freq[None,:], fmt=str('%.10f'), delimiter='\t')
+        pat1 = r'FREQUENCY:\s+(.*)(?:(?:.*\n){{5}})((?:.*\n){{{}}})'.format(3*self.nAtoms) # 3*nAtoms
+        pat2 = r'(?:\s+\d+\s+\w+)?\s+[X|Y|Z](.*)'
+        freDat = re.findall(pat1,txt)
+        arr =np.column_stack([ np.vstack([j.split() for j in re.findall(pat2,i)]) for _,i in freDat])
+        wilson = np.array(arr, dtype=np.float)[:,ind:]
+        np.savetxt('wilson.dat', wilson, fmt=str('%.10f'), delimiter='\t')
 
 class MolproOptg(object):
 
     def __init__(self, config):
-        scf = ConfigParser({'symmetry':'nosym','processor':'1','charge':'0'})
+        scf = ConfigParser({'path':'molpro','symmetry':'nosym','processor':'1','charge':'0'})
         scf.read(config)
 
         self.optInfo  = dict(scf.items('optInfo'))
@@ -228,17 +171,13 @@ class MolproOptg(object):
         self.CreateTemplate()
 
     def CreateTemplate(self):
-        meth = ''
-        if self.optInfo['method'] in ['ump2','uccsd']:
-            meth = 'rhf'
-        elif self.optInfo['method'] in ['mp2','ccsd']:
-            meth = 'hf'
-        elif self.optInfo['method']=='b3lyp':
-            self.optInfo['method'] = 'ks,' + self.optInfo['method']
+        method = self.optInfo['method']
+        meth = {'mp2':'hf','ump2':'uhf','uccsd':'rhf','ccsd':'hf'}.get(method,'')
+        method = ('ks,' if method=='b3lyp' else '') + method
 
         molproTemplate = textwrap.dedent('''
             memory,{memory}
-            
+
             set,charge={charge}
             basis={basis}
 
@@ -256,7 +195,7 @@ class MolproOptg(object):
                        memory = self.optInfo['memory'],
                        basis  = self.optInfo['basis'],
                        sym    = self.optInfo['symmetry'],
-                       method = self.optInfo['method']))
+                       method = method))
 
         with open(self.geomFile) as f: geomDat = f.read()
         self.nAtoms = len(filter(None,geomDat.split('\n')))
@@ -273,7 +212,7 @@ class MolproOptg(object):
 
     def runOpt(self):
         try:
-            runMolpro = subprocess.call(['molpro', '-n',self.optInfo['processor'], 'optg_mol.inp','--no-xml-output'])
+            runMolpro = subprocess.call([self.optInfo['path'], '-n',self.optInfo['processor'], 'optg_mol.inp','--no-xml-output'])
         except:
             raise Exception('Can not run Molpro')
         if runMolpro:

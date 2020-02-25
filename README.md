@@ -96,7 +96,8 @@ ADT/
 │   │
 │   ├── optimization/
 │   │   ├── __init__.py
-│   │   └── optimize.py             # script for geometry optimization, frequency and wilson matrix by MOLPRO or Gaussian or │   │                                 Gamess package   
+│   │   └── optimize.py             # script for geometry optimization, frequency and wilson matrix by MOLPRO or Gaussian or 
+│   │                               # Gamess package   
 │   └── molpro/
 │       ├── __init__.py
 │       └── adt_molpro.py           # script for ab initio PESs and NACTs calculations by MOLPRO  

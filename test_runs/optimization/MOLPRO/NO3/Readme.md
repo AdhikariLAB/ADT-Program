@@ -3,7 +3,7 @@
 
 This folder contains two input files (mol.config, geom.dat) of NO3 radical, where ab-initio calculation has been done with MOLPRO. 
 The output files corresponding to optimized geometry (equigeom.dat), wilson (wilson.dat) and frequency files(frequency.dat) calculated by this program package. 
-Geometry optimization and frequency calculation has been performed at UCCSD method with cc-pvDZ basis set.
+Geometry optimization and frequency calculation has been performed at B3LYP/DFT method with cc-pvDZ basis set.
 
 ---
 ## Command:
