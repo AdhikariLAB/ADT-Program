@@ -31,13 +31,29 @@ Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Satyam Ravi, Saikat Mukherjee
 ---
 
 ## Installation: 
-For installing the package with the default parameters just run:  
 
+#### Setting Fortran compiler for installation
+
+The 'ADT' program uses OpenMP directives in the Fortran code and to properly install the package, the code has to be compiled correctly. To do so one has to let the build system know what Fortran compiler to use, during installation. The simplest way to do this is to set the `F90` environment variable before installation. 
+To install using `gfortran` compiler run (in Bash)
+
+```bash
+export F90=gfortran
+```
+or to use Intel Fortran compiler:
+
+```bash
+export F90=ifort
+```
+If no `F90` environment variable is specified then the program is installed using `gfortran` compiler by default. To use other compilers or to fine tune the installation process, modify the `setup.py` script.
+
+#### Installing 'ADT'
+For installing the package with the default parameters just run:  
 ```
 python setup.py install
 ```
 
-This will install the package in the root of the system, so you may need to run this with admin privilages. If you don't have root privilages or don't want to install the package in the root of the system, user can install this package in home of the local user site-packages folder for python by 
+This will install the package, usually in the root of the system, so you may need to run this with admin privilages. If you don't have root privilages or don't want to install the package in the root of the system, user can install this package in home of the local user site-packages folder for python by 
 running  
 
 ```
@@ -55,22 +71,6 @@ On successfull installation of the package, a command line utility `adt` will be
 A quick help about the installation can be found by running `python setup.py -h`  
 
 To know more about installation and building distribution, please refer to the user manual of the package.   
-
-#### Setting Fortran compiler for installation:
-
-To correctly install the package with OpenMP enabled one has to let the build system know what Fortran compiler to use by setting the proper `F90` environment variable. 
-To install using `gfortran` compiler run (in Bash)
-
-```bash
-export F90=gfortran
-```
-or to use Intel Fortran compiler:
-
-```bash
-export F90=ifort
-```
-If no `F90` environment variable is specified then the program is installed using `gfortran` compiler. To use other compilers or to fine tune the installation process, modify the `setup.py` script.
-
 
 
 ---
