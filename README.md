@@ -34,7 +34,7 @@ Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Satyam Ravi, Saikat Mukherjee
 
 #### Setting Fortran compiler for installation
 
-The 'ADT' program uses OpenMP directives in the Fortran code and to properly install the package, the code has to be compiled correctly. To do so one has to let the build system know what Fortran compiler to use, during installation. The simplest way to do this is to set the `F90` environment variable before installation. 
+The 'ADT' program uses OpenMP directives in the Fortran code and to properly install the package, the code has to be compiled correctly with appropriate flags. To do so one has to let the build system know what Fortran compiler to use, during installation. The simplest way to do this is to set the `F90` environment variable before installation. 
 To install using `gfortran` compiler run (in Bash)
 
 ```bash
