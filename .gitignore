@@ -1,0 +1,10 @@
+*.log
+__pycache__
+*.pyc
+build
+*.egg-info
+*.mod
+*.so
+*.log
+.vscode
+opt

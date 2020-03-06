@@ -90,6 +90,7 @@ module adt
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     subroutine get_angle(full_angle, ngridr, ngridp, ntau, path)
+        !$ use omp_lib
 
         ! This subroutine returns ADT angles over a 2D grid of geometries along any one of the eight paths of integration
 
@@ -97,6 +98,7 @@ module adt
         real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
 
         call init()
+
 
         select case (path)
 
