@@ -34,8 +34,8 @@ Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Satyam Ravi, Saikat Mukherjee
 
 #### Setting Fortran compiler for installation
 
-The 'ADT' program uses OpenMP directives in the Fortran code and to properly install the package, the code has to be compiled correctly with appropriate flags. To do so one has to let the build system know what Fortran compiler to use, during installation. The simplest way to do this is to set the `F90` environment variable before installation. 
-To install using `gfortran` compiler run (in Bash)
+The 'ADT' program uses OpenMP directives in the Fortran code and to properly install the package, the code has to be compiled correctly with appropriate flags. To do so one has to let the build system know what Fortran compiler to use, during installation. The simplest way to do this is to set the `F90` environment variable before installing the package. 
+For instance, to set `gfortran` compiler, run (in Bash):
 
 ```bash
 export F90=gfortran
@@ -53,7 +53,7 @@ For installing the package with the default parameters just run:
 python setup.py install
 ```
 
-This will install the package, usually in the root of the system, so you may need to run this with admin privilages. If you don't have root privilages or don't want to install the package in the root of the system, user can install this package in home of the local user site-packages folder for python by 
+This will install the package, usually in the root of the system, so you may need to run this with admin privileges. If you don't have root privileges or don't want to install the package in the root of the system, user can install this package in home of the local user site-packages folder for python by 
 running  
 
 ```
@@ -66,7 +66,7 @@ Alternatively, if `pip` is available, user can install the package by executing 
 pip install .
 ```
 
-On successfull installation of the package, a command line utility `adt` will be created, which will be used to run the package directly from terminal.
+On successful installation of the package, a command line utility `adt` will be created, which will be used to run the package directly from terminal.
 
 A quick help about the installation can be found by running `python setup.py -h`  
 
@@ -125,7 +125,7 @@ Description for each of the above segments can be found in detail in the user ma
 This section is employed to derive the following six analytical quantities for any number of electronic states constituting the sub-Hilbert space:
 
 1. ADT Matrix.
-2. Partilly substituted ADT Equations.
+2. Partially substituted ADT Equations.
 3. Complete form of ADT equations.
 4. Coefficient matrix of gradient of ADT angle.
 5. Coefficient matrix of NACT.
