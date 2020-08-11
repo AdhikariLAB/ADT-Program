@@ -4,14 +4,20 @@
 !    This fortran file contains all necessary fortran subroutines to solve the adiabatic to diabatic transformation    !
 !    (ADT) equations along eight different paths of integration. The stiff differential equations are solved by        !
 !    employing 8th order Runge-Kutta method. While performing the initialization step, 'f2py' generates the python     !
-!    module, 'adt_module.so' according to user specified compiler flags. In order to carry out this step, see the      !
-!    instructions in 'init.sh'.                                                                                        !
+!    module, 'adt_module.so' according to user specified compiler flags.                                               !
 !                                                                                                                      !
 !    Written by Koushik Naskar, Soumya Mukherjee, Bijit Mukherjee, Satyam Ravi, Saikat Mukherjee, Subhankar Sardar and !
 !    Satrajit Adhikari                                                                                                 !
 !                                                                                                                      !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!TODO:
+!1. The array dimensions are defined as module variabale, though fortran can access those variable in any inherited procedure
+!   but f2py can not, for that it has to defined with an intent(aux) statement. So, remove those overlapping dimension variable
+!   from argument that masks the module variable with explicit intent(aux)
+!2. Remove init subroutine with `cx` as parameter, and also fix the dimension
+!3. Instead of assigning the allocatable variable in the python script with auto association, make initialization subroutine
+!4. Generalised the 2D interpolation for non equispaced grid
 
 module adt
     !$ use omp_lib
@@ -19,9 +25,9 @@ module adt
     ! 'e' means expanded
     real(8) ,allocatable, dimension(:,:,:) :: taur, taup, etaur, etaup
     real(8) ,allocatable, dimension(:)     :: gridr, gridp, egridr, egridp, grid
-    integer(8)                             :: ngridr, ngridp, ngrid, ntau, nstate
+    integer                             :: ngridr, ngridp, ngrid, ntau, nstate
     real(8) ,allocatable, dimension(:,:)   :: tau
-    integer(8),allocatable,dimension(:)    :: order
+    integer,allocatable,dimension(:)    :: order
     ! tau and grid varaible are only here just for the 1D ADT case
     real(8)                                :: wt(16,16), gridr_val, gridp_val, s,cx(3), cy(117)
 
@@ -37,7 +43,7 @@ module adt
 
     subroutine init()
 
-    !This subroutine returns the parameters of 8th order Runge-Kutta method
+        !This subroutine returns the parameters of 8th order Runge-Kutta method
 
         s=dsqrt(21.0d0)
 
@@ -94,7 +100,7 @@ module adt
 
         ! This subroutine returns ADT angles over a 2D grid of geometries along any one of the eight paths of integration
 
-        integer(8),  intent(in):: ngridr, ngridp, ntau, path
+        integer,  intent(in):: ngridr, ngridp, ntau, path
         real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
 
         call init()
@@ -139,10 +145,10 @@ module adt
 
         ! This subroutine returns ADT angles over a 2D grid of geometries along path1
 
-        integer(8),  intent(in):: ngridr, ngridp, ntau
+        integer,  intent(in):: ngridr, ngridp, ntau
         real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
         real(8)                :: angle(ntau), h1, h2, fangle(ngridp, ntau)
-        integer(8)             :: i,j
+        integer             :: i,j
 
         h1 = gridr(2) - gridr(1)
         h2 = gridp(2) - gridp(1)
@@ -179,10 +185,10 @@ module adt
 
         ! This subroutine returns ADT angles over a 2D grid of geometries along path2
 
-        integer(8),  intent(in):: ngridr, ngridp, ntau
+        integer,  intent(in):: ngridr, ngridp, ntau
         real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
         real(8)                :: angle(ntau), h1, h2, fangle(ngridp, ntau)
-        integer(8)             :: i,j
+        integer             :: i,j
 
         h1 = gridr(2) - gridr(1)
         h2 = -gridp(2) + gridp(1)
@@ -220,10 +226,10 @@ module adt
 
         ! This subroutine returns ADT angles over a 2D grid of geometries along path3
 
-        integer(8),  intent(in):: ngridr, ngridp, ntau
+        integer,  intent(in):: ngridr, ngridp, ntau
         real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
         real(8)                :: angle(ntau), h1, h2, fangle(ngridp, ntau)
-        integer(8)             :: i,j
+        integer             :: i,j
 
         h1 = -gridr(2) + gridr(1)
         h2 = gridp(2) - gridp(1)
@@ -259,10 +265,10 @@ module adt
 
         ! This subroutine returns ADT angles over a 2D grid of geometries along path4
 
-        integer(8),  intent(in):: ngridr, ngridp, ntau
+        integer,  intent(in):: ngridr, ngridp, ntau
         real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
         real(8)                :: angle(ntau), h1, h2, fangle(ngridp, ntau)
-        integer(8)             :: i,j
+        integer             :: i,j
 
         h1 = -gridr(2)+ gridr(1)
         h2 = -gridp(2)+ gridp(1)
@@ -300,10 +306,10 @@ module adt
 
         ! This subroutine returns ADT angles over a 2D grid of geometries along path5
 
-        integer(8),  intent(in):: ngridr, ngridp, ntau
+        integer,  intent(in):: ngridr, ngridp, ntau
         real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
         real(8)                :: angle(ntau), h1, h2, fangle(ngridr, ntau)
-        integer(8)             :: i,j
+        integer             :: i,j
 
         h1 = gridr(2) - gridr(1)
         h2 = gridp(2) - gridp(1)
@@ -340,10 +346,10 @@ module adt
 
         ! This subroutine returns ADT angles over a 2D grid of geometries along path6
 
-        integer(8),  intent(in):: ngridr, ngridp, ntau
+        integer,  intent(in):: ngridr, ngridp, ntau
         real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
         real(8)                :: angle(ntau), h1, h2, fangle(ngridr, ntau)
-        integer(8)             :: i,j
+        integer             :: i,j
 
         h1 = -gridr(2)+ gridr(1)
         h2 = gridp(2) - gridp(1)
@@ -380,10 +386,10 @@ module adt
 
         ! This subroutine returns ADT angles over a 2D grid of geometries along path7
 
-        integer(8),  intent(in):: ngridr, ngridp, ntau
+        integer,  intent(in):: ngridr, ngridp, ntau
         real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
         real(8)                :: angle(ntau), h1, h2, fangle(ngridr, ntau)
-        integer(8)             :: i,j
+        integer             :: i,j
 
         h1 = gridr(2) - gridr(1)
         h2 = -gridp(2) + gridp(1)
@@ -419,10 +425,10 @@ module adt
 
         ! This subroutine returns ADT angles over a 2D grid of geometries along path8
 
-        integer(8),  intent(in):: ngridr, ngridp, ntau
+        integer,  intent(in):: ngridr, ngridp, ntau
         real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
         real(8)                :: angle(ntau), h1, h2, fangle(ngridr, ntau)
-        integer(8)             :: i,j
+        integer             :: i,j
 
         h1 = -gridr(2) + gridr(1)
         h2 = gridp(2) - gridp(1)
@@ -463,7 +469,7 @@ module adt
         ! fun = dy/dx
 
         external fun
-        integer(8), intent(in):: n
+        integer, intent(in):: n
         real(8), intent(in)   :: x,dx,xy
         real(8), intent(inout):: y(n)
 
@@ -524,12 +530,10 @@ module adt
         ! This subroutine returns the magnitude of ADT angles at a specific nuclear geometry during integration along
         ! first coordinate
 
-        integer(8),  intent(in):: ntau
+        integer,  intent(in):: ntau
         real(8), intent(in)    :: gridr_val, ini_angle(ntau), gridp_val
         real(8), intent(out)   :: output(ntau)
         real(8) :: tau_val(ntau)
-
-
 
         call interpol(etaur, gridr_val, gridp_val, tau_val, ngridr, ngridp, ntau)
         call res(ini_angle,tau_val,output, ntau, nstate)
@@ -543,7 +547,7 @@ module adt
         ! This subroutine returns the magnitude of ADT angles at a specific nuclear geometry during integration along
         ! second coordinate
 
-        integer(8),  intent(in):: ntau
+        integer,  intent(in):: ntau
         real(8), intent(in) :: gridp_val, ini_angle(ntau), gridr_val
         real(8), intent(out) :: output(ntau)
         real(8) :: outval(ntau)
@@ -561,37 +565,38 @@ module adt
     !   Delhi-110040, 2000.')
     !***********************************************************************************************************
 
-    subroutine locate(xx,n,x,jj)
+    subroutine locate(xx,n,x,l)
 
-        integer(8), intent(in) :: n
+        integer, intent(in) :: n
         real(8),    intent(in) :: xx(n),x
-        integer(8), intent(out):: jj
-        integer(8)             :: jl,ju,jm
+        integer, intent(out):: l
+        integer             :: u,k
     
-        jl=0
-        ju=n+1
-        do while((ju-jl).gt.1)
-            jm=(ju+jl)/2
-            if((xx(n).gt.xx(1)).eqv.(x.ge.xx(jm)))then
-                jl=jm
+        l=0; u=n
+
+        do while((u-l)>1)
+            k=(u+l)/2
+            if((x>xx(k)))then
+                l=k
               else
-                ju=jm
+                u=k
             endif
         enddo
-        jj=jl
     end subroutine locate
     
 
+
+    
     subroutine interpol(tau,x1,y1,tout,ngridr, ngridp, ntau)
 
         ! This subroutine is used to perform bi-cubic interpolation to evaluate the magnitude of nonadiabatic coupling terms
         ! (NACTs) at intermediate geometries between two grid points
 
-        integer(8),  intent(in):: ngridr, ngridp, ntau
+        integer,  intent(in):: ngridr, ngridp, ntau
         real(8),intent(in) :: tau(ngridr+2, ngridp+2, ntau), x1,y1
         real(8),intent(out):: tout(ntau)
         real(8)            :: yf(4),yf1(4),yf2(4),yf12(4), dx,dy,x1l,x1u,x2l,x2u,ansy!,ansy1,ansy2
-        integer(8)         :: ii1,ii2,jj1,jj2,k
+        integer         :: ii1,ii2,jj1,jj2,k
 
         dx=egridr(2)-egridr(1)
         dy=egridp(2)-egridp(1)
@@ -631,7 +636,7 @@ module adt
                 !backward differencing(b.d)
                 yf1(2)=(tau(ii2,jj1,k)-tau(ii2-1,jj1,k))/dx
                 yf1(3)=(tau(ii2,jj2,k)-tau(ii2-1,jj2,k))/dx
-                else
+            else
                 !c.d
                 yf1(2)=0.5d0*(tau(ii2+1,jj1,k)-tau(ii2-1,jj1,k))/dx
                 yf1(3)=0.5d0*(tau(ii2+1,jj2,k)-tau(ii2-1,jj2,k))/dx
@@ -641,7 +646,7 @@ module adt
                 !f.d
                 yf2(1)=(tau(ii1,jj1+1,k)-tau(ii1,jj1,k))/dy
                 yf2(2)=(tau(ii2,jj1+1,k)-tau(ii2,jj1,k))/dy
-                else
+            else
                 !c.d
                 yf2(1)=0.5d0*(tau(ii1,jj1+1,k)-tau(ii1,jj1-1,k))/dy
                 yf2(2)=0.5d0*(tau(ii2,jj1+1,k)-tau(ii2,jj1-1,k))/dy
@@ -651,7 +656,7 @@ module adt
                 !b.d
                 yf2(3)=(tau(ii2,jj2,k)-tau(ii2,jj2-1,k))/dy
                 yf2(4)=(tau(ii1,jj2,k)-tau(ii1,jj2-1,k))/dy
-                else
+            else
                 !c.d
                 yf2(3)=0.5d0*(tau(ii2,jj2+1,k)-tau(ii2,jj2-1,k))/dy
                 yf2(4)=0.5d0*(tau(ii1,jj2+1,k)-tau(ii1,jj2-1,k))/dy
@@ -661,13 +666,13 @@ module adt
             if(ii1.eq.1.and.jj1.eq.1)then
                 !f.d & f.d
                 yf12(1)=((tau(ii1+1,jj1+1,k)-tau(ii1,jj1+1,k))-(tau(ii1+1,jj1,k)-tau(ii1,jj1,k)))/dx/dy
-                elseif(ii1.eq.1.and.jj1.ne.1)then
+            elseif(ii1.eq.1.and.jj1.ne.1)then
                 !f.d & c.d
                 yf12(1)=0.5d0*((tau(ii1+1,jj1+1,k)-tau(ii1,jj1+1,k))-(tau(ii1+1,jj1-1,k)-tau(ii1,jj1-1,k)))/dx/dy
-                elseif(ii1.ne.1.and.jj1.eq.1)then
+            elseif(ii1.ne.1.and.jj1.eq.1)then
                 !c.d & f.d
                 yf12(1)=0.5d0*((tau(ii1+1,jj1+1,k)-tau(ii1-1,jj1+1,k))-(tau(ii1+1,jj1,k)-tau(ii1-1,jj1,k)))/dx/dy
-                else
+            else
                 !c.d & c.d
                 yf12(1)=0.25d0*((tau(ii1+1,jj1+1,k)-tau(ii1-1,jj1+1,k))-(tau(ii1+1,jj1-1,k)-tau(ii1-1,jj1-1,k)))/dx/dy
             endif
@@ -675,13 +680,13 @@ module adt
             if(ii2.eq.ngridr+2.and.jj1.eq.1)then
                 !b.d & f.d
                 yf12(2)=((tau(ii2,jj1+1,k)-tau(ii2-1,jj1+1,k))-(tau(ii2,jj1,k)-tau(ii2-1,jj1,k)))/dx/dy
-                elseif(ii2.eq.ngridr+2.and.jj1.ne.1)then
+            elseif(ii2.eq.ngridr+2.and.jj1.ne.1)then
                 !b.d & c.d
                 yf12(2)=0.5d0*((tau(ii2,jj1+1,k)-tau(ii2-1,jj1+1,k))-(tau(ii2,jj1-1,k)-tau(ii2-1,jj1-1,k)))/dx/dy
-                elseif(ii2.ne.ngridr+2.and.jj1.eq.1)then
+            elseif(ii2.ne.ngridr+2.and.jj1.eq.1)then
                 !c.d & f.d
                 yf12(2)=0.5d0*((tau(ii2+1,jj1+1,k)-tau(ii2-1,jj1+1,k))-(tau(ii2+1,jj1,k)-tau(ii2-1,jj1,k)))/dx/dy
-                else
+            else
                 !c.d & c.d
                 yf12(2)=0.25d0*((tau(ii2+1,jj1+1,k)-tau(ii2-1,jj1+1,k))-(tau(ii2+1,jj1-1,k)-tau(ii2-1,jj1-1,k)))/dx/dy
             endif
@@ -689,13 +694,13 @@ module adt
             if(ii2.eq.ngridr+2.and.jj2.eq.ngridp+2)then
                 !b.d & b.d
                 yf12(3)=((tau(ii2,jj2,k)+tau(ii2-1,jj2,k))-(tau(ii2,jj2-1,k)-tau(ii2-1,jj2-1,k)))/dx/dy
-                elseif(ii2.eq.ngridr+2.and.jj2.ne.ngridp+2)then
+            elseif(ii2.eq.ngridr+2.and.jj2.ne.ngridp+2)then
                 !b.d & c.d
                 yf12(3)=0.5d0*((tau(ii2,jj2+1,k)+tau(ii2-1,jj2+1,k))-(tau(ii2,jj2-1,k)-tau(ii2-1,jj2-1,k)))/dx/dy
-                elseif(ii2.ne.ngridr+2.and.jj2.eq.ngridp+2)then
+            elseif(ii2.ne.ngridr+2.and.jj2.eq.ngridp+2)then
                 !c.d & b.d
                 yf12(3)=0.5d0*((tau(ii2+1,jj2,k)+tau(ii2-1,jj2,k))-(tau(ii2+1,jj2-1,k)-tau(ii2-1,jj2-1,k)))/dx/dy
-                else
+            else
                 !c.d & c.d
                 yf12(3)=0.25d0*((tau(ii2+1,jj2+1,k)+tau(ii2-1,jj2+1,k))-(tau(ii2+1,jj2-1,k)-tau(ii2-1,jj2-1,k)))/dx/dy
             endif
@@ -703,13 +708,13 @@ module adt
             !f.d & b.d
             if(ii1.eq.1.and.jj2.eq.ngridp+2)then
                 yf12(4)=((tau(ii1+1,jj2,k)-tau(ii1,jj2,k))-(tau(ii1+1,jj2-1,k)-tau(ii1,jj2-1,k)))/dx/dy
-                elseif(ii1.eq.1.and.jj2.ne.ngridp+2)then
+            elseif(ii1.eq.1.and.jj2.ne.ngridp+2)then
                 !f.d & c.d
                 yf12(4)=0.5d0*((tau(ii1+1,jj2+1,k)-tau(ii1,jj2+1,k))-(tau(ii1+1,jj2-1,k)-tau(ii1,jj2-1,k)))/dx/dy
-                elseif(ii1.ne.1.and.jj2.eq.ngridp+2)then
+            elseif(ii1.ne.1.and.jj2.eq.ngridp+2)then
                 !c.d & b.d
                 yf12(4)=0.5d0*((tau(ii1+1,jj2,k)-tau(ii1-1,jj2,k))-(tau(ii1+1,jj2-1,k)-tau(ii1-1,jj2-1,k)))/dx/dy
-                else
+             else
                 !c.d & c.d
                 yf12(4)=0.25d0*((tau(ii1+1,jj2+1,k)-tau(ii1-1,jj2+1,k))-(tau(ii1+1,jj2-1,k)-tau(ii1-1,jj2-1,k)))/dx/dy
             endif
@@ -718,6 +723,167 @@ module adt
             tout(k)=ansy
         enddo
     end subroutine interpol
+
+
+
+    ! 2D non equispaced test
+    ! subroutine interpol(tau,x1,y1,tout,ngridr, ngridp, ntau)
+
+    !     ! This subroutine is used to perform bi-cubic interpolation to evaluate the magnitude of nonadiabatic coupling terms
+    !     ! (NACTs) at intermediate geometries between two grid points
+
+    !     integer,  intent(in):: ngridr, ngridp, ntau
+    !     real(8),intent(in) :: tau(ngridr+2, ngridp+2, ntau), x1,y1
+    !     real(8),intent(out):: tout(ntau)
+    !     real(8)            :: yf(4),yf1(4),yf2(4),yf12(4), dx,dy,x1l,x1u,x2l,x2u,ansy!,ansy1,ansy2
+    !     integer         :: ii1,ii2,jj1,jj2,k
+    !     real(kind=8) :: dxL,dxU,dxC, dyL,dyU,dyC
+
+
+    !     call locate(egridr,ngridr+2,x1,ii1)
+    !     call locate(egridp,ngridp+2,y1,jj1)
+    !     ! ii1 = int((x1-egridr(1))/dx)+1
+    !     ! jj1 = int((y1-egridp(1))/dy)+1
+        
+
+    !     ii2=ii1+1
+    !     x1l=egridr(ii1)
+    !     x1u=egridr(ii2)
+
+    !     jj2=jj1+1
+    !     x2l=egridp(jj1)
+    !     x2u=egridp(jj2)
+
+    !     dx=egridr(2)-egridr(1)
+    !     dy=egridp(2)-egridp(1)
+
+
+
+    !     do k=1,ntau
+    !         !zeroth derivatives
+    !         yf(1)=tau(ii1,jj1,k)
+    !         yf(2)=tau(ii2,jj1,k)
+    !         yf(3)=tau(ii2,jj2,k)
+    !         yf(4)=tau(ii1,jj2,k)
+    !         !first derivatives
+
+    !         if(ii1.eq.1)then
+    !             !forward differencing(f.d)
+    !             yf1(1)=(tau(ii1+1,jj1,k)-tau(ii1,jj1,k))/(egridr(ii1+1)-egridr(ii1))
+    !             yf1(4)=(tau(ii1+1,jj2,k)-tau(ii1,jj2,k))/(egridr(ii1+1)-egridr(ii1))
+    !         else
+    !             !central differencing(c.d)
+    !             yf1(1)=0.5d0*(tau(ii1+1,jj1,k)-tau(ii1-1,jj1,k))/(egridr(ii1+1)-egridr(ii1-1))/2.0d0
+    !             yf1(4)=0.5d0*(tau(ii1+1,jj2,k)-tau(ii1-1,jj2,k))/(egridr(ii1+1)-egridr(ii1-1))/2.0d0
+    !         endif
+
+    !         if(ii2.eq.ngridr+2)then
+    !             !backward differencing(b.d)
+    !             yf1(2)=(tau(ii2,jj1,k)-tau(ii2-1,jj1,k))/(egridr(ii2)-egridr(ii2-1))
+    !             yf1(3)=(tau(ii2,jj2,k)-tau(ii2-1,jj2,k))/(egridr(ii2)-egridr(ii2-1))
+    !         else
+    !             !c.d
+    !             yf1(2)=0.5d0*(tau(ii2+1,jj1,k)-tau(ii2-1,jj1,k))/(egridr(ii2+1)-egridr(ii2-1))/2.0d0
+    !             yf1(3)=0.5d0*(tau(ii2+1,jj2,k)-tau(ii2-1,jj2,k))/(egridr(ii2+1)-egridr(ii2-1))/2.0d0
+    !         endif
+
+    !         if(jj1.eq.1)then
+    !             !f.d
+    !             yf2(1)=(tau(ii1,jj1+1,k)-tau(ii1,jj1,k))/(egridp(jj1+1)-egridp(jj1))
+    !             yf2(2)=(tau(ii2,jj1+1,k)-tau(ii2,jj1,k))/(egridp(jj1+1)-egridp(jj1))
+    !         else
+    !             !c.d
+    !             yf2(1)=0.5d0*(tau(ii1,jj1+1,k)-tau(ii1,jj1-1,k))/(egridp(jj1+1)-egridp(jj1-1))/2.0d0
+    !             yf2(2)=0.5d0*(tau(ii2,jj1+1,k)-tau(ii2,jj1-1,k))/(egridp(jj1+1)-egridp(jj1-1))/2.0d0
+    !         endif
+
+    !         if(jj2.eq.ngridp+2)then
+    !             !b.d
+    !             yf2(3)=(tau(ii2,jj2,k)-tau(ii2,jj2-1,k))/(egridp(jj2)-egridp(jj2-1))
+    !             yf2(4)=(tau(ii1,jj2,k)-tau(ii1,jj2-1,k))/(egridp(jj2)-egridp(jj2-1))
+    !         else
+    !             !c.d
+    !             yf2(3)=0.5d0*(tau(ii2,jj2+1,k)-tau(ii2,jj2-1,k))/(egridp(jj2+1)-egridp(jj2-1))/2.0d0
+    !             yf2(4)=0.5d0*(tau(ii1,jj2+1,k)-tau(ii1,jj2-1,k))/(egridp(jj2+1)-egridp(jj2-1))/2.0d0
+    !         endif
+
+    !         !second derivatives
+    !         if(ii1.eq.1.and.jj1.eq.1)then
+    !             !f.d & f.d
+    !             yf12(1)=((tau(ii1+1,jj1+1,k)-tau(ii1,jj1+1,k))-(tau(ii1+1,jj1,k)-tau(ii1,jj1,k)))/&
+    !             (egridr(ii1+1)-egridr(ii1))/(egridp(jj1+1)-egridp(jj1))
+    !         elseif(ii1.eq.1.and.jj1.ne.1)then
+    !             !f.d & c.d
+    !             yf12(1)=0.5d0*((tau(ii1+1,jj1+1,k)-tau(ii1,jj1+1,k))-(tau(ii1+1,jj1-1,k)-tau(ii1,jj1-1,k)))/&
+    !             (egridr(ii1+1)-egridr(ii1))/(egridp(jj1+1)-egridp(jj1-1))/2.0d0
+    !         elseif(ii1.ne.1.and.jj1.eq.1)then
+    !             !c.d & f.d
+    !             yf12(1)=0.5d0*((tau(ii1+1,jj1+1,k)-tau(ii1-1,jj1+1,k))-(tau(ii1+1,jj1,k)-tau(ii1-1,jj1,k)))/&
+    !             (egridr(ii1+1)-egridr(ii1-1))/(egridp(jj1+1)-egridp(jj1))/2.0d0
+    !         else
+    !             !c.d & c.d
+    !             yf12(1)=0.25d0*((tau(ii1+1,jj1+1,k)-tau(ii1-1,jj1+1,k))-(tau(ii1+1,jj1-1,k)-tau(ii1-1,jj1-1,k)))/&
+    !             (egridr(ii1+1)-egridr(ii1-1))/(egridp(jj1+1)-egridp(jj1-1))/4.0d0
+    !         endif
+
+    !         if(ii2.eq.ngridr+2.and.jj1.eq.1)then
+    !             !b.d & f.d
+    !             yf12(2)=((tau(ii2,jj1+1,k)-tau(ii2-1,jj1+1,k))-(tau(ii2,jj1,k)-tau(ii2-1,jj1,k)))/&
+    !             (egridr(ii2)-egridr(ii2-1))/(egridp(jj1+1)-egridp(jj1))
+    !         elseif(ii2.eq.ngridr+2.and.jj1.ne.1)then
+    !             !b.d & c.d
+    !             yf12(2)=0.5d0*((tau(ii2,jj1+1,k)-tau(ii2-1,jj1+1,k))-(tau(ii2,jj1-1,k)-tau(ii2-1,jj1-1,k)))/&
+    !             (egridr(ii2)-egridr(ii2-1))/(egridp(jj1+1)-egridp(jj1-1))/2.0d0
+    !         elseif(ii2.ne.ngridr+2.and.jj1.eq.1)then
+    !             !c.d & f.d
+    !             yf12(2)=0.5d0*((tau(ii2+1,jj1+1,k)-tau(ii2-1,jj1+1,k))-(tau(ii2+1,jj1,k)-tau(ii2-1,jj1,k)))/&
+    !             (egridr(ii2+1)-egridr(ii2-1))/(egridp(jj1+1)-egridp(jj1))/2.0d0
+    !         else
+    !             !c.d & c.d
+    !             yf12(2)=0.25d0*((tau(ii2+1,jj1+1,k)-tau(ii2-1,jj1+1,k))-(tau(ii2+1,jj1-1,k)-tau(ii2-1,jj1-1,k)))/&
+    !             (egridr(ii2+1)-egridr(ii2-1))/(egridp(jj1+1)-egridp(jj1-1))/4.0d0
+    !         endif
+
+    !         if(ii2.eq.ngridr+2.and.jj2.eq.ngridp+2)then
+    !             !b.d & b.d
+    !             yf12(3)=((tau(ii2,jj2,k)+tau(ii2-1,jj2,k))-(tau(ii2,jj2-1,k)-tau(ii2-1,jj2-1,k)))/&
+    !             (egridr(ii2)-egridr(ii2-1))/(egridp(jj2)-egridp(jj2-1))
+    !         elseif(ii2.eq.ngridr+2.and.jj2.ne.ngridp+2)then
+    !             !b.d & c.d
+    !             yf12(3)=0.5d0*((tau(ii2,jj2+1,k)+tau(ii2-1,jj2+1,k))-(tau(ii2,jj2-1,k)-tau(ii2-1,jj2-1,k)))/&
+    !             (egridr(ii2)-egridr(ii2-1))/(egridp(jj2+1)-egridp(jj2-1))/2.0d0
+    !         elseif(ii2.ne.ngridr+2.and.jj2.eq.ngridp+2)then
+    !             !c.d & b.d
+    !             yf12(3)=0.5d0*((tau(ii2+1,jj2,k)+tau(ii2-1,jj2,k))-(tau(ii2+1,jj2-1,k)-tau(ii2-1,jj2-1,k)))/&
+    !             (egridr(ii2+1)-egridr(ii2-1))/(egridp(jj2)-egridp(jj2-1))/2.0d0
+    !         else
+    !             !c.d & c.d
+    !             yf12(3)=0.25d0*((tau(ii2+1,jj2+1,k)+tau(ii2-1,jj2+1,k))-(tau(ii2+1,jj2-1,k)-tau(ii2-1,jj2-1,k)))/&
+    !             (egridr(ii2+1)-egridr(ii2-1))/(egridp(jj2+1)-egridp(jj2-1))/4.0d0
+    !         endif
+
+    !         !f.d & b.d
+    !         if(ii1.eq.1.and.jj2.eq.ngridp+2)then
+    !             yf12(4)=((tau(ii1+1,jj2,k)-tau(ii1,jj2,k))-(tau(ii1+1,jj2-1,k)-tau(ii1,jj2-1,k)))/&
+    !             (egridr(ii1+1)-egridr(ii1))/(egridp(jj2)-egridp(jj2-1))
+    !         elseif(ii1.eq.1.and.jj2.ne.ngridp+2)then
+    !             !f.d & c.d
+    !             yf12(4)=0.5d0*((tau(ii1+1,jj2+1,k)-tau(ii1,jj2+1,k))-(tau(ii1+1,jj2-1,k)-tau(ii1,jj2-1,k)))/&
+    !             (egridr(ii1+1)-egridr(ii1))/(egridp(jj2+1)-egridp(jj2-1))/2.0d0
+    !         elseif(ii1.ne.1.and.jj2.eq.ngridp+2)then
+    !             !c.d & b.d
+    !             yf12(4)=0.5d0*((tau(ii1+1,jj2,k)-tau(ii1-1,jj2,k))-(tau(ii1+1,jj2-1,k)-tau(ii1-1,jj2-1,k)))/&
+    !             (egridr(ii1+1)-egridr(ii1-1))/(egridp(jj2)-egridp(jj2-1))/2.0d0
+    !         else
+    !             !c.d & c.d
+    !             yf12(4)=0.25d0*((tau(ii1+1,jj2+1,k)-tau(ii1-1,jj2+1,k))-(tau(ii1+1,jj2-1,k)-tau(ii1-1,jj2-1,k)))/&
+    !             (egridr(ii1+1)-egridr(ii1-1))/(egridp(jj2+1)-egridp(jj2-1))/4.0d0
+    !         endif
+
+    !         call bcuint(yf,yf1,yf2,yf12,x1l,x1u,x2l,x2u,x1,y1,ansy)
+    !         tout(k)=ansy
+    !     enddo
+    ! end subroutine interpol
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -753,7 +919,7 @@ module adt
         real(8), intent(in) :: x1,x1l,x1u,x2,x2l,x2u,y(4),y1(4),y12(4),y2(4)
         real(8), intent(out)::ansy!,ansy1,ansy2
 
-        integer(8):: i
+        integer:: i
         real(8):: t,u,c(4,4)
         call bcucof (y,y1,y2,y12,x1u-x1l,x2u-x2l,c)
         if(x1u.eq.x1l .or. x2u.eq.x2l) stop 'bad input in bcuint'
@@ -774,14 +940,13 @@ module adt
 
         ! This subroutine returns ADT angles over a 1D grid of geometries 
         implicit none
-        integer(8),  intent(in):: ngrid, ntau
+        integer,  intent(in):: ngrid, ntau
 
         real(8),    intent(out):: full_angle(ngrid,ntau)
         real(8)                ::  h1, diff(ngrid,ntau), angle(ntau)
-        integer(8)             :: i
+        integer             :: i
 
         call init()
-        h1 = grid(2) - grid(1)
 
         angle=0.0d0
 
@@ -792,6 +957,7 @@ module adt
 
         full_angle(1,:) = 0
         do i=2,ngrid
+            h1 = grid(i) - grid(i-1)
             call rungekutta81( grid(i-1), angle, h1, diff,ngrid,ntau)
             full_angle(i,:) = angle
         enddo
@@ -806,7 +972,7 @@ module adt
         ! This subroutine solves coupled differential equations (ADT equations) by 8th order Runge-Kutta method
 
 
-        integer(8), intent(in):: m,n
+        integer, intent(in):: m,n
         real(8), intent(in)   :: x,dx, diff(m,n)
         real(8), intent(inout):: y(n)
 
@@ -870,11 +1036,11 @@ module adt
         ! first coordinate
         ! m is the grid points and n is number of nact
 
-        integer(8),  intent(in):: m,n
+        integer,  intent(in):: m,n
         real(8), intent(in)    :: diff(m,n), ini_angle(n), x_val
         real(8), intent(out)   :: output(n)
         real(8)                :: y_val(n)
-        integer(8)             :: i
+        integer             :: i
 
         do i=1,n
             call splint(grid, tau(:,i), diff(:,i), m, x_val, y_val(i))
@@ -887,11 +1053,11 @@ module adt
 
     subroutine spline(x,y,n,y2)
         implicit none
-        integer(8),  intent(in):: n
+        integer,  intent(in):: n
         real(8), intent(in)    :: x(n),y(n)
 
         real(8), intent(out)   :: y2(n)
-        integer(8)             :: i ,k
+        integer             :: i ,k
         real(8)                :: u(n),sig, p, qn, un, yp1, ypn
 
         yp1 = 1.0D30
@@ -926,10 +1092,10 @@ module adt
 
     subroutine splint(xa,ya,y2a,n,x,y)
         implicit none
-        integer(8),  intent(in):: n
+        integer,  intent(in):: n
         real(8), intent(in)    :: xa(n),y2a(n),ya(n),x
         real(8), intent(out)   :: y
-        integer(8)             :: k, khi, klo
+        integer             :: k, khi, klo
         real(8)                :: h,a,b
 
 
@@ -958,10 +1124,10 @@ module adt
 
         ! This subroutine returns magnitude of ADT angles at every grid point in the nuclear configuration space (CS)
 
-        integer(8),  intent(in)::  ntau, nstate
+        integer,  intent(in)::  ntau, nstate
         real(8), intent(in) :: ang(ntau), nact(ntau)
         real(8), intent(out) :: f(ntau)
-        integer(8) :: i,j,counter
+        integer :: i,j,counter
         real(8) :: val(ntau),g(ntau,ntau),gi(ntau,ntau),amat(nstate,nstate),tmat(nstate,nstate),prod(nstate,nstate)
         real(8) :: afor(0:ntau,nstate,nstate),aback(ntau+1,nstate,nstate), tmp(ntau)
 
@@ -993,10 +1159,10 @@ module adt
 
         ! This subroutine generates complete ADT matrix (aa) and two sets of partially multiplied ADT matrices (afor,aback)
 
-        integer(8),  intent(in)::  ntau, nstate
+        integer,  intent(in)::  ntau, nstate
         real(8), intent(in) :: y(ntau)
         real(8), intent(out) :: aa(nstate,nstate),afor(0:ntau,nstate,nstate),aback(ntau+1,nstate,nstate)
-        integer(8) :: i,j,k
+        integer :: i,j,k
         real(8) :: a(ntau,nstate,nstate),aa1(nstate,nstate)
 
         a = 0.0d0
@@ -1045,10 +1211,10 @@ module adt
 
         ! This subroutine returns the elements of coefficient matrix of gradient of ADT angles
 
-        integer(8),  intent(in):: ntau, nstate
+        integer,  intent(in):: ntau, nstate
         real(8), intent(in) :: afor(0:ntau,nstate,nstate),aback(ntau+1,nstate,nstate),y(ntau)
         real(8), intent(out) :: g(ntau,ntau)
-        integer(8) :: i,j,k,counter
+        integer :: i,j,k,counter
         real(8) :: adiff(ntau,nstate,nstate),aa1(nstate,nstate),aa2(nstate,nstate),b1(nstate,nstate),b2(nstate,nstate),&
                         &b3(nstate,nstate)!, gtmp(ntau,ntau)
 
@@ -1097,10 +1263,10 @@ module adt
 
         ! This subroutine returns the inverse of coefficient matrix of gradient of ADT angles by Gauss-Jordon method
 
-        integer(8),  intent(in)::  ntau
+        integer,  intent(in)::  ntau
         real(8), intent(in) :: g(ntau,ntau)
         real(8), intent(out) :: gi(ntau,ntau)
-        integer(8) :: i,j,irank,irow
+        integer :: i,j,irank,irow
         real(8) :: zero,tmp,fc,a(ntau,ntau),en(ntau,ntau)
 
         zero = 1.0d-20
@@ -1169,10 +1335,10 @@ module adt
         ! This subroutine returns the negative form of nonadiabatic coupling matrix (NACM) at each and every grid point
         ! in nuclear CS
 
-        integer(8),  intent(in):: ntau, nstate
+        integer,  intent(in):: ntau, nstate
         real(8), intent(in) :: tau(ntau)
         real(8), intent(out) :: taumat(nstate,nstate)
-        integer(8) :: i,j,counter
+        integer :: i,j,counter
 
         taumat = 0.0d0
         counter = 0
@@ -1197,8 +1363,8 @@ module adt
 
         ! This subroutine returns numerically calculated ADT matrix for a particular set of ADT angles.
 
-        integer(8),intent(in):: ntau, nstate
-        integer(8):: i,j,k
+        integer,intent(in):: ntau, nstate
+        integer:: i,j,k
         real(8), intent(in)::y(ntau)
         real(8), intent(out):: aa(nstate,nstate)
         real(8)::a(ntau,nstate,nstate)
@@ -1232,10 +1398,10 @@ module adt
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     subroutine reordermatrix(mat, m, n)
-        integer(8), intent(in):: m, n       !<<<--- m=ntau; n=nstate
+        integer, intent(in):: m, n       !<<<--- m=ntau; n=nstate
         real(8),intent(inout) :: mat(m,n,n)
         real(8) ::  mattmp(m,n,n)
-        integer(8):: i
+        integer:: i
         ! reorders the array of rotation matrix in a given order
         mattmp = mat
         do i=1,m 

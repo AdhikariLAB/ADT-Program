@@ -360,6 +360,7 @@ def runNumerical(args):
             adt_numerical1d(enrf, nstate, phif,order, outfile, logger, h5, txt, nb)
             print("Log saved in 'ADT.log'.")
         except Exception as e:
+            # logging.exception('grh')
             logger.error("Program failed. %s\n"%e+"-"*121)
             print("Program failed. %s"%e)
 

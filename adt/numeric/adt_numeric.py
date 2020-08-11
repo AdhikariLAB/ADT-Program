@@ -196,6 +196,7 @@ def adt_numerical(enrf, nstate, rhof, phif, path, order, outfile, logger, h5, tx
             file = "Angles.dat"
             logger.info("Writing ADT Angles in '%s'"%file)
             file_write(file, adtAngle, fadt.gridr)
+            # fileWrite2(file, adtAngle, fadt.ngridr, fadt.ngridp )
             logger.info("Writing ADT Angles in 'Angle_residues.dat'")
             np.savetxt('Angle_residues.dat', residue ,delimiter="\t", fmt=str("%.8f"))
 
@@ -204,12 +205,14 @@ def adt_numerical(enrf, nstate, rhof, phif, path, order, outfile, logger, h5, tx
                 file =  "Matrix_Row_%s.dat"%(i+1)
                 logger.info("Writing ADT Matrix elements in '%s'"%(file))
                 file_write(file, np.column_stack([rdat[:,[0,1]],amat[:,i,:]]), fadt.gridr )
+                # fileWrite2(file, np.column_stack([rdat[:,[0,1]],amat[:,i,:]]), fadt.ngridr, fadt.ngridp )
 
             if enrf != None:
                 for i in range(fadt.nstate):
                     file =  "Diabatic_Row_%s.dat"%(i+1)
                     logger.info("Writing Diabatic Matrix elements in '%s'"%(file))
                     file_write(file, np.column_stack([rdat[:,[0,1]],db[:,i,:]]), fadt.gridr )
+                    # fileWrite2(file, np.column_stack([rdat[:,[0,1]],db[:,i,:]]), fadt.ngridr, fadt.ngridp )
 
 
     # Writing of numerical output in '.npy' files
@@ -432,6 +435,14 @@ def file_write(file, data, col):
         file.write("\n")
     file.flush()
     file.close()
+
+def fileWrite2(file, data, n1, n2):
+    data.shape = (n1,n2,-1)
+    with open(file,'w') as f:
+        for i in data:
+            np.savetxt(f,i ,delimiter='\t',fmt=str('%.8f'))
+            f.write('\n')
+
 
 def getOrder(userOrder, state):
     if not userOrder: # no user order provided return the default
