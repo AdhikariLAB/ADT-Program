@@ -4,7 +4,7 @@ A generalised ADT program for analytical and numerical calculation. This is appl
 'N' electronic state sub-Hilbert space. The analytical segment can be used to generate symbolic
 expressions of six quantities related to adiabatic to diabatic transformation (ADT) and those 
 are: ADT matrix elements, partially substituted ADT equations, completely substituted ADT equations, 
-elements of coefficient matrix of gradient of ADT angles, elements  of coefficient matrix of 
+elements of coefficient matrix of gradient of ADT angles, elements of coefficient matrix of 
 nonadiabatic coupling terms (NACTs) and the diabatic potential energy matrix elements for any 
 arbitrary number of coupled electronic states. On the other hand, the numerical portion computes 
 ADT angles, ADT matrix elements, diabatic potential energy matrix elements and residue of ADT 
@@ -74,6 +74,14 @@ To know more about installation and building distribution, please refer to the u
 
 
 ---
+
+#### Uninstalling 'ADT'
+If you have installed `ADT` with `pip`, then uninstalling it preety simple, just run
+```
+pip uninstall adt
+```
+But if you installed the package by directly running the `setup.py` script, then to properly uninstall you have to manually remove all the files added during the installation
+
 
 ## Files and Folder Structure of the package:
 

@@ -150,13 +150,13 @@ def creatParser():
                         type     = str,
                         help     = "Need to specify the path of the input \nNACT file, which is required both for \n1D as well as \
                                    2D calculation. This file \nrepresents the component of NACT for \nthe circular coordinate \
-                                   (e.g. {0,2pi}).\n ",
+(e.g. {0,2pi}).\n ",
                         metavar  = "FILE",
                         required = True)
     numeric.add_argument("-mfile",
                         type     = str,
                         help     = "Specify the path of the input NACT file. \nrepresenting the component of NACT \nfor the \
-                                    non-circular coordinate \n(e.g. {0,pi/2} or {0,pi} or \n{0,infinity}).\n ",
+non-circular coordinate \n(e.g. {0,pi/2} or {0,pi} or \n{0,infinity}).\n ",
                         metavar  = "FILE")
     numeric.add_argument("-intpath",
                         type    = int,
@@ -167,12 +167,12 @@ def creatParser():
     numeric.add_argument("-efile",
                         type    = str,
                         help    = "Specify the path of the adiabatic PES file for \ncalculating the diabatic potential energy \
-                                  matrix \nelements.\n ",
+matrix elements.\n ",
                         metavar = "FILE")
     numeric.add_argument('-nstate',
                         type = int,
                         help = "Specify the number of states to do the calculation.\nBy default it includes all the data for\
-                             calculation.\n  ")
+calculation.\n  ")
     numeric.add_argument('-order',
                         type = str,
                         help = "Write the order of multiplication of elementary rotation matrices.\n  ")
@@ -188,11 +188,11 @@ def creatParser():
     numeric.add_argument("-h5",
                         action = 'store_true',
                         help   = "Write results in a HDF5 file (.h5). \nFast IO, smaller file size and hierarchical filesystem-like \
-                            data format,\npreferable for saving and sharing large datasets in an organised way.\n " )
+data format,\npreferable for saving and sharing large datasets in an organised way.\n " )
     numeric.add_argument("-nb",
                         action = 'store_true',
                         help   = 'Write results in Numpy binary file (.npy). \nPreferable when working with numpy for its much \
-                            faster IO and easy portability.\n ')
+faster IO and easy portability.\n ')
     numeric.add_argument("-txt" ,
                         action = "store_true",
                          help="Write results in a text file.(default behaviour).")
@@ -215,19 +215,19 @@ def creatParser():
                         metavar = "FILE",
                         default='geomfile.dat',
                         help='Specify the geometry file containing the initial\ngrid point in "xyz" format (in Angstrom)\n\
-                            (default: %(default)s). \n(Ignore for scattering system). \n ')
+(default: %(default)s). \n(Ignore for scattering system). \n ')
     molpro.add_argument('-freqfile',
                         type    = str,
                         metavar = "FILE",
                         default = 'frequency.dat',
                         help='Specify the frequency information file, where\nfrequencies of normal modes are written in cm-1\
-                            \n(default: %(default)s). \n(Ignore for scattering system). \n ')
+\n(default: %(default)s). \n(Ignore for scattering system). \n ')
     molpro.add_argument('-wilsonfile',
                         type    = str,
                         metavar = "FILE",
                         default = 'wilson.dat',
                         help='Specify the filename containing the Wilson matrix\nof a molecular species (default: wilson.dat).\n\
-                            (default: %(default)s).\n(Ignore for scattering system). \n ')
+(default: %(default)s).\n(Ignore for scattering system). \n ')
     molpro.add_argument("-intpath",
                         type    = int,
                         help    = "Specify the path for calculation (default: %(default)s).\n ",
@@ -252,11 +252,11 @@ def creatParser():
     molpro.add_argument("-h5",
                         action = 'store_true',
                         help   = "Write results in a HDF5 file (.h5).\nFast IO, smaller file size and hierarchical filesystem-like \
-                                 data format,\npreferable for saving and sharing large datasets in an organised way.\n " )
+data format,\npreferable for saving and sharing large datasets in an organised way.\n " )
     molpro.add_argument("-nb",
                         action = 'store_true',
                         help   = 'Write results in Numpy binary file (.npy). \nPreferable when working with numpy for its much \
-                                 faster IO and easy portability.\n ')
+faster IO and easy portability.\n ')
     molpro.add_argument("-txt" ,
                         action = "store_true",
                         help="Write results in a text file. (default behaviour).")
@@ -298,8 +298,8 @@ def runNumerical(args):
     threads = args.n
     order = args.order
 
-    # if (h5==False and txt== False and nb==False ) : txt=True
-    if not all([h5,txt,nb]) : txt=True
+    if (h5==False and txt== False and nb==False ) : txt=True
+    # if not all([h5,txt,nb]) : txt=True
 
     ffrmt = []
     if h5: ffrmt.append('HDF5')
@@ -317,7 +317,7 @@ def runNumerical(args):
 
     thLog = ''
     if threads:
-        thLog+= '\n            OpenMP threads          : {}'.format(threads)
+        thLog+= '\n        OpenMP threads          : {}'.format(threads)
     else: # if thread not specified then just spawn one thread
         threads = str(1)
 
@@ -396,7 +396,7 @@ def runMolpro(args):
 
     thLog=''
     if threads:
-        thLog= '\n                    OpenMP threads       : {}'.format(threads)
+        thLog= '\n                OpenMP threads       : {}'.format(threads)
     else: # if thread not specified then just spawn one thread
         threads = str(1)
 

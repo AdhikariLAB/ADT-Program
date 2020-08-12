@@ -15,9 +15,19 @@
 !1. The array dimensions are defined as module variabale, though fortran can access those variable in any inherited procedure
 !   but f2py can not, for that it has to defined with an intent(aux) statement. So, remove those overlapping dimension variable
 !   from argument that masks the module variable with explicit intent(aux)
-!2. Remove init subroutine with `cx` as parameter, and also fix the dimension
+!2. Remove init subroutine with `cx`; as parameter, and also fix the dimension
+!3. Fix the wt variable as parameter.
 !3. Instead of assigning the allocatable variable in the python script with auto association, make initialization subroutine
 !4. Generalised the 2D interpolation for non equispaced grid
+!5. In loops make `ntau` the first variable, for better performance; rho/phi dimension doesn't matter as different path subroutine
+!   loops differently. But Fortran and python handle array contiguosness differently. So, you may have to do a dimesion transpose somewhere
+!6. Rename `tau` variable in the `interpolat` subroutine, it collides with the module variable that actually used in 1D case.
+!7. why is `gridr_val, gridp_val` module variable?
+!8. Trim the spline subroutine, remove yp1
+!9. Vriable `amat` in res subroutine collides with actual subroutin `amat`
+!10.Fix bad array looping order here and there
+!11.Bring the grid/data expansion from python script to here
+!12.Replace interpolation with a 2D spline, saving the diffs beforehand, that may be faster, than interpolation
 
 module adt
     !$ use omp_lib
@@ -25,7 +35,7 @@ module adt
     ! 'e' means expanded
     real(8) ,allocatable, dimension(:,:,:) :: taur, taup, etaur, etaup
     real(8) ,allocatable, dimension(:)     :: gridr, gridp, egridr, egridp, grid
-    integer                             :: ngridr, ngridp, ngrid, ntau, nstate
+    integer                                :: ngridr, ngridp, ngrid, ntau, nstate
     real(8) ,allocatable, dimension(:,:)   :: tau
     integer,allocatable,dimension(:)    :: order
     ! tau and grid varaible are only here just for the 1D ADT case
@@ -101,7 +111,7 @@ module adt
         ! This subroutine returns ADT angles over a 2D grid of geometries along any one of the eight paths of integration
 
         integer,  intent(in):: ngridr, ngridp, ntau, path
-        real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
+        real(8),  intent(out):: full_angle(ngridr,ngridp,ntau)
 
         call init()
 
@@ -145,10 +155,10 @@ module adt
 
         ! This subroutine returns ADT angles over a 2D grid of geometries along path1
 
-        integer,  intent(in):: ngridr, ngridp, ntau
-        real(8),    intent(out):: full_angle(ngridr,ngridp,ntau)
-        real(8)                :: angle(ntau), h1, h2, fangle(ngridp, ntau)
-        integer             :: i,j
+        integer, intent(in):: ngridr, ngridp, ntau
+        real(8),intent(out):: full_angle(ngridr,ngridp,ntau)
+        real(8)            :: angle(ntau), h1, h2, fangle(ngridp, ntau)
+        integer            :: i,j
 
         h1 = gridr(2) - gridr(1)
         h2 = gridp(2) - gridp(1)
@@ -159,7 +169,7 @@ module adt
         gridr_val = gridr(1)
 
         do i=1,ngridp
-            call rungekutta8(funcp, gridp_val,gridr_val,angle,h2,ntau)
+            call rungekutta8(funcp, gridp_val, gridr_val, angle, h2, ntau)
             fangle(i,:) = angle
             gridp_val = gridp(i)
         enddo
@@ -171,7 +181,6 @@ module adt
             do j=1,ngridr
                 call rungekutta8(funcr, gridr_val, gridp_val, angle, h1, ntau)
                 gridr_val = gridr(j)
-                ! print *,omp_get_thread_num()
                 full_angle(j,i,:) = angle
             enddo
         enddo
@@ -193,7 +202,6 @@ module adt
         h1 = gridr(2) - gridr(1)
         h2 = -gridp(2) + gridp(1)
         angle=0.0d0
-
 
         gridp_val = gridp(ngridp)-0.5d0*h2
         gridr_val = gridr(1)
@@ -578,16 +586,14 @@ module adt
             k=(u+l)/2
             if((x>xx(k)))then
                 l=k
-              else
+            else
                 u=k
             endif
         enddo
     end subroutine locate
     
-
-
     
-    subroutine interpol(tau,x1,y1,tout,ngridr, ngridp, ntau)
+    subroutine interpol(tau,x1,y1,tout,ngridr, ngridp, ntau) !<-- this `tau` is not actually module variabale, rename it
 
         ! This subroutine is used to perform bi-cubic interpolation to evaluate the magnitude of nonadiabatic coupling terms
         ! (NACTs) at intermediate geometries between two grid points
@@ -611,7 +617,6 @@ module adt
         jj2=jj1+1
         x2l=egridp(jj1)
         x2u=egridp(jj2)
-
 
 
         do k=1,ntau
@@ -1040,7 +1045,7 @@ module adt
         real(8), intent(in)    :: diff(m,n), ini_angle(n), x_val
         real(8), intent(out)   :: output(n)
         real(8)                :: y_val(n)
-        integer             :: i
+        integer                :: i
 
         do i=1,n
             call splint(grid, tau(:,i), diff(:,i), m, x_val, y_val(i))
@@ -1294,7 +1299,7 @@ module adt
                     write(*,*) "Inverse of the given matrix does not exist!"
                     gi = 0.0d0
                     stop
-                    else
+                else
                     do i = 1,ntau
                         tmp = a(irow,i)
                         a(irow,i) = a(j,i)
