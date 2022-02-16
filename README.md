@@ -48,7 +48,18 @@ export F90=ifort
 If no `F90` environment variable is specified then the program is installed using `gfortran` compiler by default. To use other compilers or to fine tune the installation process, modify the `setup.py` script.
 
 #### Installing 'ADT'
-For installing the package with the default parameters just run:  
+The recommended and safest way to install the package is through `pip`. Just run 
+```bash
+pip install git+https://github.com/AdhikariLAB/ADT-Program.git
+```
+to download the repo and install with pip in a single command. Otherwise, download the repo and in the root of the folder run 
+```
+pip install .
+```
+
+On successful installation of the package, a command line utility `adt` will be created, which will be used to run the package directly from terminal.
+
+Although not recommended, you can also install the package by directly running the `setup.py` script
 ```
 python setup.py install
 ```
@@ -59,14 +70,6 @@ running
 ```
 python setup.py install --user
 ```
-
-Alternatively, if `pip` is available, user can install the package by executing the following command inside the source directory
-
-```
-pip install .
-```
-
-On successful installation of the package, a command line utility `adt` will be created, which will be used to run the package directly from terminal.
 
 A quick help about the installation can be found by running `python setup.py -h`  
 

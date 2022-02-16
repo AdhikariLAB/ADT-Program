@@ -95,7 +95,7 @@ class GamessOptg():
     def CreateTemplate(self):
         indent = lambda txt:'\n'.join([' '+i.strip() for i in filter(None,txt.split('\n'))])
         with open(self.geomFile) as f: geomDat = f.read()
-        self.nAtoms = len(filter(None,geomDat.split('\n')))
+        self.nAtoms = len(list(filter(None,geomDat.split('\n'))))
 
         gamessTemplate = textwrap.dedent('''
                                             $CONTRL SCFTYP={scfmeth} {lvl} RUNTYP=OPTIMIZE ICHARG={charge}
@@ -198,7 +198,7 @@ class MolproOptg(object):
                        method = method))
 
         with open(self.geomFile) as f: geomDat = f.read()
-        self.nAtoms = len(filter(None,geomDat.split('\n')))
+        self.nAtoms = len(list(filter(None,geomDat.split('\n'))))
 
         with open('geom.xyz','w') as f:
             f.write(
